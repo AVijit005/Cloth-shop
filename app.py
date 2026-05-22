@@ -20,10 +20,10 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 load_dotenv()
 
 DB_NAME = os.getenv("MYSQL_DATABASE") or os.getenv("SHIBANI_DB_NAME", "shibani_store")
-DB_HOST = "mysql.railway.internal"
+DB_HOST = os.getenv("MYSQL_HOST")
 DB_USER = os.getenv("MYSQL_USER") or os.getenv("SHIBANI_DB_USER", "root")
 DB_PASSWORD = os.getenv("MYSQL_PASSWORD") or os.getenv("SHIBANI_DB_PASSWORD", "")
-DB_PORT = 55475
+DB_PORT = int(os.getenv("MYSQL_PORT"))
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY") or os.getenv("SHIBANI_SECRET_KEY", secrets.token_hex(32))
