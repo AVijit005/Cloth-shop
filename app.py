@@ -368,10 +368,14 @@ def init_mysql():
                     """
                     CREATE TABLE IF NOT EXISTS settings (
                       `key` VARCHAR(80) PRIMARY KEY,
-                      `value` VARCHAR(255) NOT NULL
+                      `value` TEXT NOT NULL
                     )
                     """
                 )
+                try:
+                    cursor.execute("ALTER TABLE `settings` MODIFY COLUMN `value` TEXT NOT NULL")
+                except Exception:
+                    pass
                 cursor.execute("SELECT COUNT(*) FROM settings")
                 if cursor.fetchone()[0] == 0:
                     cursor.execute("INSERT INTO settings (`key`, `value`) VALUES ('gst_rate', '5.0')")
