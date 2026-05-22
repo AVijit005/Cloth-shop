@@ -1,0 +1,1253 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shibani | Secure Fashion Store</title>
+    <meta name="description" content="Shibani is a premium fashion store showcasing elegant apparel. Experience role-based dashboard access, real-time product inventory, and secure ordering." />
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  </head>
+  <body>
+    <div class="aurora"></div>
+    <div class="spark-field" aria-hidden="true">
+      <span></span><span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span><span></span>
+    </div>
+
+    <main class="app-shell">
+      <section class="login-screen" id="loginScreen">
+        <div class="login-showcase">
+          <div class="brand-orbit">
+            <div class="orbit-ring ring-one"></div>
+            <div class="orbit-ring ring-two"></div>
+            <div class="logo-core">S</div>
+            <div class="floating-cloth cloth-one"></div>
+            <div class="floating-cloth cloth-two"></div>
+            <div class="floating-cloth cloth-three"></div>
+          </div>
+          <p class="eyebrow">Secure fashion portal</p>
+          <h1>Shibani</h1>
+          <p class="showcase-text">
+            A premium login experience with separate dashboards for shop admin
+            and customers.
+          </p>
+          <div class="login-benefits">
+            <span>Role based access</span>
+            <span>MySQL database</span>
+            <span>Live shop controls</span>
+          </div>
+        </div>
+
+        <div class="login-card">
+          <div class="login-card-head">
+            <span class="secure-dot"></span>
+            <div>
+              <h2 id="authCardTitle">Welcome back</h2>
+              <p id="authCardSubtitle">Enter your ID and password to continue.</p>
+            </div>
+          </div>
+
+          <form id="loginForm" class="login-form">
+            <label>
+              User ID
+              <input id="usernameInput" type="text" autocomplete="username" placeholder="admin or customer" required />
+            </label>
+            <label>
+              Password
+              <input id="passwordInput" type="password" autocomplete="current-password" placeholder="Enter password" required />
+            </label>
+            <button class="primary-action" id="loginButton" type="submit">Login to Dashboard</button>
+            <p class="form-message" id="loginMessage"></p>
+            <div class="auth-toggle-container" style="text-align: center; margin-top: 15px; font-size: 0.9rem;">
+              Don't have an account? <a href="#" id="toSignupBtn" style="color: var(--primary); text-decoration: none; font-weight: 600;">Create account</a>
+            </div>
+          </form>
+
+          <form id="signupForm" class="login-form hidden">
+            <label>
+              Full Name
+              <input id="signupFullNameInput" type="text" placeholder="Your Name" required />
+            </label>
+            <label>
+              User ID
+              <input id="signupUsernameInput" type="text" autocomplete="username" placeholder="Choose a username" required />
+            </label>
+            <label>
+              Password
+              <input id="signupPasswordInput" type="password" autocomplete="new-password" placeholder="Min 6 characters" required />
+            </label>
+            <button class="primary-action" id="signupButton" type="submit">Create Account</button>
+            <p class="form-message" id="signupMessage"></p>
+            <div class="auth-toggle-container" style="text-align: center; margin-top: 15px; font-size: 0.9rem;">
+              Already have an account? <a href="#" id="toLoginBtn" style="color: var(--primary); text-decoration: none; font-weight: 600;">Login here</a>
+            </div>
+          </form>
+
+          <div class="demo-logins" id="demoLoginsContainer">
+            <button type="button" data-demo-login="admin">Admin demo</button>
+            <button type="button" data-demo-login="customer">Customer demo</button>
+          </div>
+
+          <div class="database-status" id="databaseStatus">Checking database...</div>
+        </div>
+      </section>
+
+      <section class="dashboard hidden" id="dashboardScreen">
+        <header class="dashboard-header">
+          <a class="brand" href="#" aria-label="Shibani dashboard">
+            <span class="brand-mark">S</span>
+            <span>
+              <strong>Shibani</strong>
+              <small id="roleLabel">Dashboard</small>
+            </span>
+          </a>
+          <nav class="dashboard-nav" id="dashboardNav"></nav>
+          <button class="secondary-action" id="logoutButton" type="button">Logout</button>
+        </header>
+
+        <section class="dashboard-hero">
+          <div>
+            <p class="eyebrow" id="dashboardEyebrow">Dashboard</p>
+            <h2 id="dashboardTitle">Welcome</h2>
+            <p id="dashboardSubtitle"></p>
+          </div>
+          <div class="live-card">
+            <span>Live database</span>
+            <strong id="dbMode">Checking</strong>
+          </div>
+        </section>
+
+        <section class="stats-grid" id="statsGrid"></section>
+
+        <section class="dashboard-grid">
+          <aside class="panel admin-only hidden" id="adminPanel">
+            <div class="panel-head">
+              <h3 id="productFormTitle">Add New Cloth</h3>
+              <p id="productFormSubtitle">Upload product details to the shop.</p>
+            </div>
+            <form id="productForm" class="product-form">
+              <input id="editingProductId" type="hidden" />
+              <div class="photo-preview" id="photoPreview">Photo preview</div>
+              <label>
+                Product photos
+                <input id="photoInput" type="file" accept="image/*" multiple />
+              </label>
+              <label>
+                Product name
+                <input id="nameInput" type="text" placeholder="Premium saree" required />
+              </label>
+              <div class="form-row">
+                <label>
+                  Category
+                  <select id="categoryInput">
+                    <option value="women">Women</option>
+                    <option value="men">Men</option>
+                    <option value="kids">Kids</option>
+                  </select>
+                </label>
+                <label>
+                  Price
+                  <input id="priceInput" type="number" min="1" placeholder="999" required />
+                </label>
+              </div>
+              <div class="form-row">
+                <label>
+                  Old price
+                  <input id="oldPriceInput" type="number" min="0" placeholder="1299" />
+                </label>
+                <label>
+                  Color
+                  <input id="colorInput" type="text" placeholder="Maroon" required />
+                </label>
+              </div>
+              <div class="form-row">
+                <label>
+                  Size
+                  <input id="sizeInput" type="text" placeholder="S, M, L" required />
+                </label>
+                <label>
+                  Stock
+                  <select id="stockInput">
+                    <option>In stock</option>
+                    <option>Limited stock</option>
+                    <option>Out of stock</option>
+                  </select>
+                </label>
+              </div>
+              <div class="form-row">
+                <label>
+                  Rating
+                  <input id="ratingInput" type="number" min="1" max="5" step="0.1" value="4.6" />
+                </label>
+                <label>
+                  Badge
+                  <input id="badgeInput" type="text" placeholder="New, Sale, Best seller" />
+                </label>
+              </div>
+              <label>
+                Description
+                <textarea id="descriptionInput" rows="3" placeholder="Fabric, style, occasion..."></textarea>
+              </label>
+              <div class="form-actions">
+                <button class="primary-action" id="saveProductButton" type="submit">Add Product</button>
+                <button class="secondary-action hidden" id="cancelEditButton" type="button">Cancel Edit</button>
+              </div>
+            </form>
+          </aside>
+
+          <aside class="panel admin-only hidden" id="settingsPanel">
+            <div class="panel-head">
+              <h3>Shop Config</h3>
+              <p>Configure tax, delivery charges, and other fees.</p>
+            </div>
+            <form id="settingsForm" class="settings-form">
+              <label>
+                GST / Tax Rate (%)
+                <input id="settingsGst" type="number" step="0.1" min="0" placeholder="5.0" required />
+              </label>
+              <div class="form-row">
+                <label>
+                  Standard Delivery Fee (Rs.)
+                  <input id="settingsDelivery" type="number" step="1" min="0" placeholder="99" required />
+                </label>
+                <label>
+                  Free Delivery Threshold (Rs.)
+                  <input id="settingsThreshold" type="number" step="1" min="0" placeholder="999" required />
+                </label>
+              </div>
+              <label>
+                Other Charges (Rs.)
+                <input id="settingsOther" type="number" step="1" min="0" placeholder="0" required />
+              </label>
+
+              <!-- Advanced Loyalty Program settings -->
+              <div style="border-top: 1px solid var(--border-color); margin: 20px 0; padding-top: 15px;">
+                <h4 style="margin-bottom: 8px; color: var(--primary);">Loyalty & Rewards Program</h4>
+                <p style="font-size: 12px; color: var(--muted); margin-bottom: 12px;">Configure welcome points, earn/redeem rates, limits and switches.</p>
+              </div>
+              
+              <label>
+                Enable Loyalty Program
+                <select id="settingsLoyaltyEnabled" required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg); color: var(--text); font-family: inherit;">
+                  <option value="1">Enabled (Active)</option>
+                  <option value="0">Disabled (Hidden)</option>
+                </select>
+              </label>
+              
+              <div class="form-row">
+                <label>
+                  Tier 1 Shopping Limit (Rs.)
+                  <input id="settingsLoyaltyTier1Limit" type="number" step="1" min="1" placeholder="1000" required />
+                </label>
+                <label>
+                  Tier 1 Earn Rate (pts per 100 Rs. spent)
+                  <input id="settingsLoyaltyTier1Rate" type="number" step="0.1" min="0" placeholder="5.0" required />
+                </label>
+              </div>
+              
+              <div class="form-row">
+                <label>
+                  Tier 2 Shopping Limit (Rs.)
+                  <input id="settingsLoyaltyTier2Limit" type="number" step="1" min="1" placeholder="3000" required />
+                </label>
+                <label>
+                  Tier 2 Earn Rate (pts per 100 Rs. spent)
+                  <input id="settingsLoyaltyTier2Rate" type="number" step="0.1" min="0" placeholder="10.0" required />
+                </label>
+              </div>
+              
+              <div class="form-row">
+                <label>
+                  Tier 3 Shopping Limit (Rs.)
+                  <input id="settingsLoyaltyTier3Limit" type="number" step="1" min="1" placeholder="5000" required />
+                </label>
+                <label>
+                  Tier 3 Earn Rate (pts per 100 Rs. spent)
+                  <input id="settingsLoyaltyTier3Rate" type="number" step="0.1" min="0" placeholder="15.0" required />
+                </label>
+              </div>
+              
+              <div class="form-row">
+                <label>
+                  Tier 4 Shopping Limit (Rs.)
+                  <input id="settingsLoyaltyTier4Limit" type="number" step="1" min="1" placeholder="7000" required />
+                </label>
+                <label>
+                  Tier 4 Earn Rate (pts per 100 Rs. spent)
+                  <input id="settingsLoyaltyTier4Rate" type="number" step="0.1" min="0" placeholder="20.0" required />
+                </label>
+              </div>
+              
+              <div class="form-row">
+                <label>
+                  Tier 5 Shopping Limit (Rs.)
+                  <input id="settingsLoyaltyTier5Limit" type="number" step="1" min="1" placeholder="10000" required />
+                </label>
+                <label>
+                  Tier 5 Earn Rate (pts per 100 Rs. spent)
+                  <input id="settingsLoyaltyTier5Rate" type="number" step="0.1" min="0" placeholder="25.0" required />
+                </label>
+              </div>
+              
+              <div class="form-row">
+                <label>
+                  Tier 6 Shopping Limit (Rs.)
+                  <input id="settingsLoyaltyTier6Limit" type="number" step="1" min="1" placeholder="15000" required />
+                </label>
+                <label>
+                  Tier 6 Earn Rate (pts per 100 Rs. spent)
+                  <input id="settingsLoyaltyTier6Rate" type="number" step="0.1" min="0" placeholder="30.0" required />
+                </label>
+              </div>
+              
+              <div class="form-row">
+                <label>
+                  Tier 7 Earn Rate (pts per 100 Rs. spent)
+                  <input id="settingsLoyaltyTier7Rate" type="number" step="0.1" min="0" placeholder="35.0" required />
+                </label>
+                <label>
+                  Redeem Ratio (X pts = Rs. 1 off)
+                  <input id="settingsLoyaltyRedeemRatio" type="number" step="0.1" min="0.1" placeholder="10.0" required />
+                </label>
+              </div>
+              
+              <div class="form-row">
+                <label>
+                  Min Order to Earn Points (Rs.)
+                  <input id="settingsLoyaltyMinEarn" type="number" step="1" min="0" placeholder="0" required />
+                </label>
+                <label>
+                  Min Order to Redeem Points (Rs.)
+                  <input id="settingsLoyaltyMinRedeem" type="number" step="1" min="0" placeholder="0" required />
+                </label>
+              </div>
+              
+              <div class="form-row">
+                <label>
+                  New User Welcome Points
+                  <input id="settingsLoyaltyWelcome" type="number" step="1" min="0" placeholder="100" required />
+                </label>
+                <label>
+                  Max Points Discount (% of order)
+                  <input id="settingsLoyaltyMaxPercent" type="number" step="1" min="1" max="100" placeholder="100" required />
+                </label>
+              </div>
+
+              <div class="form-actions">
+                <button class="primary-action" type="submit">Save Settings</button>
+              </div>
+            </form>
+          </aside>
+
+          <aside class="panel admin-only hidden" id="couponsPanel">
+            <div class="panel-head">
+              <h3>Coupon Config</h3>
+              <p>Manage discounts, promo codes, and customer offers.</p>
+            </div>
+            <form id="couponForm" class="settings-form" style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color);">
+              <input id="couponIdInput" type="hidden" />
+              <div class="form-row">
+                <label>
+                  Coupon Code
+                  <input id="couponCodeInput" type="text" placeholder="SHIBANI15" required style="text-transform: uppercase;" />
+                </label>
+                <label>
+                  Discount Type
+                  <select id="couponTypeInput" required>
+                    <option value="percentage">Percentage (%)</option>
+                    <option value="fixed">Fixed (Rs.)</option>
+                  </select>
+                </label>
+              </div>
+              <div class="form-row">
+                <label>
+                  Discount Value
+                  <input id="couponValueInput" type="number" step="0.1" min="0" placeholder="15" required />
+                </label>
+                <label>
+                  Min. Subtotal (Rs.)
+                  <input id="couponMinSubtotalInput" type="number" step="1" min="0" value="0" required />
+                </label>
+              </div>
+              <div class="form-row">
+                <label>
+                  Expiry Date
+                  <input id="couponExpiryInput" type="date" />
+                </label>
+                <label>
+                  Max Usage Limit
+                  <input id="couponUsageLimitInput" type="number" min="1" placeholder="Unlimited" />
+                </label>
+              </div>
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-top: 10px; margin-bottom: 15px;">
+                <input id="couponActiveInput" type="checkbox" checked />
+                <span>Coupon is Active</span>
+              </label>
+              <div class="form-actions">
+                <button class="primary-action" id="saveCouponBtn" type="submit">Add Coupon</button>
+                <button class="secondary-action hidden" id="cancelCouponEditBtn" type="button">Cancel</button>
+              </div>
+            </form>
+
+            <h4 style="margin-bottom: 12px; font-weight: 600;">Stored Coupon Codes</h4>
+            <div id="couponsList" class="coupons-list" style="display: grid; gap: 12px;">
+              <!-- Dynamically populated -->
+            </div>
+          </aside>
+
+          <section class="panel main-panel">
+            <div class="panel-head shop-head">
+              <div>
+                <h3 id="catalogTitle">Product Collection</h3>
+                <p id="catalogSubtitle">Browse live products from the database.</p>
+              </div>
+              <div class="shop-tools">
+                <button id="refinedFiltersToggleBtn" type="button" class="secondary-action" style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg); color: var(--text); font-weight: 500; display: flex; align-items: center; gap: 6px;">
+                  <span>⚙️ Filters</span>
+                </button>
+                <input id="searchInput" type="search" placeholder="Search clothes..." />
+                <select id="filterInput">
+                  <option value="all">All</option>
+                  <option value="men">Men</option>
+                  <option value="women">Women</option>
+                  <option value="kids">Kids</option>
+                  <option value="wishlist">❤️ Wishlist</option>
+                </select>
+              </div>
+            </div>
+            
+            <!-- Refined Filters Drawer -->
+            <div id="refinedFiltersDrawer" class="refined-filters-drawer collapsed">
+              <div class="filters-drawer-content" style="display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between;">
+                
+                <div class="filter-group" style="flex: 1; min-width: 200px;">
+                  <label class="filter-label" style="display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px;">Max Price (Rs.)</label>
+                  <div class="price-slider-container" style="display: flex; align-items: center; gap: 10px;">
+                    <input type="range" id="filterPriceRange" min="0" max="10000" step="100" value="10000" style="flex: 1; accent-color: var(--teal);" />
+                    <span id="priceRangeCurrent" style="color: var(--teal); font-weight: 600; font-size: 13px; min-width: 70px; text-align: right;">Rs. 10,000</span>
+                  </div>
+                </div>
+
+                <div class="filter-group" style="min-width: 120px;">
+                  <label class="filter-label" style="display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px;">Availability</label>
+                  <label class="switch-container" style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
+                    <input type="checkbox" id="filterStockOnly" style="accent-color: var(--teal);" />
+                    <span>In Stock Only</span>
+                  </label>
+                </div>
+
+                <div class="filter-group" style="min-width: 180px;">
+                  <label class="filter-label" style="display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px;">Sizes</label>
+                  <div class="size-chips-container" id="filterSizeChips" style="display: flex; gap: 6px;">
+                    <button type="button" class="size-chip" data-size="XS">XS</button>
+                    <button type="button" class="size-chip" data-size="S">S</button>
+                    <button type="button" class="size-chip" data-size="M">M</button>
+                    <button type="button" class="size-chip" data-size="L">L</button>
+                    <button type="button" class="size-chip" data-size="XL">XL</button>
+                    <button type="button" class="size-chip" data-size="XXL">XXL</button>
+                  </div>
+                </div>
+
+                <div class="filter-group" style="min-width: 150px;">
+                  <label class="filter-label" style="display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px;">Sort By</label>
+                  <select id="filterSortBy" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg); color: var(--text); font-size: 13px;">
+                    <option value="none">Default</option>
+                    <option value="price-asc">Price: Low to High</option>
+                    <option value="price-desc">Price: High to Low</option>
+                    <option value="rating">Rating</option>
+                    <option value="name">Name</option>
+                  </select>
+                </div>
+
+                <div class="filter-actions" style="min-width: 80px; align-self: flex-end;">
+                  <button type="button" id="clearRefinedFiltersBtn" class="danger-link" style="border: none; background: transparent; cursor: pointer; color: var(--rose); font-weight: 600; font-size: 13px;">Reset All</button>
+                </div>
+
+              </div>
+            </div>
+
+            <div class="product-grid" id="productGrid"></div>
+            <p class="empty-state hidden" id="emptyProducts">No products found.</p>
+          </section>
+        </section>
+
+        <section class="panel customer-only hidden" id="checkoutPanel">
+          <div class="panel-head">
+            <h3>Your Cart</h3>
+            <p>Add clothes and place your order from the customer dashboard.</p>
+          </div>
+          <div class="cart-layout">
+            <div id="cartItems" class="cart-items"></div>
+            <form id="orderForm" class="order-form">
+              <input id="customerName" type="text" placeholder="Your name" required />
+              <input id="customerPhone" type="tel" placeholder="Phone number" required />
+              
+              <div id="checkoutAddressSelector" class="address-chips-selector hidden" style="margin-bottom: 12px;">
+                <span class="selector-title" style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 6px; font-weight: 500;">Deliver to:</span>
+                <div class="address-chips" id="checkoutAddressChips" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+              </div>
+              
+              <textarea id="customerAddress" rows="3" placeholder="Delivery address" required></textarea>
+              
+              <div class="checkout-row">
+                <select id="paymentMode">
+                  <option>Cash on delivery</option>
+                  <option>UPI on confirmation</option>
+                  <option>Pay at shop</option>
+                </select>
+                <div class="promo-input-group">
+                  <input id="promoCodeInput" type="text" placeholder="Promo Code" />
+                  <button id="applyPromoBtn" type="button" class="secondary-action">Apply</button>
+                </div>
+              </div>
+              <div class="available-coupons">
+                <span class="coupons-title">Available Offers:</span>
+                <div class="coupon-pills" id="checkoutCouponPills">
+                  <!-- Rendered dynamically -->
+                </div>
+              </div>
+              <p id="promoMessage" class="promo-msg hidden"></p>
+
+              <!-- Loyalty Reward Redemption -->
+              <div class="loyalty-redeem-container hidden" id="checkoutLoyaltyRedeemContainer">
+                <div class="loyalty-redeem-header">
+                  <span>💎 Reward Balance: <strong id="checkoutPointsBalance">100</strong> pts (Rs. <span id="checkoutPointsValuation">10.00</span>)</span>
+                </div>
+                <div class="loyalty-redeem-input-group">
+                  <input id="checkoutRedeemPointsInput" type="number" min="0" placeholder="Points to redeem" />
+                  <button id="applyPointsBtn" type="button" class="secondary-action">Redeem</button>
+                </div>
+                <p id="loyaltyMessage" class="loyalty-msg hidden"></p>
+              </div>
+
+              <label class="save-profile-label">
+                <input id="saveProfileCheck" type="checkbox" checked />
+                Save name & address to profile
+              </label>
+
+              <!-- Free Shipping Tracker -->
+              <div class="free-shipping-tracker-card" id="checkoutFreeShippingTracker">
+                <div class="tracker-header">
+                  <span id="freeShippingStatusIcon">🚚</span>
+                  <span class="tracker-msg" id="freeShippingMessage">Add items to get Free Shipping!</span>
+                </div>
+                <div class="tracker-bar-bg">
+                  <div class="tracker-bar-fill" id="freeShippingProgressFill" style="width: 0%;"></div>
+                </div>
+              </div>
+
+              <div class="billing-summary">
+                <div class="billing-row">
+                  <span>Subtotal</span>
+                  <span id="billingSubtotal">Rs. 0</span>
+                </div>
+                <div class="billing-row hidden" id="billingDiscountRow">
+                  <span>Discount Code (<span id="appliedCouponLabel"></span>)</span>
+                  <span id="billingDiscount">-Rs. 0</span>
+                </div>
+                <div class="billing-row hidden" id="billingPointsDiscountRow">
+                  <span>Points Discount (<span id="appliedPointsLabel">0 pts</span>)</span>
+                  <span id="billingPointsDiscount">-Rs. 0</span>
+                </div>
+                <div class="billing-row">
+                  <span>Delivery Fee</span>
+                  <span id="billingDelivery">Rs. 0</span>
+                </div>
+                <div class="billing-row" id="billingTaxRow">
+                  <span>GST / Tax (<span id="billingTaxRate">5</span>%)</span>
+                  <span id="billingTax">Rs. 0</span>
+                </div>
+                <div class="billing-row" id="billingOtherRow">
+                  <span>Other Charges</span>
+                  <span id="billingOther">Rs. 0</span>
+                </div>
+                <div class="billing-row total-row">
+                  <span>Total Amount</span>
+                  <strong id="cartTotal">Rs. 0</strong>
+                </div>
+              </div>
+              <button class="primary-action" type="submit">Place Order</button>
+            </form>
+          </div>
+        </section>
+
+        <!-- Customer Purchase History Panel -->
+        <section class="panel customer-only hidden" id="purchaseHistoryPanel">
+          <div class="panel-head">
+            <h3>Purchase History</h3>
+            <p>Review your past orders and view/print invoices.</p>
+          </div>
+          <div class="purchase-history-list" id="purchaseHistoryList">
+            <!-- Populated by JavaScript -->
+          </div>
+        </section>
+
+        <!-- Customer Profile / Address Settings Panel -->
+        <section class="panel customer-only hidden" id="customerProfilePanel">
+          <div class="panel-head">
+            <h3>Your Profile</h3>
+            <p>Manage your saved name, phone number, and shipping address.</p>
+          </div>
+
+          <!-- Loyalty Card Widget -->
+          <div class="loyalty-widget-card" id="loyaltyWidgetCard">
+            <div class="loyalty-badge-glow"></div>
+            <div class="loyalty-header">
+              <span class="loyalty-tag"><i class="fas fa-crown"></i> Gold Club Member</span>
+              <div class="points-circle">
+                <span class="points-val" id="profilePointsVal">100</span>
+                <span class="points-lbl">points</span>
+              </div>
+            </div>
+            <div class="loyalty-info">
+              <p class="loyalty-status-desc">You are earning <strong>1 point</strong> for every Rs. 10 spent. Redeem at checkout for discounts!</p>
+              <div class="points-conversion-hint">10 points = Rs. 1.00 Discount</div>
+            </div>
+          </div>
+
+          <!-- Quest Board Card -->
+          <div id="questBoardCard" class="quest-board-card" style="margin-top: 25px; margin-bottom: 25px; width: 100%; padding: 20px; border-radius: 12px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.02); box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15); backdrop-filter: blur(4px);">
+            <div style="margin-bottom: 20px; text-align: center;">
+              <h4 style="font-weight: 700; font-size: 18px; margin: 0 0 4px 0; display: flex; align-items: center; justify-content: center; gap: 8px; color: #fff;">
+                🏆 Loyalty Quests & Achievements
+              </h4>
+              <p style="font-size: 13px; color: var(--muted); margin: 0;">Complete challenges to earn rewards!</p>
+            </div>
+            <div class="quests-list" id="questsListContainer" style="display: flex; flex-direction: column; gap: 14px;">
+              <!-- Dynamically populated via JS -->
+            </div>
+          </div>
+
+          <form id="profileForm" class="profile-form">
+            <label>
+              Full Name
+              <input id="profileName" type="text" placeholder="Your default billing name" required />
+            </label>
+            <div class="form-row">
+              <label>
+                Phone Number
+                <input id="profilePhone" type="tel" placeholder="Your default contact phone" required />
+              </label>
+            </div>
+            <div class="address-book-manager" style="margin-top: 15px; margin-bottom: 20px;">
+              <h4 style="margin-bottom: 10px; font-weight: 600; color: var(--text-main);">Your Saved Addresses</h4>
+              <div id="profileAddressesList" class="addresses-list" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;"></div>
+              
+              <div class="add-address-form-box" style="border: 1px solid var(--border-color); padding: 15px; border-radius: 8px; background: rgba(255,255,255,0.02);">
+                <h5 style="margin-top: 0; margin-bottom: 10px; font-weight: 600;">Add New Address</h5>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
+                  <input id="newAddressLabel" type="text" placeholder="Tag (e.g. Home, Work, Office)" style="flex: 1; min-width: 120px;" />
+                  <input id="newAddressName" type="text" placeholder="Recipient Name" style="flex: 1; min-width: 150px;" />
+                  <input id="newAddressPhone" type="tel" placeholder="Phone Number" style="flex: 1; min-width: 120px;" />
+                </div>
+                <textarea id="newAddressText" rows="2" placeholder="Full Address Details" style="margin-bottom: 10px;"></textarea>
+                <button type="button" class="secondary-action" id="addNewAddressBtn" style="width: 100%;">Add to Address Book</button>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="primary-action" type="submit">Save Profile Changes</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="panel admin-only hidden" id="dashboardOverviewPanel">
+          <div class="panel-head">
+            <h3>Store Overview & Analytics</h3>
+            <p>Monitor revenue, order volume, active offers, and stock levels.</p>
+          </div>
+          
+          <!-- KPI Stats Cards Grid -->
+          <div class="kpi-grid" id="kpiStatsGrid">
+            <!-- Populated dynamically via JS -->
+          </div>
+
+          <!-- Sales Analytics & Low Stock Alerts Grid -->
+          <div class="analytics-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 24px; align-items: start;">
+            <!-- Category Sales Chart Card -->
+            <div class="analytics-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px;">
+              <h4 style="margin-top: 0; margin-bottom: 15px; font-weight: 600;">Sales by Category</h4>
+              <div id="categorySalesChart" class="chart-container" style="display: flex; align-items: flex-end; justify-content: space-around; height: 180px; padding-top: 10px; border-bottom: 2px solid var(--border-color); position: relative;">
+                <!-- Dynamically populated bars -->
+              </div>
+            </div>
+
+            <!-- Low Stock Alerts List -->
+            <div class="analytics-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; max-height: 250px; overflow-y: auto;">
+              <h4 style="margin-top: 0; margin-bottom: 12px; font-weight: 600; color: var(--accent);">⚠️ Stock Alerts</h4>
+              <div id="lowStockList" class="low-stock-list" style="display: grid; gap: 10px;">
+                <!-- Populated dynamically via JS -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel admin-only hidden" id="adminProductsPanel">
+          <div class="panel-head" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
+            <div>
+              <h3>Manage Products</h3>
+              <p>Search, update, and manage inventory.</p>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <input id="adminProductSearch" type="search" placeholder="Search products..." style="max-width: 200px; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg); color: var(--text);" />
+              <button class="primary-action" id="adminAddNewProductBtn" type="button" style="padding: 8px 16px;">+ Add Product</button>
+            </div>
+          </div>
+          <div class="table-responsive" style="overflow-x: auto; background: rgba(255, 255, 255, 0.01); border: 1px solid var(--border-color); border-radius: 8px;">
+            <table class="admin-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--border-color); background: rgba(255, 255, 255, 0.02);">
+                  <th style="padding: 12px;">ID</th>
+                  <th style="padding: 12px;">Image</th>
+                  <th style="padding: 12px;">Product Name</th>
+                  <th style="padding: 12px;">Category</th>
+                  <th style="padding: 12px;">Price</th>
+                  <th style="padding: 12px;">Stock Status</th>
+                  <th style="padding: 12px; text-align: right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="adminProductsTableBody">
+                <!-- Dynamically populated via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel admin-only hidden" id="ordersPanel">
+          <div class="panel-head" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
+            <div>
+              <h3>Customer Orders</h3>
+              <p>Search, filter and manage customer transactions.</p>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <input id="adminOrderSearch" type="search" placeholder="Search orders..." style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg); color: var(--text);" />
+            </div>
+          </div>
+          
+          <!-- Order status filter tabs -->
+          <div class="order-tabs" style="display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px; border-bottom: 1px solid var(--border-color);">
+            <button class="tab-btn active" data-order-tab="all" style="padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; background: var(--border-color); color: var(--text);">All</button>
+            <button class="tab-btn" data-order-tab="New" style="padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; background: transparent; color: var(--muted);">New</button>
+            <button class="tab-btn" data-order-tab="Confirmed" style="padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; background: transparent; color: var(--muted);">Confirmed</button>
+            <button class="tab-btn" data-order-tab="Packed" style="padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; background: transparent; color: var(--muted);">Packed</button>
+            <button class="tab-btn" data-order-tab="Out for delivery" style="padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; background: transparent; color: var(--muted);">Out for delivery</button>
+            <button class="tab-btn" data-order-tab="Delivered" style="padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; background: transparent; color: var(--muted);">Delivered</button>
+            <button class="tab-btn" data-order-tab="Cancelled" style="padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; background: transparent; color: var(--muted);">Cancelled</button>
+          </div>
+
+          <div class="orders-list" id="ordersList"></div>
+        </section>
+
+        <section class="panel admin-only hidden" id="loyaltyAdminPanel">
+          <div class="panel-head" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
+            <div>
+              <h3>Manage Loyalty & Reward Points</h3>
+              <p>Search customers, view and override reward balances with full admin control.</p>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <input id="adminLoyaltySearch" type="search" placeholder="Search customers..." style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg); color: var(--text);" />
+            </div>
+          </div>
+
+          <!-- Tiered Loyalty Rules Panel Controls -->
+          <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+            <h4 style="margin-top: 0; margin-bottom: 8px; color: var(--primary);">Loyalty Tier & Earning Rules</h4>
+            <p style="font-size: 13px; color: var(--muted); margin-bottom: 16px;">Configure how many loyalty points customers earn based on their shopping subtotal.</p>
+            <form id="loyaltyRulesForm" class="settings-form" style="display: grid; gap: 16px;">
+              <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text);">
+                  Tier 1 Shopping Limit (Rs.)
+                  <input id="loyaltyRuleTier1Limit" type="number" step="1" min="1" placeholder="1000" required style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg); color: var(--text);" />
+                </label>
+                <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text);">
+                  Tier 1 Earn Rate (pts / 100 Rs.)
+                  <input id="loyaltyRuleTier1Rate" type="number" step="0.1" min="0" placeholder="5.0" required style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg); color: var(--text);" />
+                </label>
+              </div>
+              <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text);">
+                  Tier 2 Shopping Limit (Rs.)
+                  <input id="loyaltyRuleTier2Limit" type="number" step="1" min="1" placeholder="3000" required style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg); color: var(--text);" />
+                </label>
+                <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text);">
+                  Tier 2 Earn Rate (pts / 100 Rs.)
+                  <input id="loyaltyRuleTier2Rate" type="number" step="0.1" min="0" placeholder="10.0" required style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg); color: var(--text);" />
+                </label>
+              </div>
+              <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text);">
+                  Tier 3 Shopping Limit (Rs.)
+                  <input id="loyaltyRuleTier3Limit" type="number" step="1" min="1" placeholder="5000" required style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg); color: var(--text);" />
+                </label>
+                <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text);">
+                  Tier 3 Earn Rate (pts / 100 Rs.)
+                  <input id="loyaltyRuleTier3Rate" type="number" step="0.1" min="0" placeholder="15.0" required style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg); color: var(--text);" />
+                </label>
+              </div>
+              <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text);">
+                  Tier 4 Shopping Limit (Rs.)
+                  <input id="loyaltyRuleTier4Limit" type="number" step="1" min="1" placeholder="7000" required style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg); color: var(--text);" />
+                </label>
+                <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text);">
+                  Tier 4 Earn Rate (pts / 100 Rs.)
+                  <input id="loyaltyRuleTier4Rate" type="number" step="0.1" min="0" placeholder="20.0" required style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg); color: var(--text);" />
+                </label>
+              </div>
+              <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text);">
+                  Tier 5 Shopping Limit (Rs.)
+                  <input id="loyaltyRuleTier5Limit" type="number" step="1" min="1" placeholder="10000" required style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg); color: var(--text);" />
+                </label>
+                <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text);">
+                  Tier 5 Earn Rate (pts / 100 Rs.)
+                  <input id="loyaltyRuleTier5Rate" type="number" step="0.1" min="0" placeholder="25.0" required style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg); color: var(--text);" />
+                </label>
+              </div>
+              <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text);">
+                  Tier 6 Shopping Limit (Rs.)
+                  <input id="loyaltyRuleTier6Limit" type="number" step="1" min="1" placeholder="15000" required style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg); color: var(--text);" />
+                </label>
+                <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text);">
+                  Tier 6 Earn Rate (pts / 100 Rs.)
+                  <input id="loyaltyRuleTier6Rate" type="number" step="0.1" min="0" placeholder="30.0" required style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg); color: var(--text);" />
+                </label>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;">
+                <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text); flex-grow: 1; max-width: 300px;">
+                  Tier 7 Earn Rate (pts / 100 Rs.)
+                  <input id="loyaltyRuleTier7Rate" type="number" step="0.1" min="0" placeholder="35.0" required style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg); color: var(--text);" />
+                </label>
+                <button class="primary-action" type="submit" style="padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 500; height: max-content;">Save Earning Rules</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="table-responsive" style="overflow-x: auto; background: rgba(255, 255, 255, 0.01); border: 1px solid var(--border-color); border-radius: 8px;">
+            <table class="admin-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--border-color); background: rgba(255, 255, 255, 0.02);">
+                  <th style="padding: 12px;">ID</th>
+                  <th style="padding: 12px;">Username</th>
+                  <th style="padding: 12px;">Full Name</th>
+                  <th style="padding: 12px;">Contact Info</th>
+                  <th style="padding: 12px;">Saved Name & Address</th>
+                  <th style="padding: 12px;">Loyalty Balance</th>
+                  <th style="padding: 12px; text-align: right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="adminLoyaltyTableBody">
+                <!-- Dynamically populated via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+
+
+        <!-- Wishlist & Comparison Panel (Customer) -->
+        <section class="panel customer-only hidden" id="wishlistPanel">
+          <div class="panel-head" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
+            <div>
+              <h3>My Wishlist & Product Comparator</h3>
+              <p>Keep track of your favorite styles. Select up to 3 items to view a side-by-side comparison matrix.</p>
+            </div>
+            <button class="primary-action" id="compareWishlistBtn" type="button" disabled>Compare Selected (0/3)</button>
+          </div>
+          
+          <div class="product-grid" id="wishlistItemsGrid">
+            <!-- Wishlisted product cards with comparison checkboxes -->
+          </div>
+          <p class="empty-state hidden" id="emptyWishlist">Your wishlist is empty. Browse products and click the heart icon to save items here!</p>
+          
+          <!-- Comparison Modal Overlay -->
+          <div id="comparisonModal" class="modal-overlay hidden">
+            <div class="modal-content animate-pop" style="max-width: 800px; width: 95%;">
+              <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0;">Product Comparison Matrix</h3>
+                <button class="close-btn" id="closeComparisonModalBtn" type="button" style="background: transparent; border: none; font-size: 24px; cursor: pointer; color: var(--muted);">&times;</button>
+              </div>
+              <div class="table-responsive" style="overflow-x: auto; background: rgba(255, 255, 255, 0.01); border: 1px solid var(--border-color); border-radius: 8px;">
+                <table class="admin-table" id="comparisonTable" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+                  <!-- Dynamically populated via JS -->
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+
+
+        <!-- Reviews Moderator Panel (Admin) -->
+        <section class="panel admin-only hidden" id="reviewsModeratorPanel">
+          <div class="panel-head">
+            <h3>Customer Reviews Moderation Queue</h3>
+            <p>Monitor, approve, hide, or remove customer reviews and sizing feedbacks from the shop's product catalogs.</p>
+          </div>
+          
+          <div class="table-responsive" style="overflow-x: auto; background: rgba(255, 255, 255, 0.01); border: 1px solid var(--border-color); border-radius: 8px;">
+            <table class="admin-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--border-color); background: rgba(255, 255, 255, 0.02);">
+                  <th style="padding: 12px;">ID</th>
+                  <th style="padding: 12px;">Product</th>
+                  <th style="padding: 12px;">User</th>
+                  <th style="padding: 12px;">Rating</th>
+                  <th style="padding: 12px;">Fit Feedback</th>
+                  <th style="padding: 12px;">Comment</th>
+                  <th style="padding: 12px;">Status</th>
+                  <th style="padding: 12px; text-align: right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="adminReviewsTableBody">
+                <!-- Dynamically populated via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+
+
+        <!-- Financial Analytics & Trends Panel (Admin) -->
+        <section class="panel admin-only hidden" id="financialAnalyticsPanel">
+          <div class="panel-head">
+            <h3>Financial Reports & Sales Trends</h3>
+            <p>Analyze performance metrics, average order size, category growth distributions, and recent daily sales volumes.</p>
+          </div>
+          
+          <div class="stats-grid" id="analyticsStatsGrid" style="margin-bottom: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+            <!-- Generated via JS -->
+          </div>
+          
+          <div class="analytics-charts-row" style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px; margin-top: 20px;">
+            <div class="chart-container-card" style="background: rgba(255,255,255,0.01); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; position: relative;">
+              <h4 style="margin: 0 0 15px 0; font-weight: 600;">Sales Revenue Trend (Last 30 Days)</h4>
+              <canvas id="salesTrendCanvas" width="500" height="300" style="width: 100%; height: 300px; display: block;"></canvas>
+            </div>
+            
+            <div class="chart-container-card" style="background: rgba(255,255,255,0.01); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; position: relative; display: flex; flex-direction: column; align-items: center;">
+              <h4 style="margin: 0 0 15px 0; font-weight: 600; width: 100%;">Category Revenue Share</h4>
+              <div style="position: relative; flex: 1; display: flex; justify-content: center; align-items: center; min-height: 200px;">
+                <canvas id="categorySalesCanvas" width="200" height="200" style="width: 200px; height: 200px; display: block;"></canvas>
+              </div>
+              <div class="chart-legend" id="categoryLegend" style="display: flex; justify-content: center; gap: 16px; margin-top: 15px; font-size: 12px; flex-wrap: wrap;">
+                <!-- Generated via JS -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </section>
+    </main>
+
+    <!-- Product Details & Reviews Modal -->
+    <div id="productDetailsModal" class="modal-overlay hidden">
+      <div class="modal-content animate-pop" style="max-width: 680px; width: 90%;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <h3 id="pdmName" style="margin: 0;">Product Name</h3>
+          <button class="close-btn" id="closeDetailsModalBtn" type="button" style="background: transparent; border: none; font-size: 24px; cursor: pointer; color: var(--muted);">&times;</button>
+        </div>
+        
+        <div class="pdm-layout" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+          <div class="pdm-media" id="pdmMediaContainer" style="border-radius: 12px; overflow: hidden; background: rgba(255,255,255,0.02); display: flex; align-items: center; justify-content: center; height: 300px; border: 1px solid var(--border-color);">
+            <!-- Image or placeholder -->
+          </div>
+          
+          <div class="pdm-details" style="display: flex; flex-direction: column; gap: 16px;">
+            <div>
+              <span id="pdmCategory" class="badge-pill" style="text-transform: uppercase; font-size: 11px;">Women</span>
+              <div id="pdmPrice" style="font-size: 24px; font-weight: 800; margin-top: 8px; color: var(--primary);">Rs. 0</div>
+            </div>
+            
+            <div>
+              <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600;">Description</h4>
+              <p id="pdmDescription" style="margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5;">No description available.</p>
+            </div>
+            
+            <div>
+              <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; display: flex; justify-content: space-between;">
+                <span>Sizing Feedback</span>
+                <span id="pdmSizingCount" style="font-weight: 400; font-size: 12px; color: var(--muted);">0 reviews</span>
+              </h4>
+              <div class="fit-meter-container" style="display: flex; flex-direction: column; gap: 8px;">
+                <div class="fit-meter-row" style="display: flex; align-items: center; justify-content: space-between; font-size: 12px;">
+                  <span style="width: 80px;">Runs Small</span>
+                  <div class="fit-progress-bg" style="flex: 1; height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; margin: 0 10px; overflow: hidden; position: relative;">
+                    <div id="pdmFitSmallBar" class="fit-progress-fill" style="width: 0%; height: 100%; background: var(--rose); border-radius: 4px;"></div>
+                  </div>
+                  <span id="pdmFitSmallPct" style="width: 30px; text-align: right;">0%</span>
+                </div>
+                <div class="fit-meter-row" style="display: flex; align-items: center; justify-content: space-between; font-size: 12px;">
+                  <span style="width: 80px;">True to Size</span>
+                  <div class="fit-progress-bg" style="flex: 1; height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; margin: 0 10px; overflow: hidden; position: relative;">
+                    <div id="pdmFitTrueBar" class="fit-progress-fill" style="width: 0%; height: 100%; background: var(--teal); border-radius: 4px;"></div>
+                  </div>
+                  <span id="pdmFitTruePct" style="width: 30px; text-align: right;">0%</span>
+                </div>
+                <div class="fit-meter-row" style="display: flex; align-items: center; justify-content: space-between; font-size: 12px;">
+                  <span style="width: 80px;">Runs Large</span>
+                  <div class="fit-progress-bg" style="flex: 1; height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; margin: 0 10px; overflow: hidden; position: relative;">
+                    <div id="pdmFitLargeBar" class="fit-progress-fill" style="width: 0%; height: 100%; background: var(--gold); border-radius: 4px;"></div>
+                  </div>
+                  <span id="pdmFitLargePct" style="width: 30px; text-align: right;">0%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0;" />
+        
+        <div class="reviews-section" style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; max-height: 250px; overflow-y: auto;">
+          <div>
+            <h4 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600;">Customer Reviews</h4>
+            <div id="pdmReviewsList" style="display: flex; flex-direction: column; gap: 12px;">
+              <!-- Populated by JS -->
+            </div>
+            <p id="pdmNoReviewsText" class="empty-state" style="font-size: 12px; margin: 0;">No reviews yet. Be the first to review!</p>
+          </div>
+          
+          <div id="writeReviewSection" class="customer-only">
+            <h4 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600;">Write a Review</h4>
+            <form id="submitReviewForm" style="display: grid; gap: 10px;">
+              <input type="hidden" id="pdmProductId" />
+              <label style="font-size: 12px; display: flex; flex-direction: column; gap: 4px;">
+                Rating
+                <select id="reviewRatingSelect" required style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg); color: var(--text);">
+                  <option value="5">⭐⭐⭐⭐⭐ (5/5)</option>
+                  <option value="4">⭐⭐⭐⭐ (4/5)</option>
+                  <option value="3">⭐⭐⭐ (3/5)</option>
+                  <option value="2">⭐⭐ (2/5)</option>
+                  <option value="1">⭐ (1/5)</option>
+                </select>
+              </label>
+              <label style="font-size: 12px; display: flex; flex-direction: column; gap: 4px;">
+                Size Fit Feedback
+                <select id="reviewFitSelect" required style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg); color: var(--text);">
+                  <option value="fit">True to Size</option>
+                  <option value="small">Runs Small</option>
+                  <option value="large">Runs Large</option>
+                </select>
+              </label>
+              <label style="font-size: 12px; display: flex; flex-direction: column; gap: 4px;">
+                Review Comment
+                <textarea id="reviewCommentText" rows="2" placeholder="Share your experience with fit, comfort, quality..." style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg); color: var(--text); font-family: inherit; resize: none;"></textarea>
+              </label>
+              <button class="primary-action" type="submit" style="padding: 8px; border-radius: 6px; font-size: 12px; margin-top: 5px; width: 100%;">Submit Review</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Order Success Celebration & Bill Receipt Modal -->
+    <div id="orderSuccessModal" class="modal-overlay hidden">
+      <div class="modal-content animate-pop">
+        <div class="success-header">
+          <div class="success-checkmark-wrapper">
+            <svg class="checkmark-svg" viewBox="0 0 52 52">
+              <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none" />
+              <path class="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" />
+            </svg>
+          </div>
+          <h2>Order Placed Successfully!</h2>
+          <p>Thank you for shopping with Shibani. Here is your digital invoice.</p>
+        </div>
+        
+        <div class="receipt-card" id="receiptCard">
+          <!-- Populated by JavaScript -->
+        </div>
+
+        <div class="modal-actions">
+          <button class="primary-action print-btn" id="printReceiptBtn" type="button">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 6 2 18 2 18 9"></polyline>
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+              <rect x="6" y="14" width="12" height="8"></rect>
+            </svg>
+            Print Bill
+          </button>
+          <button class="secondary-action close-btn" id="closeReceiptBtn" type="button">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Fit Finder / Size Selector Modal -->
+    <div id="sizeFinderModal" class="modal-overlay hidden">
+      <div class="modal-content animate-pop" style="max-width: 440px;">
+        <div class="panel-head" style="text-align: center; margin-bottom: 20px;">
+          <h3 style="margin-bottom: 5px;">AI Size & Fit Finder</h3>
+          <p>Find your recommended size in seconds</p>
+        </div>
+        <form id="sizeFinderForm" style="display: grid; gap: 16px;">
+          <label>
+            Height (in cm)
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <input id="sfHeight" type="range" min="120" max="210" value="170" style="flex: 1; padding: 0;" />
+              <strong id="sfHeightVal" style="min-width: 50px; text-align: right;">170 cm</strong>
+            </div>
+          </label>
+          <label>
+            Weight (in kg)
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <input id="sfWeight" type="range" min="35" max="120" value="70" style="flex: 1; padding: 0;" />
+              <strong id="sfWeightVal" style="min-width: 50px; text-align: right;">70 kg</strong>
+            </div>
+          </label>
+          <label>
+            Preferred Fit
+            <select id="sfFit" required>
+              <option value="regular">Regular Fit (Standard)</option>
+              <option value="slim">Slim Fit (Tight)</option>
+              <option value="loose">Loose Fit (Baggy)</option>
+            </select>
+          </label>
+          
+          <div id="sfResultBox" class="hidden" style="margin-top: 10px; padding: 14px; border-radius: 12px; background: rgba(10, 148, 140, 0.08); border: 1px solid rgba(10, 148, 140, 0.2); text-align: center;">
+            <p style="margin: 0; color: var(--muted); font-size: 13px; font-weight: 600;">RECOMMENDED SIZE</p>
+            <h2 id="sfRecommendedSize" style="margin: 6px 0; color: var(--teal); font-size: 36px; font-weight: 900;">M</h2>
+            <p id="sfMatchPercent" style="margin: 0; font-size: 13px; font-weight: 700; color: var(--ink);">94% Fit Match Score</p>
+          </div>
+
+          <div class="modal-actions" style="margin-top: 8px;">
+            <button class="primary-action" id="sfApplyBtn" type="button" disabled>Apply Recommended Size</button>
+            <button class="secondary-action close-btn" id="sfCloseBtn" type="button">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- UPI Payment Modal -->
+    <div id="upiPaymentModal" class="modal-overlay hidden">
+      <div class="modal-content animate-pop" style="max-width: 420px; text-align: center;">
+        <div class="panel-head" style="margin-bottom: 20px;">
+          <h3 style="margin-bottom: 5px;">Secure UPI Checkout</h3>
+          <p>Scan and pay using any UPI App</p>
+        </div>
+        <div style="background: #fff; padding: 20px; border-radius: 16px; display: inline-block; box-shadow: 0 4px 12px rgba(0,0,0,0.04); border: 1px solid rgba(22, 22, 30, 0.08); margin-bottom: 16px;">
+          <img id="upiQrCode" src="" alt="UPI Payment QR Code" style="width: 160px; height: 160px; display: block; margin: 0 auto;" />
+        </div>
+        <div style="margin-bottom: 20px;">
+          <p style="margin: 0; font-size: 13px; color: var(--muted); font-weight: 600;">AMOUNT TO PAY</p>
+          <h2 id="upiPayAmount" style="margin: 4px 0; color: var(--rose); font-size: 28px; font-weight: 900;">Rs. 0</h2>
+          <p style="margin: 0; font-size: 12px; color: var(--muted);">UPI ID: shibani.fashion@okaxis</p>
+        </div>
+        <div style="background: rgba(226, 165, 54, 0.08); border: 1px solid rgba(226, 165, 54, 0.16); padding: 12px; border-radius: 12px; margin-bottom: 20px;">
+          <p style="margin: 0; font-size: 13px; font-weight: 700; color: var(--gold);">
+            ⏳ Timer remaining: <span id="upiTimer">05:00</span>
+          </p>
+        </div>
+        <div id="upiStatusContainer" class="hidden" style="margin-bottom: 16px;">
+          <div style="width: 24px; height: 24px; border: 3px solid rgba(10, 148, 140, 0.2); border-top-color: var(--teal); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 10px;"></div>
+          <p id="upiStatusText" style="margin: 0; font-size: 13px; font-weight: 600; color: var(--muted);">Verifying transaction security...</p>
+        </div>
+        <div class="modal-actions">
+          <button class="primary-action" id="upiConfirmBtn" type="button">Confirm Payment</button>
+          <button class="secondary-action close-btn" id="upiCancelBtn" type="button">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Admin Loyalty Points Adjust Modal -->
+    <div id="pointsAdjustModal" class="modal-overlay hidden">
+      <div class="modal-content animate-pop" style="max-width: 440px;">
+        <div class="panel-head" style="margin-bottom: 20px;">
+          <h3 style="margin-bottom: 5px;">Adjust Customer Points</h3>
+          <p id="adjustModalCustomerName" style="color: var(--muted); font-size: 14px; font-weight: 500;"></p>
+        </div>
+        <form id="pointsAdjustForm" style="display: grid; gap: 16px;">
+          <input type="hidden" id="adjustPointsUserId" />
+          <div style="background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+            <span style="font-size: 13px; color: var(--muted); font-weight: 600;">Current Point Balance</span>
+            <strong id="adjustModalCurrentPoints" style="font-size: 18px; color: var(--primary); font-weight: 700;">100 pts</strong>
+          </div>
+          
+          <label>
+            Action Type
+            <select id="adjustPointsAction" required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg); color: var(--text); font-family: inherit;">
+              <option value="set">Set Balance (Overwrite)</option>
+              <option value="add">Add Points (+)</option>
+              <option value="subtract">Subtract Points (-)</option>
+            </select>
+          </label>
+          
+          <label>
+            Points Amount
+            <input id="adjustPointsValue" type="number" min="0" step="1" placeholder="e.g. 50" required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg); color: var(--text); font-family: inherit;" />
+          </label>
+
+          <div class="modal-actions" style="margin-top: 8px;">
+            <button class="primary-action" id="savePointsAdjustBtn" type="submit">Update Balance</button>
+            <button class="secondary-action close-btn" id="closePointsAdjustBtn" type="button">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Floating Support Chat Assistant Widget -->
+    <button id="chatWidgetToggle" class="customer-only hidden" type="button" aria-label="Open Support Assistant" style="position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; border-radius: 50%; border: none; background: linear-gradient(135deg, var(--teal) 0%, #15b7ad 100%); color: #fff; box-shadow: 0 10px 30px rgba(10, 148, 140, 0.35); display: grid; place-items: center; z-index: 90; cursor: pointer; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+      </svg>
+    </button>
+
+    <div id="supportChatWidget" class="chat-widget-panel hidden customer-only">
+      <div class="chat-widget-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 10px; height: 10px; border-radius: 50%; background: #258c54; border: 2px solid #fff;"></div>
+          <div>
+            <h4 style="margin: 0; font-size: 14px; font-weight: 700; letter-spacing: 0.5px;">Shibani Assistant</h4>
+            <small style="opacity: 0.85; font-size: 11px;">Active Smart Agent</small>
+          </div>
+        </div>
+        <button id="closeChatBtn" type="button" style="background: transparent; border: none; color: #fff; cursor: pointer; padding: 0;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      
+      <!-- Live Concierge Active Indicator Banner -->
+      <div id="chatAgentBanner" class="chat-agent-banner hidden">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div class="chat-agent-status-dot"></div>
+          <span>Connected with <strong>Pooja (concierge)</strong></span>
+        </div>
+        <button id="disconnectAgentBtn" type="button" style="background: transparent; border: none; color: var(--teal); cursor: pointer; font-size: 11px; font-weight: 700; text-decoration: underline; padding: 0;">Disconnect</button>
+      </div>
+
+      <div id="chatMessages" class="chat-messages-container">
+        <!-- Initial Greetings -->
+        <div class="chat-bubble bot">
+          Hello! Welcome to Shibani Fashion Store. How can I help you today?
+        </div>
+        <div id="chatQuickReplies" style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px;">
+          <button class="chat-reply-btn" data-faq="order" type="button">📦 Where is my order?</button>
+          <button class="chat-reply-btn" data-faq="returns" type="button">🔄 What is the return policy?</button>
+          <button class="chat-reply-btn" data-faq="coupons" type="button">🏷️ Are there active coupons?</button>
+          <button class="chat-reply-btn" data-faq="agent" type="button">💬 Speak with an agent</button>
+        </div>
+      </div>
+      <form id="chatForm" style="padding: 12px; border-top: 1px solid rgba(22, 22, 30, 0.06); display: flex; gap: 8px; background: rgba(255, 255, 255, 0.5);">
+        <input id="chatInput" type="text" placeholder="Type a message..." style="flex: 1; min-height: 40px; padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(22, 22, 30, 0.08); font-size: 13px;" />
+        <button id="chatMicBtn" type="button" aria-label="Voice input" style="width: 40px; height: 40px; border-radius: 10px; border: none; background: rgba(22, 22, 30, 0.04); color: var(--muted); display: grid; place-items: center; cursor: pointer; flex-shrink: 0; transition: all 0.3s ease;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            <line x1="12" y1="19" x2="12" y2="22"></line>
+          </svg>
+        </button>
+        <button type="submit" style="width: 40px; height: 40px; border-radius: 10px; border: none; background: var(--teal); color: #fff; display: grid; place-items: center; cursor: pointer; flex-shrink: 0;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </form>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+  </body>
+</html>
