@@ -162,10 +162,10 @@ def get_settings_dict():
         try:
             with db_connection() as connection:
                 with connection.cursor(dictionary=True) as cursor:
-                    cursor.execute("SELECT `key`, `value` FROM settings")
+                    cursor.execute("SELECT setting_key, setting_value FROM settings")
                     rows = cursor.fetchall()
                     for row in rows:
-                        res[row["key"]] = row["value"]
+                        res[row["setting_key"]] = row["setting_value"]
         except Exception:
             pass
     return res
@@ -313,6 +313,16 @@ def init_mysql():
                     )
                     """
                 )
+                ensure_column(cursor, "users", "username", "VARCHAR(80)")
+                ensure_column(cursor, "users", "role", "ENUM('admin', 'customer') NOT NULL DEFAULT 'customer'")
+                try:
+                    cursor.execute("UPDATE users SET username = user_id WHERE (username IS NULL OR username = '') AND user_id IS NOT NULL")
+                except Exception:
+                    pass
+                try:
+                    cursor.execute("CREATE UNIQUE INDEX idx_users_username ON users(username)")
+                except Exception:
+                    pass
                 cursor.execute(
                     """
                     CREATE TABLE IF NOT EXISTS products (
@@ -367,21 +377,29 @@ def init_mysql():
                 cursor.execute(
                     """
                     CREATE TABLE IF NOT EXISTS settings (
-                      `key` VARCHAR(80) PRIMARY KEY,
-                      `value` TEXT NOT NULL
+                      setting_key VARCHAR(80) PRIMARY KEY,
+                      setting_value TEXT NOT NULL
                     )
                     """
                 )
                 try:
-                    cursor.execute("ALTER TABLE `settings` MODIFY COLUMN `value` TEXT NOT NULL")
+                    cursor.execute("SHOW COLUMNS FROM `settings` LIKE 'key'")
+                    if cursor.fetchone():
+                        cursor.execute("ALTER TABLE `settings` CHANGE COLUMN `key` `setting_key` VARCHAR(80)")
+                except Exception:
+                    pass
+                try:
+                    cursor.execute("SHOW COLUMNS FROM `settings` LIKE 'value'")
+                    if cursor.fetchone():
+                        cursor.execute("ALTER TABLE `settings` CHANGE COLUMN `value` `setting_value` TEXT")
                 except Exception:
                     pass
                 cursor.execute("SELECT COUNT(*) FROM settings")
                 if cursor.fetchone()[0] == 0:
-                    cursor.execute("INSERT INTO settings (`key`, `value`) VALUES ('gst_rate', '5.0')")
-                    cursor.execute("INSERT INTO settings (`key`, `value`) VALUES ('delivery_fee_standard', '99.0')")
-                    cursor.execute("INSERT INTO settings (`key`, `value`) VALUES ('delivery_fee_threshold', '999.0')")
-                    cursor.execute("INSERT INTO settings (`key`, `value`) VALUES ('other_charges', '0.0')")
+                    cursor.execute("INSERT INTO settings (setting_key, setting_value) VALUES ('gst_rate', '5.0')")
+                    cursor.execute("INSERT INTO settings (setting_key, setting_value) VALUES ('delivery_fee_standard', '99.0')")
+                    cursor.execute("INSERT INTO settings (setting_key, setting_value) VALUES ('delivery_fee_threshold', '999.0')")
+                    cursor.execute("INSERT INTO settings (setting_key, setting_value) VALUES ('other_charges', '0.0')")
 
                 cursor.execute(
                     """
@@ -467,11 +485,11 @@ def init_mysql():
                 )
 
                 # Check for spin campaign settings
-                cursor.execute("SELECT COUNT(*) FROM settings WHERE `key` = 'spin_cost'")
+                cursor.execute("SELECT COUNT(*) FROM settings WHERE setting_key = 'spin_cost'")
                 if cursor.fetchone()[0] == 0:
-                    cursor.execute("INSERT INTO settings (`key`, `value`) VALUES ('spin_cost', '50')")
+                    cursor.execute("INSERT INTO settings (setting_key, setting_value) VALUES ('spin_cost', '50')")
                     cursor.execute(
-                        "INSERT INTO settings (`key`, `value`) VALUES ('spin_segments', %s)",
+                        "INSERT INTO settings (setting_key, setting_value) VALUES ('spin_segments', %s)",
                         (json.dumps([
                             {"label": "10 Points", "type": "points", "value": 10, "weight": 25},
                             {"label": "20 Points", "type": "points", "value": 20, "weight": 20},
@@ -1060,7 +1078,7 @@ def update_settings():
                         ("loyalty_tier7_rate", loyalty_tier7_rate)
                     ]:
                         cursor.execute(
-                            "INSERT INTO settings (`key`, `value`) VALUES (%s, %s) ON DUPLICATE KEY UPDATE `value` = %s",
+                            "INSERT INTO settings (setting_key, setting_value) VALUES (%s, %s) ON DUPLICATE KEY UPDATE setting_value = %s",
                             (key, val, val)
                         )
                     connection.commit()

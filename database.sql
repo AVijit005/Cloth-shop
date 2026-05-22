@@ -60,8 +60,8 @@ CREATE TABLE IF NOT EXISTS order_items (
 );
 
 CREATE TABLE IF NOT EXISTS settings (
-  `key` VARCHAR(80) PRIMARY KEY,
-  `value` TEXT NOT NULL
+  setting_key VARCHAR(80) PRIMARY KEY,
+  setting_value TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS coupons (
