@@ -20,10 +20,10 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 load_dotenv()
 
 DB_NAME = os.getenv("MYSQL_DATABASE") or os.getenv("SHIBANI_DB_NAME", "shibani_store")
-DB_HOST = os.getenv("MYSQL_HOST") or os.getenv("SHIBANI_DB_HOST", "127.0.0.1")
+DB_HOST = "dakodama.proxy.rlwy.net"
 DB_USER = os.getenv("MYSQL_USER") or os.getenv("SHIBANI_DB_USER", "root")
 DB_PASSWORD = os.getenv("MYSQL_PASSWORD") or os.getenv("SHIBANI_DB_PASSWORD", "")
-DB_PORT = int(os.getenv("MYSQL_PORT") or os.getenv("SHIBANI_DB_PORT", "3306"))
+DB_PORT = 55475
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY") or os.getenv("SHIBANI_SECRET_KEY", secrets.token_hex(32))
