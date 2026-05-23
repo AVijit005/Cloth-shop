@@ -814,11 +814,10 @@ async function initCart() {
         console.error("Config synchronization error:", err);
     }
     
-    // Sync points balance if logged in
+    // Sync address details if logged in
     if (appState.user) {
         try {
             const profileData = await api("/api/profile");
-            appState.user.loyalty_points = profileData.profile.loyalty_points;
             
             // Populate address selector book dropdown
             const addrSelect = document.getElementById("checkoutAddressSelector");
@@ -861,11 +860,7 @@ async function initCart() {
         applyCouponBtn.addEventListener("click", applyCouponCode);
     }
     
-    // Points slider interaction
-    const pointsSlider = document.getElementById("redeemPointsSlider");
-    if (pointsSlider) {
-        pointsSlider.addEventListener("input", calculateBillingTotals);
-    }
+
     
     // Submit order event
     const checkoutForm = document.getElementById("orderForm");
@@ -921,8 +916,7 @@ function renderCart() {
         </div>`;
     }).join("");
     
-    // Initialize points slider properties
-    initPointsSlider();
+
     
     // Calculate final bill
     calculateBillingTotals();
@@ -945,25 +939,12 @@ function adjustCartQty(index, amount) {
     updateBadges();
 }
 
-function initPointsSlider() {
-    const slider = document.getElementById("redeemPointsSlider");
-    const balanceLabel = document.getElementById("userPointsBalanceLabel");
-    
-    if (!slider) return;
-    
-    const balance = appState.user ? appState.user.loyalty_points : 0;
-    balanceLabel.textContent = `Balance: ${balance} coins`;
-    
-    slider.max = balance;
-    slider.value = 0;
-}
+
 
 function calculateBillingTotals() {
     const subtotalLabel = document.getElementById("billSubtotal");
     const discountRow = document.getElementById("billDiscountRow");
     const discountLabel = document.getElementById("billDiscount");
-    const pointsRow = document.getElementById("billPointsDiscountRow");
-    const pointsLabel = document.getElementById("billPointsDiscount");
     const gstLabel = document.getElementById("billGst");
     const deliveryLabel = document.getElementById("billDelivery");
     const totalLabel = document.getElementById("billTotal");
@@ -998,31 +979,8 @@ function calculateBillingTotals() {
         discountRow.classList.add("hidden");
     }
     
-    // 3. Compute Loyalty Coins discount
-    const slider = document.getElementById("redeemPointsSlider");
+    // 3. Compute Loyalty Coins discount (purged)
     let pointsDiscount = 0;
-    
-    if (slider && appState.user) {
-        const points = Number(slider.value);
-        // 1 point = 1 rupee discount, max allowed redemption cap (e.g. 50% or 100% of order value)
-        const maxAllowedPercent = Number(appState.settings.loyalty_max_redemption_percent || 100);
-        const subtotalAfterCoupon = subtotal - promoDiscount;
-        const maxDiscountCap = subtotalAfterCoupon * (maxAllowedPercent / 100);
-        
-        const actualRedeemPoints = Math.min(points, maxDiscountCap);
-        pointsDiscount = actualRedeemPoints;
-        
-        document.getElementById("sliderPointsValue").textContent = `${points} pts (-${formatPrice(pointsDiscount)})`;
-        
-        if (pointsDiscount > 0) {
-            pointsRow.classList.remove("hidden");
-            pointsLabel.textContent = `-${formatPrice(pointsDiscount)}`;
-        } else {
-            pointsRow.classList.add("hidden");
-        }
-    } else {
-        if (pointsRow) pointsRow.classList.add("hidden");
-    }
     
     // 4. Compute GST Tax (5% standard)
     const taxableSubtotal = subtotal - promoDiscount - pointsDiscount;
@@ -1090,9 +1048,6 @@ async function handleCheckoutSubmit(e) {
     const phone = document.getElementById("checkoutPhone").value.trim();
     const address = document.getElementById("checkoutAddress").value.trim();
     const paymentMode = document.querySelector('input[name="paymentMode"]:checked').value;
-    const pointsSlider = document.getElementById("redeemPointsSlider");
-    const redeemedPoints = pointsSlider ? Number(pointsSlider.value) : 0;
-    
     const couponCode = appState.appliedPromo ? appState.appliedPromo.code : "";
     
     const orderData = {
@@ -1100,7 +1055,6 @@ async function handleCheckoutSubmit(e) {
         phone,
         address,
         payment_mode: paymentMode,
-        redeemed_points: redeemedPoints,
         coupon_code: couponCode,
         items: appState.cart
     };
@@ -1442,7 +1396,6 @@ async function initProfile() {
         
         document.getElementById("profileFullName").value = profile.full_name || "";
         document.getElementById("profilePhone").value = profile.saved_phone || "";
-        document.getElementById("profileLoyaltyPointsLabel").textContent = profile.loyalty_points || 0;
         
         renderProfileAddresses(JSON.parse(profile.saved_address || "[]"));
     } catch (err) {
@@ -1555,282 +1508,7 @@ async function deleteProfileAddress(index) {
 window.deleteProfileAddress = deleteProfileAddress;
 
 
-// --- 8. LOYALTY CLUB & REWARDS CONTROLLER ---
-let wheelSpinning = false;
 
-async function initRewards() {
-    const list = document.getElementById("rewardsQuestsList");
-    if (!list) return;
-    
-    // 1. Fetch profile and quests list
-    try {
-        const profileData = await api("/api/profile");
-        const profile = profileData.profile || {};
-        
-        const points = profile.loyalty_points || 0;
-        document.getElementById("rewardsLoyaltyPointsLabel").textContent = points;
-        
-        // Map points to tier milestones
-        let tier = "Bronze Member";
-        let nextTarget = 1000;
-        let progressPercent = (points / nextTarget) * 100;
-        
-        if (points >= 5000) {
-            tier = "💎 Platinum Member";
-            nextTarget = 99999;
-            progressPercent = 100;
-            document.getElementById("rewardsTierProgressLabel").textContent = `${points} pts (Max Tier)`;
-        } else if (points >= 3000) {
-            tier = "🥇 Gold Member";
-            nextTarget = 5000;
-            progressPercent = ((points - 3000) / (nextTarget - 3000)) * 100;
-            document.getElementById("rewardsTierProgressLabel").textContent = `${points} / ${nextTarget} pts`;
-        } else if (points >= 1000) {
-            tier = "🥈 Silver Member";
-            nextTarget = 3000;
-            progressPercent = ((points - 1000) / (nextTarget - 1000)) * 100;
-            document.getElementById("rewardsTierProgressLabel").textContent = `${points} / ${nextTarget} pts`;
-        } else {
-            document.getElementById("rewardsTierProgressLabel").textContent = `${points} / ${nextTarget} pts`;
-        }
-        
-        document.getElementById("rewardsUserTierLabel").textContent = tier;
-        document.getElementById("rewardsTierProgressBar").style.width = `${progressPercent}%`;
-        
-        // Load active quests
-        loadQuestsList();
-        
-        // Initialize Wheel Canvas
-        initSpinWheel();
-    } catch (err) {
-        console.error("Rewards panel sync failure:", err);
-    }
-}
-
-async function loadQuestsList() {
-    const container = document.getElementById("rewardsQuestsList");
-    if (!container) return;
-    
-    try {
-        const data = await api("/api/gamification/quests");
-        const list = data.quests || [];
-        
-        if (list.length === 0) {
-            container.innerHTML = `<p class="text-slate-400 font-semibold italic py-4 text-center">No active quests found.</p>`;
-            return;
-        }
-        
-        container.innerHTML = list.map(q => {
-            const pct = Math.min(100, (q.progress / q.target) * 100);
-            const isCompleted = q.completed;
-            const isClaimed = q.claimed;
-            
-            let btnHTML = "";
-            if (isClaimed) {
-                btnHTML = `<span class="px-3.5 py-1.5 bg-slate-100 text-slate-400 font-bold text-xs rounded-xl uppercase tracking-wider">Claimed</span>`;
-            } else if (isCompleted) {
-                btnHTML = `<button type="button" onclick="claimQuestReward('${q.quest_key}')" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow transition">Claim Reward</button>`;
-            } else {
-                btnHTML = `<span class="px-3 py-1.5 bg-slate-50 text-slate-400 font-bold text-[10px] uppercase tracking-wider border border-slate-100 rounded-xl">In Progress</span>`;
-            }
-            
-            return `
-            <div class="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex justify-between items-center gap-4 hover:shadow-md transition">
-                <div class="space-y-2 flex-grow">
-                    <div class="flex items-center gap-2">
-                        <h4 class="font-extrabold text-slate-800 text-sm sm:text-base leading-none">${escapeHTML(q.title || q.quest_key)}</h4>
-                        <span class="px-2 py-0.5 rounded bg-indigo-50 text-indigo-600 font-bold text-[10px]">+${q.points || 40} pts</span>
-                    </div>
-                    <p class="text-xs text-slate-400 max-w-md leading-relaxed">${escapeHTML(q.description || 'Complete shopping goals to claim points.')}</p>
-                    <div class="space-y-1 max-w-xs">
-                        <div class="flex justify-between text-[10px] text-slate-400 font-bold">
-                            <span>Progress</span>
-                            <span>${q.progress} / ${q.target}</span>
-                        </div>
-                        <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                            <div class="bg-indigo-600 h-full rounded-full" style="width: ${pct}%;"></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="flex-shrink-0">
-                    ${btnHTML}
-                </div>
-            </div>`;
-        }).join("");
-    } catch (err) {
-        container.innerHTML = `<p class="text-xs text-slate-400 py-6 text-center">Failed to load quests board.</p>`;
-    }
-}
-
-async function claimQuestReward(questKey) {
-    try {
-        const data = await api("/api/gamification/quests/claim", {
-            method: "POST",
-            body: JSON.stringify({ quest_key: questKey })
-        });
-        showToast("🎉 Quest reward claimed successfully!");
-        initRewards();
-    } catch (err) {
-        showToast(err.message || "Failed to claim reward.", "error");
-    }
-}
-
-// Canvas Wheel game engine
-const wheelSegments = [
-    { label: "10 Points", type: "points", value: 10, color: "#f8fafc" },
-    { label: "10% Coupon", type: "coupon", value: "SPIN10", color: "#e0e7ff" },
-    { label: "20 Points", type: "points", value: 20, color: "#f1f5f9" },
-    { label: "15% Coupon", type: "coupon", value: "SPIN15", color: "#c7d2fe" },
-    { label: "50 Points", type: "points", value: 50, color: "#cbd5e1" },
-    { label: "Free Delivery", type: "coupon", value: "SPINFREE", color: "#a5b4fc" },
-    { label: "Better Luck", type: "nothing", value: 0, color: "#94a3b8" },
-    { label: "Daily Free Spin", type: "spin", value: 1, color: "#818cf8" }
-];
-
-function initSpinWheel() {
-    const canvas = document.getElementById("wheelCanvas");
-    const spinBtn = document.getElementById("spinWheelBtn");
-    if (!canvas || !spinBtn) return;
-    
-    drawWheel(0);
-    
-    spinBtn.onclick = () => {
-        if (wheelSpinning) return;
-        
-        // Check point balance
-        const points = Number(document.getElementById("rewardsLoyaltyPointsLabel").textContent);
-        if (points < 50) {
-            showToast("Insufficient balance: Spinning costs 50 loyalty points.", "error");
-            return;
-        }
-        
-        wheelSpinning = true;
-        spinBtn.disabled = true;
-        
-        // Choose winning slice randomly
-        const winningIdx = Math.floor(Math.random() * wheelSegments.length);
-        const prize = wheelSegments[winningIdx];
-        
-        // Calculate rotational animation variables
-        const segmentAngle = 360 / wheelSegments.length;
-        const targetRotation = 360 * 5 + (360 - (winningIdx * segmentAngle) - (segmentAngle / 2));
-        
-        let startTimestamp = null;
-        const duration = 4000; // 4 seconds animation
-        
-        function animateWheel(timestamp) {
-            if (!startTimestamp) startTimestamp = timestamp;
-            const elapsed = timestamp - startTimestamp;
-            const progress = Math.min(elapsed / duration, 1);
-            
-            // Easing formula (cubic ease-out)
-            const easeOut = 1 - Math.pow(1 - progress, 3);
-            const currentRotation = targetRotation * easeOut;
-            
-            drawWheel(currentRotation);
-            
-            if (progress < 1) {
-                requestAnimationFrame(animateWheel);
-            } else {
-                // Animation finishes
-                wheelSpinning = false;
-                spinBtn.disabled = false;
-                displaySpinResult(prize);
-            }
-        }
-        
-        requestAnimationFrame(animateWheel);
-    };
-}
-
-function drawWheel(rotationDegrees) {
-    const canvas = document.getElementById("wheelCanvas");
-    if (!canvas) return;
-    
-    const ctx = canvas.getContext("2d");
-    const width = canvas.width;
-    const height = canvas.height;
-    const center = width / 2;
-    const radius = center - 10;
-    
-    ctx.clearRect(0, 0, width, height);
-    
-    const rotationRad = (rotationDegrees * Math.PI) / 180;
-    const sliceAngle = (2 * Math.PI) / wheelSegments.length;
-    
-    wheelSegments.forEach((seg, idx) => {
-        const startAngle = idx * sliceAngle + rotationRad;
-        const endAngle = startAngle + sliceAngle;
-        
-        // Draw sector slice
-        ctx.beginPath();
-        ctx.moveTo(center, center);
-        ctx.arc(center, center, radius, startAngle, endAngle);
-        ctx.fillStyle = seg.color;
-        ctx.fill();
-        ctx.strokeStyle = "#475569";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        
-        // Draw text label
-        ctx.save();
-        ctx.translate(center, center);
-        ctx.rotate(startAngle + sliceAngle / 2);
-        ctx.textAlign = "right";
-        ctx.fillStyle = "#1e293b";
-        ctx.font = "bold 11px sans-serif";
-        ctx.fillText(seg.label, radius - 15, 4);
-        ctx.restore();
-    });
-    
-    // Draw center hub pin
-    ctx.beginPath();
-    ctx.arc(center, center, 20, 0, 2 * Math.PI);
-    ctx.fillStyle = "#1e293b";
-    ctx.fill();
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 3;
-    ctx.stroke();
-}
-
-async function displaySpinResult(prize) {
-    const alertBox = document.getElementById("spinResultAlert");
-    if (!alertBox) return;
-    
-    alertBox.classList.remove("hidden");
-    
-    let message = "";
-    if (prize.type === "points") {
-        message = `🎉 You won <strong class="font-extrabold text-indigo-700">${prize.value} Loyalty Points</strong>!`;
-        // Update user points balance on backend
-        try {
-            await api("/api/admin/customers/" + appState.user.id + "/adjust-points", {
-                method: "POST",
-                body: JSON.stringify({ amount: prize.value })
-            });
-            showToast(`Points balance updated: +${prize.value} pts`);
-        } catch (e) {}
-    } else if (prize.type === "coupon") {
-        message = `🎉 You won a Coupon code: <strong class="font-black text-indigo-700 bg-white border border-indigo-100 px-2 py-1 rounded select-all">${prize.value}</strong>! (Click to select & copy)`;
-    } else {
-        message = `🍀 Spin complete! Result: <strong class="font-extrabold text-indigo-700">${prize.label}</strong>. Thank you for playing!`;
-    }
-    
-    alertBox.innerHTML = message;
-    
-    // Deduct spin cost points
-    try {
-        await api("/api/admin/customers/" + appState.user.id + "/adjust-points", {
-            method: "POST",
-            body: JSON.stringify({ amount: -50 })
-        });
-        // Refresh values
-        initRewards();
-    } catch (e) {}
-}
-
-// Bind closures to global window scope
-window.claimQuestReward = claimQuestReward;
 
 
 // --- 9. ADMIN OVERVIEW CONTROLLER ---
@@ -2262,7 +1940,7 @@ async function loadAdminCustomers(filterQuery = "") {
         }
         
         if (filtered.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="4" class="py-8 text-center text-slate-400">No matching customers.</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="2" class="py-8 text-center text-slate-400">No matching customers.</td></tr>`;
             return;
         }
         
@@ -2273,44 +1951,11 @@ async function loadAdminCustomers(filterQuery = "") {
                 <p class="font-bold text-slate-800">${escapeHTML(c.full_name)}</p>
                 <p class="text-xs text-slate-400">${escapeHTML(c.username)}</p>
             </td>
-            <td class="py-4 px-6 text-indigo-600 font-extrabold text-base">${c.loyalty_points || 0} pts</td>
-            <td class="py-4 px-6 text-right">
-                <div class="flex justify-end gap-2 items-center">
-                    <input type="number" id="adjustPointsInput-${c.id}" placeholder="e.g. 50 or -50" 
-                           class="w-24 bg-slate-100 border-none rounded-xl px-2 py-1.5 text-xs font-bold text-slate-700 focus:outline-none" />
-                    <button type="button" onclick="adjustCustomerPoints(${c.id})" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow transition">
-                        Update
-                    </button>
-                </div>
-            </td>
         </tr>`).join("");
     } catch (err) {
-        tableBody.innerHTML = `<tr><td colspan="4" class="py-8 text-center text-rose-500">Error loading customers.</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="2" class="py-8 text-center text-rose-500">Error loading customers.</td></tr>`;
     }
 }
-
-async function adjustCustomerPoints(userId) {
-    const input = document.getElementById(`adjustPointsInput-${userId}`);
-    if (!input) return;
-    
-    const amount = Number(input.value);
-    if (!amount) return;
-    
-    try {
-        const data = await api(`/api/admin/customers/${userId}/adjust-points`, {
-            method: "POST",
-            body: JSON.stringify({ amount })
-        });
-        showToast(`Updated customer points balance to ${data.new_points_balance}!`);
-        input.value = "";
-        loadAdminCustomers();
-    } catch (err) {
-        showToast(err.message || "Failed to adjust points.", "error");
-    }
-}
-
-// Bind closures to global window scope
-window.adjustCustomerPoints = adjustCustomerPoints;
 
 
 // --- 13. ADMIN REVIEWS CONTROLLER ---
@@ -2730,8 +2375,6 @@ document.addEventListener("DOMContentLoaded", () => {
         initOrders();
     } else if (path === "/profile") {
         initProfile();
-    } else if (path === "/rewards") {
-        initRewards();
     } else if (path === "/admin" || path === "/admin/") {
         initAdminOverview();
     } else if (path === "/admin/products") {

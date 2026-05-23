@@ -78,7 +78,6 @@ memory_users = {}
 memory_outfits = []
 memory_reviews = []
 memory_wishlists = []
-memory_user_quests = []
 mysql_ready = False
 mysql_error = ""
 db_pool = None
@@ -87,37 +86,7 @@ memory_settings = {
     "gst_rate": "5.0",
     "delivery_fee_standard": "99.0",
     "delivery_fee_threshold": "999.0",
-    "other_charges": "0.0",
-    "loyalty_enabled": "1",
-    "loyalty_earn_ratio": "10.0",
-    "loyalty_redeem_ratio": "10.0",
-    "loyalty_min_order_to_earn": "0.0",
-    "loyalty_min_order_to_redeem": "0.0",
-    "loyalty_welcome_points": "100",
-    "loyalty_max_redemption_percent": "100.0",
-    "loyalty_tier1_limit": "1000.0",
-    "loyalty_tier1_rate": "5.0",
-    "loyalty_tier2_limit": "3000.0",
-    "loyalty_tier2_rate": "10.0",
-    "loyalty_tier3_limit": "5000.0",
-    "loyalty_tier3_rate": "15.0",
-    "loyalty_tier4_limit": "7000.0",
-    "loyalty_tier4_rate": "20.0",
-    "loyalty_tier5_limit": "10000.0",
-    "loyalty_tier5_rate": "25.0",
-    "loyalty_tier6_limit": "15000.0",
-    "loyalty_tier6_rate": "30.0",
-    "loyalty_tier7_rate": "35.0",
-    "spin_cost": "50",
-    "spin_segments": json.dumps([
-        {"label": "10 Points", "type": "points", "value": 10, "weight": 25},
-        {"label": "20 Points", "type": "points", "value": 20, "weight": 20},
-        {"label": "50 Points", "type": "points", "value": 50, "weight": 10},
-        {"label": "10% Coupon", "type": "coupon", "value": "SPIN10", "weight": 15},
-        {"label": "15% Coupon", "type": "coupon", "value": "SPIN15", "weight": 10},
-        {"label": "Free Delivery", "type": "coupon", "value": "SPINFREE", "weight": 10},
-        {"label": "Better Luck Next Time", "type": "nothing", "value": 0, "weight": 10}
-    ])
+    "other_charges": "0.0"
 }
 
 memory_coupons = [
@@ -707,51 +676,6 @@ def init_mysql():
                     )
                     """
                 )
-                cursor.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS user_quests (
-                      id INT AUTO_INCREMENT PRIMARY KEY,
-                      user_id INT NOT NULL,
-                      quest_key VARCHAR(80) NOT NULL,
-                      progress INT DEFAULT 0,
-                      target INT DEFAULT 1,
-                      completed TINYINT DEFAULT 0,
-                      claimed TINYINT DEFAULT 0,
-                      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-                      UNIQUE KEY unique_user_quest (user_id, quest_key)
-                    )
-                    """
-                )
-
-                # Check for spin campaign settings
-                cursor.execute("SELECT COUNT(*) FROM settings WHERE setting_key = 'spin_cost'")
-                if cursor.fetchone()[0] == 0:
-                    cursor.execute("INSERT INTO settings (setting_key, setting_value) VALUES ('spin_cost', '50')")
-                    cursor.execute(
-                        "INSERT INTO settings (setting_key, setting_value) VALUES ('spin_segments', %s)",
-                        (json.dumps([
-                            {"label": "10 Points", "type": "points", "value": 10, "weight": 25},
-                            {"label": "20 Points", "type": "points", "value": 20, "weight": 20},
-                            {"label": "50 Points", "type": "points", "value": 50, "weight": 10},
-                            {"label": "10% Coupon", "type": "coupon", "value": "SPIN10", "weight": 15},
-                            {"label": "15% Coupon", "type": "coupon", "value": "SPIN15", "weight": 10},
-                            {"label": "Free Delivery", "type": "coupon", "value": "SPINFREE", "weight": 10},
-                            {"label": "Better Luck Next Time", "type": "nothing", "value": 0, "weight": 10}
-                        ]),)
-                    )
-
-                # Spin-the-wheel coupon seeding
-                cursor.execute("SELECT COUNT(*) FROM coupons WHERE code='SPIN10'")
-                if cursor.fetchone()[0] == 0:
-                    cursor.execute("INSERT INTO coupons (code, discount_type, discount_value, min_subtotal, active) VALUES ('SPIN10', 'percentage', 10.0, 0.0, 1)")
-                cursor.execute("SELECT COUNT(*) FROM coupons WHERE code='SPIN15'")
-                if cursor.fetchone()[0] == 0:
-                    cursor.execute("INSERT INTO coupons (code, discount_type, discount_value, min_subtotal, active) VALUES ('SPIN15', 'percentage', 15.0, 0.0, 1)")
-                cursor.execute("SELECT COUNT(*) FROM coupons WHERE code='SPINFREE'")
-                if cursor.fetchone()[0] == 0:
-                    cursor.execute("INSERT INTO coupons (code, discount_type, discount_value, min_subtotal, active) VALUES ('SPINFREE', 'fixed', 0.0, 0.0, 1)")
-
                 ensure_column(cursor, "users", "saved_name", "VARCHAR(120)")
                 ensure_column(cursor, "users", "saved_phone", "VARCHAR(40)")
                 ensure_column(cursor, "users", "saved_address", "TEXT")
@@ -759,10 +683,6 @@ def init_mysql():
                 ensure_column(cursor, "coupons", "expires_at", "DATETIME DEFAULT NULL")
                 ensure_column(cursor, "coupons", "usage_limit", "INT DEFAULT NULL")
                 ensure_column(cursor, "coupons", "usage_count", "INT DEFAULT 0")
-                ensure_column(cursor, "users", "loyalty_points", "INT DEFAULT 100")
-                ensure_column(cursor, "orders", "redeemed_points", "INT DEFAULT 0")
-                ensure_column(cursor, "orders", "earned_points", "INT DEFAULT 0")
-                ensure_column(cursor, "users", "last_spin", "TIMESTAMP NULL DEFAULT NULL")
                 ensure_column(cursor, "outfits", "is_public", "TINYINT DEFAULT 1")
                 ensure_column(cursor, "outfits", "likes", "INT DEFAULT 0")
 
@@ -845,80 +765,7 @@ def require_admin(fn):
     return wrapper
 
 
-QUEST_REWARDS = {
-    "write_review": 40,
-    "place_order": 50,
-    "high_spender": 100
-}
 
-def ensure_user_quests(user_id):
-    default_quests = [
-        {"key": "write_review", "target": 1},
-        {"key": "place_order", "target": 1},
-        {"key": "high_spender", "target": 1}
-    ]
-    if check_db_health():
-        try:
-            with db_connection() as connection:
-                with connection.cursor() as cursor:
-                    for q in default_quests:
-                        cursor.execute(
-                            "INSERT IGNORE INTO user_quests (user_id, quest_key, progress, target, completed, claimed) VALUES (%s, %s, 0, %s, 0, 0)",
-                            (user_id, q["key"], q["target"])
-                        )
-                    connection.commit()
-        except Exception as e:
-            print("Error initializing quests:", e)
-    else:
-        # memory fallback
-        existing_keys = {q["quest_key"] for q in memory_user_quests if q["user_id"] == user_id}
-        for q in default_quests:
-            if q["key"] not in existing_keys:
-                memory_user_quests.append({
-                    "id": len(memory_user_quests) + 1,
-                    "user_id": user_id,
-                    "quest_key": q["key"],
-                    "progress": 0,
-                    "target": q["target"],
-                    "completed": 1 if 0 >= q["target"] else 0, # target is 1
-                    "claimed": 0
-                })
-
-def update_quest_progress(user_id, quest_key, increment=1, set_value=None):
-    ensure_user_quests(user_id)
-    if check_db_health():
-        try:
-            with db_connection() as connection:
-                with connection.cursor(dictionary=True) as cursor:
-                    cursor.execute("SELECT * FROM user_quests WHERE user_id = %s AND quest_key = %s", (user_id, quest_key))
-                    row = cursor.fetchone()
-                    if not row or row["claimed"]:
-                        return
-                    
-                    new_progress = set_value if set_value is not None else (row["progress"] + increment)
-                    if new_progress > row["target"]:
-                        new_progress = row["target"]
-                    completed = 1 if new_progress >= row["target"] else 0
-                    
-                    cursor.execute(
-                        "UPDATE user_quests SET progress = %s, completed = %s WHERE user_id = %s AND quest_key = %s",
-                        (new_progress, completed, user_id, quest_key)
-                    )
-                    connection.commit()
-        except Exception as e:
-            print("Error updating quest progress:", e)
-    else:
-        # memory fallback
-        for q in memory_user_quests:
-            if q["user_id"] == user_id and q["quest_key"] == quest_key:
-                if q["claimed"]:
-                    return
-                new_progress = set_value if set_value is not None else (q["progress"] + increment)
-                if new_progress > q["target"]:
-                    new_progress = q["target"]
-                q["progress"] = new_progress
-                q["completed"] = 1 if new_progress >= q["target"] else 0
-                break
 
 
 def product_row_to_dict(row):
@@ -1192,10 +1039,9 @@ def register():
                         return jsonify({"error": "Username already taken"}), 400
                     
                     p_hash = generate_password_hash(password)
-                    welcome_pts = int(get_settings_dict().get("loyalty_welcome_points", 100))
                     cursor.execute(
-                        "INSERT INTO users (username, password_hash, role, full_name, loyalty_points) VALUES (%s, %s, 'customer', %s, %s)",
-                        (username, p_hash, full_name, welcome_pts)
+                        "INSERT INTO users (username, password_hash, role, full_name) VALUES (%s, %s, 'customer', %s)",
+                        (username, p_hash, full_name)
                     )
                     connection.commit()
                     user_id = cursor.lastrowid
@@ -1215,13 +1061,11 @@ def register():
             return jsonify({"error": "Username already taken"}), 400
         
         user_id = len(memory_users) + 100
-        welcome_pts = int(get_settings_dict().get("loyalty_welcome_points", 100))
         memory_users[username] = {
             "id": user_id,
             "password_hash": generate_password_hash(password),
             "role": "customer",
-            "full_name": full_name,
-            "loyalty_points": welcome_pts
+            "full_name": full_name
         }
         session["user"] = {
             "id": user_id,
@@ -1367,27 +1211,7 @@ def get_settings():
         "gst_rate": float(settings.get("gst_rate", 5.0)),
         "delivery_fee_standard": float(settings.get("delivery_fee_standard", 99.0)),
         "delivery_fee_threshold": float(settings.get("delivery_fee_threshold", 999.0)),
-        "other_charges": float(settings.get("other_charges", 0.0)),
-        "loyalty_enabled": settings.get("loyalty_enabled", "1"),
-        "loyalty_earn_ratio": float(settings.get("loyalty_earn_ratio", 10.0)),
-        "loyalty_redeem_ratio": float(settings.get("loyalty_redeem_ratio", 10.0)),
-        "loyalty_min_order_to_earn": float(settings.get("loyalty_min_order_to_earn", 0.0)),
-        "loyalty_min_order_to_redeem": float(settings.get("loyalty_min_order_to_redeem", 0.0)),
-        "loyalty_welcome_points": int(settings.get("loyalty_welcome_points", 100)),
-        "loyalty_max_redemption_percent": float(settings.get("loyalty_max_redemption_percent", 100.0)),
-        "loyalty_tier1_limit": float(settings.get("loyalty_tier1_limit", 1000.0)),
-        "loyalty_tier1_rate": float(settings.get("loyalty_tier1_rate", 5.0)),
-        "loyalty_tier2_limit": float(settings.get("loyalty_tier2_limit", 3000.0)),
-        "loyalty_tier2_rate": float(settings.get("loyalty_tier2_rate", 10.0)),
-        "loyalty_tier3_limit": float(settings.get("loyalty_tier3_limit", 5000.0)),
-        "loyalty_tier3_rate": float(settings.get("loyalty_tier3_rate", 15.0)),
-        "loyalty_tier4_limit": float(settings.get("loyalty_tier4_limit", 7000.0)),
-        "loyalty_tier4_rate": float(settings.get("loyalty_tier4_rate", 20.0)),
-        "loyalty_tier5_limit": float(settings.get("loyalty_tier5_limit", 10000.0)),
-        "loyalty_tier5_rate": float(settings.get("loyalty_tier5_rate", 25.0)),
-        "loyalty_tier6_limit": float(settings.get("loyalty_tier6_limit", 15000.0)),
-        "loyalty_tier6_rate": float(settings.get("loyalty_tier6_rate", 30.0)),
-        "loyalty_tier7_rate": float(settings.get("loyalty_tier7_rate", 35.0))
+        "other_charges": float(settings.get("other_charges", 0.0))
     })
 
 
@@ -1403,28 +1227,6 @@ def update_settings():
     delivery_fee_threshold = str(max(0.0, float(data.get("delivery_fee_threshold", 999.0))))
     other_charges = str(max(0.0, float(data.get("other_charges", 0.0))))
     
-    loyalty_enabled = "1" if data.get("loyalty_enabled") in ("1", 1, True, "true") else "0"
-    loyalty_earn_ratio = str(max(0.1, float(data.get("loyalty_earn_ratio", 10.0))))
-    loyalty_redeem_ratio = str(max(0.1, float(data.get("loyalty_redeem_ratio", 10.0))))
-    loyalty_min_order_to_earn = str(max(0.0, float(data.get("loyalty_min_order_to_earn", 0.0))))
-    loyalty_min_order_to_redeem = str(max(0.0, float(data.get("loyalty_min_order_to_redeem", 0.0))))
-    loyalty_welcome_points = str(max(0, int(data.get("loyalty_welcome_points", 100))))
-    loyalty_max_redemption_percent = str(max(1.0, min(100.0, float(data.get("loyalty_max_redemption_percent", 100.0)))))
-    
-    loyalty_tier1_limit = str(max(1.0, float(data.get("loyalty_tier1_limit", 1000.0))))
-    loyalty_tier1_rate = str(max(0.0, float(data.get("loyalty_tier1_rate", 5.0))))
-    loyalty_tier2_limit = str(max(1.0, float(data.get("loyalty_tier2_limit", 3000.0))))
-    loyalty_tier2_rate = str(max(0.0, float(data.get("loyalty_tier2_rate", 10.0))))
-    loyalty_tier3_limit = str(max(1.0, float(data.get("loyalty_tier3_limit", 5000.0))))
-    loyalty_tier3_rate = str(max(0.0, float(data.get("loyalty_tier3_rate", 15.0))))
-    loyalty_tier4_limit = str(max(1.0, float(data.get("loyalty_tier4_limit", 7000.0))))
-    loyalty_tier4_rate = str(max(0.0, float(data.get("loyalty_tier4_rate", 20.0))))
-    loyalty_tier5_limit = str(max(1.0, float(data.get("loyalty_tier5_limit", 10000.0))))
-    loyalty_tier5_rate = str(max(0.0, float(data.get("loyalty_tier5_rate", 25.0))))
-    loyalty_tier6_limit = str(max(1.0, float(data.get("loyalty_tier6_limit", 15000.0))))
-    loyalty_tier6_rate = str(max(0.0, float(data.get("loyalty_tier6_rate", 30.0))))
-    loyalty_tier7_rate = str(max(0.0, float(data.get("loyalty_tier7_rate", 35.0))))
-    
     if check_db_health():
         try:
             with db_connection() as connection:
@@ -1433,27 +1235,7 @@ def update_settings():
                         ("gst_rate", gst_rate),
                         ("delivery_fee_standard", delivery_fee_standard),
                         ("delivery_fee_threshold", delivery_fee_threshold),
-                        ("other_charges", other_charges),
-                        ("loyalty_enabled", loyalty_enabled),
-                        ("loyalty_earn_ratio", loyalty_earn_ratio),
-                        ("loyalty_redeem_ratio", loyalty_redeem_ratio),
-                        ("loyalty_min_order_to_earn", loyalty_min_order_to_earn),
-                        ("loyalty_min_order_to_redeem", loyalty_min_order_to_redeem),
-                        ("loyalty_welcome_points", loyalty_welcome_points),
-                        ("loyalty_max_redemption_percent", loyalty_max_redemption_percent),
-                        ("loyalty_tier1_limit", loyalty_tier1_limit),
-                        ("loyalty_tier1_rate", loyalty_tier1_rate),
-                        ("loyalty_tier2_limit", loyalty_tier2_limit),
-                        ("loyalty_tier2_rate", loyalty_tier2_rate),
-                        ("loyalty_tier3_limit", loyalty_tier3_limit),
-                        ("loyalty_tier3_rate", loyalty_tier3_rate),
-                        ("loyalty_tier4_limit", loyalty_tier4_limit),
-                        ("loyalty_tier4_rate", loyalty_tier4_rate),
-                        ("loyalty_tier5_limit", loyalty_tier5_limit),
-                        ("loyalty_tier5_rate", loyalty_tier5_rate),
-                        ("loyalty_tier6_limit", loyalty_tier6_limit),
-                        ("loyalty_tier6_rate", loyalty_tier6_rate),
-                        ("loyalty_tier7_rate", loyalty_tier7_rate)
+                        ("other_charges", other_charges)
                     ]:
                         cursor.execute(
                             "INSERT INTO settings (setting_key, setting_value) VALUES (%s, %s) ON DUPLICATE KEY UPDATE setting_value = %s",
@@ -1467,52 +1249,12 @@ def update_settings():
         memory_settings["delivery_fee_standard"] = delivery_fee_standard
         memory_settings["delivery_fee_threshold"] = delivery_fee_threshold
         memory_settings["other_charges"] = other_charges
-        memory_settings["loyalty_enabled"] = loyalty_enabled
-        memory_settings["loyalty_earn_ratio"] = loyalty_earn_ratio
-        memory_settings["loyalty_redeem_ratio"] = loyalty_redeem_ratio
-        memory_settings["loyalty_min_order_to_earn"] = loyalty_min_order_to_earn
-        memory_settings["loyalty_min_order_to_redeem"] = loyalty_min_order_to_redeem
-        memory_settings["loyalty_welcome_points"] = loyalty_welcome_points
-        memory_settings["loyalty_max_redemption_percent"] = loyalty_max_redemption_percent
-        memory_settings["loyalty_tier1_limit"] = loyalty_tier1_limit
-        memory_settings["loyalty_tier1_rate"] = loyalty_tier1_rate
-        memory_settings["loyalty_tier2_limit"] = loyalty_tier2_limit
-        memory_settings["loyalty_tier2_rate"] = loyalty_tier2_rate
-        memory_settings["loyalty_tier3_limit"] = loyalty_tier3_limit
-        memory_settings["loyalty_tier3_rate"] = loyalty_tier3_rate
-        memory_settings["loyalty_tier4_limit"] = loyalty_tier4_limit
-        memory_settings["loyalty_tier4_rate"] = loyalty_tier4_rate
-        memory_settings["loyalty_tier5_limit"] = loyalty_tier5_limit
-        memory_settings["loyalty_tier5_rate"] = loyalty_tier5_rate
-        memory_settings["loyalty_tier6_limit"] = loyalty_tier6_limit
-        memory_settings["loyalty_tier6_rate"] = loyalty_tier6_rate
-        memory_settings["loyalty_tier7_rate"] = loyalty_tier7_rate
         
     return jsonify({
         "gst_rate": float(gst_rate),
         "delivery_fee_standard": float(delivery_fee_standard),
         "delivery_fee_threshold": float(delivery_fee_threshold),
-        "other_charges": float(other_charges),
-        "loyalty_enabled": loyalty_enabled,
-        "loyalty_earn_ratio": float(loyalty_earn_ratio),
-        "loyalty_redeem_ratio": float(loyalty_redeem_ratio),
-        "loyalty_min_order_to_earn": float(loyalty_min_order_to_earn),
-        "loyalty_min_order_to_redeem": float(loyalty_min_order_to_redeem),
-        "loyalty_welcome_points": int(loyalty_welcome_points),
-        "loyalty_max_redemption_percent": float(loyalty_max_redemption_percent),
-        "loyalty_tier1_limit": float(loyalty_tier1_limit),
-        "loyalty_tier1_rate": float(loyalty_tier1_rate),
-        "loyalty_tier2_limit": float(loyalty_tier2_limit),
-        "loyalty_tier2_rate": float(loyalty_tier2_rate),
-        "loyalty_tier3_limit": float(loyalty_tier3_limit),
-        "loyalty_tier3_rate": float(loyalty_tier3_rate),
-        "loyalty_tier4_limit": float(loyalty_tier4_limit),
-        "loyalty_tier4_rate": float(loyalty_tier4_rate),
-        "loyalty_tier5_limit": float(loyalty_tier5_limit),
-        "loyalty_tier5_rate": float(loyalty_tier5_rate),
-        "loyalty_tier6_limit": float(loyalty_tier6_limit),
-        "loyalty_tier6_rate": float(loyalty_tier6_rate),
-        "loyalty_tier7_rate": float(loyalty_tier7_rate)
+        "other_charges": float(other_charges)
     })
 
 
@@ -1811,21 +1553,17 @@ def admin_get_customers():
             with db_connection() as connection:
                 with connection.cursor(dictionary=True) as cursor:
                     cursor.execute("""
-                        SELECT id, username, full_name, saved_name, saved_phone, saved_address, loyalty_points 
+                        SELECT id, username, full_name, saved_name, saved_phone, saved_address 
                         FROM users 
                         WHERE role = 'customer'
                         ORDER BY id DESC
                     """)
                     rows = cursor.fetchall()
-                    for r in rows:
-                        if r["loyalty_points"] is None:
-                            r["loyalty_points"] = 100
                     return jsonify({"customers": rows})
         except Exception as exc:
             return jsonify({"error": f"Database error: {str(exc)}"}), 500
     
     customers = []
-    default_cust_pts = memory_users.get("customer", {}).get("loyalty_points", 100)
     default_cust_saved_name = memory_users.get("customer", {}).get("saved_name") or ""
     default_cust_saved_phone = memory_users.get("customer", {}).get("saved_phone") or ""
     default_cust_saved_address = memory_users.get("customer", {}).get("saved_address") or ""
@@ -1835,8 +1573,7 @@ def admin_get_customers():
         "full_name": "Shibani Customer",
         "saved_name": default_cust_saved_name,
         "saved_phone": default_cust_saved_phone,
-        "saved_address": default_cust_saved_address,
-        "loyalty_points": default_cust_pts
+        "saved_address": default_cust_saved_address
     })
     
     for uname, udata in memory_users.items():
@@ -1849,106 +1586,14 @@ def admin_get_customers():
                 "full_name": udata.get("full_name"),
                 "saved_name": udata.get("saved_name") or "",
                 "saved_phone": udata.get("saved_phone") or "",
-                "saved_address": udata.get("saved_address") or "",
-                "loyalty_points": udata.get("loyalty_points") if udata.get("loyalty_points") is not None else 100
+                "saved_address": udata.get("saved_address") or ""
             })
             
     customers.sort(key=lambda x: x["id"], reverse=True)
     return jsonify({"customers": customers})
 
 
-@app.post("/api/admin/customers/<int:user_id>/adjust-points")
-@require_admin
-def admin_adjust_points(user_id):
-    data = json_payload()
-    action = data.get("action")
-    val = data.get("value")
-    
-    if action not in ("set", "adjust"):
-        return jsonify({"error": "Invalid action. Must be 'set' or 'adjust'"}), 400
-        
-    try:
-        val = int(val)
-    except (TypeError, ValueError):
-        return jsonify({"error": "Value must be a valid integer"}), 400
-        
-    if check_db_health():
-        try:
-            with db_connection() as connection:
-                with connection.cursor(dictionary=True) as cursor:
-                    cursor.execute("SELECT id, username, loyalty_points, role FROM users WHERE id = %s", (user_id,))
-                    u_row = cursor.fetchone()
-                    if not u_row:
-                        return jsonify({"error": "User not found"}), 404
-                    if u_row["role"] != "customer":
-                        return jsonify({"error": "Cannot modify points for non-customer accounts"}), 400
-                        
-                    current_pts = u_row["loyalty_points"] if u_row["loyalty_points"] is not None else 100
-                    
-                    if action == "set":
-                        new_pts = val
-                    else:
-                        new_pts = current_pts + val
-                        
-                    if new_pts < 0:
-                        return jsonify({"error": f"Resulting balance ({new_pts}) cannot be negative"}), 400
-                        
-                    cursor.execute("UPDATE users SET loyalty_points = %s WHERE id = %s", (new_pts, user_id))
-                    connection.commit()
-                    
-                    uname = u_row["username"]
-                    if uname in memory_users:
-                        memory_users[uname]["loyalty_points"] = new_pts
-                    elif uname == "customer":
-                        if "customer" not in memory_users:
-                            memory_users["customer"] = {}
-                        memory_users["customer"]["loyalty_points"] = new_pts
-                        
-                    return jsonify({"ok": True, "user_id": user_id, "username": uname, "loyalty_points": new_pts})
-        except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
-            
-    else:
-        target_user = None
-        target_username = None
-        if user_id == 2:
-            target_username = "customer"
-            if "customer" not in memory_users:
-                memory_users["customer"] = {
-                    "id": 2,
-                    "role": "customer",
-                    "full_name": "Shibani Customer",
-                    "loyalty_points": 100
-                }
-            target_user = memory_users["customer"]
-        else:
-            for uname, udata in memory_users.items():
-                if udata.get("id") == user_id:
-                    target_user = udata
-                    target_username = uname
-                    break
-                    
-        if not target_user:
-            return jsonify({"error": "User not found"}), 404
-        if target_user.get("role") != "customer":
-            return jsonify({"error": "Cannot modify points for non-customer accounts"}), 400
-            
-        current_pts = target_user.get("loyalty_points") if target_user.get("loyalty_points") is not None else 100
-        
-        if action == "set":
-            new_pts = val
-        else:
-            new_pts = current_pts + val
-            
-        if new_pts < 0:
-            return jsonify({"error": f"Resulting balance ({new_pts}) cannot be negative"}), 400
-            
-        target_user["loyalty_points"] = new_pts
-        return jsonify({"ok": True, "user_id": user_id, "username": target_username, "loyalty_points": new_pts})
-
-
 @app.get("/api/profile")
-
 @require_login
 def get_profile():
     user = session["user"]
@@ -1956,7 +1601,7 @@ def get_profile():
         try:
             with db_connection() as connection:
                 with connection.cursor(dictionary=True) as cursor:
-                    cursor.execute("SELECT username, full_name, role, saved_name, saved_phone, saved_address, loyalty_points FROM users WHERE id = %s", (user["id"],))
+                    cursor.execute("SELECT username, full_name, role, saved_name, saved_phone, saved_address FROM users WHERE id = %s", (user["id"],))
                     profile = cursor.fetchone()
             if profile:
                 return jsonify({
@@ -1965,8 +1610,7 @@ def get_profile():
                     "role": profile["role"],
                     "saved_name": profile["saved_name"] or "",
                     "saved_phone": profile["saved_phone"] or "",
-                    "saved_address": profile["saved_address"] or "",
-                    "loyalty_points": profile["loyalty_points"] if profile["loyalty_points"] is not None else 100
+                    "saved_address": profile["saved_address"] or ""
                 })
         except Exception as exc:
             return jsonify({"error": f"Database error: {str(exc)}"}), 500
@@ -1979,8 +1623,7 @@ def get_profile():
         "role": user["role"],
         "saved_name": mem_user.get("saved_name") or session.get("saved_name") or "",
         "saved_phone": mem_user.get("saved_phone") or session.get("saved_phone") or "",
-        "saved_address": mem_user.get("saved_address") or session.get("saved_address") or "",
-        "loyalty_points": mem_user.get("loyalty_points") if mem_user.get("loyalty_points") is not None else 100
+        "saved_address": mem_user.get("saved_address") or session.get("saved_address") or ""
     })
 
 
@@ -2081,16 +1724,6 @@ def cancel_order(order_id):
                             new_stock = increment_stock_string(current_stock)
                             cursor.execute("UPDATE products SET stock = %s WHERE id = %s", (new_stock, item["product_id"]))
                     
-                    # Refund points
-                    redeemed = order.get("redeemed_points") or 0
-                    earned = order.get("earned_points") or 0
-                    if redeemed > 0 or earned > 0:
-                        cursor.execute("SELECT loyalty_points FROM users WHERE id = %s", (user["id"],))
-                        u_row = cursor.fetchone()
-                        current_points = u_row["loyalty_points"] if u_row and u_row["loyalty_points"] is not None else 100
-                        new_points = max(0, current_points + redeemed - earned)
-                        cursor.execute("UPDATE users SET loyalty_points = %s WHERE id = %s", (new_points, user["id"]))
-                    
                     connection.commit()
             return jsonify({"ok": True, "status": "Cancelled"})
         except Exception as exc:
@@ -2116,15 +1749,7 @@ def cancel_order(order_id):
                     p["stock"] = increment_stock_string(p.get("stock", ""))
                     break
         
-        # Refund points
-        redeemed = found_order.get("redeemed_points", 0)
-        earned = found_order.get("earned_points", 0)
-        username = user["username"]
-        if username in memory_users:
-            current_points = memory_users[username].get("loyalty_points", 100)
-            new_points = max(0, current_points + redeemed - earned)
-            memory_users[username]["loyalty_points"] = new_points
-            
+        
         return jsonify({"ok": True, "status": "Cancelled"})
 
 
@@ -2183,117 +1808,6 @@ def update_user_address_book(current_saved_address, new_address, new_name, new_p
     return json.dumps(addresses)
 
 
-# --- Gamification Loyalty Quests API ---
-@app.get("/api/gamification/quests")
-@require_login
-def get_user_quests():
-    user = session["user"]
-    user_id = user["id"]
-    
-    ensure_user_quests(user_id)
-    
-    quests_list = []
-    if check_db_health():
-        try:
-            with db_connection() as connection:
-                with connection.cursor(dictionary=True) as cursor:
-                    cursor.execute("SELECT * FROM user_quests WHERE user_id = %s", (user_id,))
-                    quests_list = cursor.fetchall()
-        except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
-    else:
-        quests_list = [q for q in memory_user_quests if q["user_id"] == user_id]
-        
-    quest_meta = {
-        "write_review": {"title": "Critic Choice", "description": "Write a product review and sizing fit feedback", "points": QUEST_REWARDS["write_review"]},
-        "place_order": {"title": "Trendsetter", "description": "Place any clothing order on the store", "points": QUEST_REWARDS["place_order"]},
-        "high_spender": {"title": "Big Spender", "description": "Place an order with subtotal over Rs. 3,000", "points": QUEST_REWARDS["high_spender"]}
-    }
-    
-    result = []
-    for q in quests_list:
-        if q["quest_key"] not in QUEST_REWARDS:
-            continue
-        meta = quest_meta.get(q["quest_key"])
-        result.append({
-            "quest_key": q["quest_key"],
-            "title": meta["title"],
-            "description": meta["description"],
-            "progress": q["progress"],
-            "target": q["target"],
-            "completed": bool(q["completed"]),
-            "claimed": bool(q["claimed"]),
-            "points": meta["points"]
-        })
-        
-    return jsonify({"quests": result})
-
-@app.post("/api/gamification/quests/claim")
-@require_login
-def claim_quest_reward():
-    user = session["user"]
-    user_id = user["id"]
-    data = json_payload()
-    quest_key = data.get("quest_key")
-    
-    if not quest_key or quest_key not in QUEST_REWARDS:
-        return jsonify({"error": "Invalid quest key"}), 400
-        
-    points_to_add = QUEST_REWARDS[quest_key]
-    
-    if check_db_health():
-        try:
-            with db_connection() as connection:
-                with connection.cursor(dictionary=True) as cursor:
-                    cursor.execute("SELECT * FROM user_quests WHERE user_id = %s AND quest_key = %s", (user_id, quest_key))
-                    row = cursor.fetchone()
-                    if not row:
-                        return jsonify({"error": "Quest not found"}), 404
-                    if not row["completed"]:
-                        return jsonify({"error": "Quest is not completed yet"}), 400
-                    if row["claimed"]:
-                        return jsonify({"error": "Quest reward already claimed"}), 400
-                    
-                    cursor.execute("UPDATE user_quests SET claimed = 1 WHERE id = %s", (row["id"],))
-                    
-                    cursor.execute("SELECT loyalty_points FROM users WHERE id = %s", (user_id,))
-                    current_pts = cursor.fetchone()["loyalty_points"]
-                    new_pts = current_pts + points_to_add
-                    cursor.execute("UPDATE users SET loyalty_points = %s WHERE id = %s", (new_pts, user_id))
-                    
-                    connection.commit()
-                    
-                    session["user"]["loyalty_points"] = new_pts
-                    session.modified = True
-                    return jsonify({"ok": True, "new_points_balance": new_pts, "quest_key": quest_key})
-        except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
-    else:
-        target_quest = None
-        for q in memory_user_quests:
-            if q["user_id"] == user_id and q["quest_key"] == quest_key:
-                target_quest = q
-                break
-                
-        if not target_quest:
-            return jsonify({"error": "Quest not found"}), 404
-        if not target_quest["completed"]:
-            return jsonify({"error": "Quest is not completed yet"}), 400
-        if target_quest["claimed"]:
-            return jsonify({"error": "Quest reward already claimed"}), 400
-            
-        target_quest["claimed"] = 1
-        
-        user_record = memory_users.get(user["username"])
-        if user_record:
-            user_record["loyalty_points"] = user_record.get("loyalty_points", 100) + points_to_add
-            new_pts = user_record["loyalty_points"]
-        else:
-            new_pts = user.get("loyalty_points", 100) + points_to_add
-            
-        session["user"]["loyalty_points"] = new_pts
-        session.modified = True
-        return jsonify({"ok": True, "new_points_balance": new_pts, "quest_key": quest_key})
 
 
 # --- Customer Product Reviews & Sizing Fit Feedback API ---
@@ -2512,10 +2026,8 @@ def get_analytics():
                     total_revenue = float(summary["total_revenue"] or 0.0)
                     aov = total_revenue / total_orders if total_orders > 0 else 0.0
                     
-                    cursor.execute("SELECT SUM(earned_points) as earned, SUM(redeemed_points) as redeemed FROM orders")
-                    pts = cursor.fetchone()
-                    points_earned = int(pts["earned"] or 0)
-                    points_redeemed = int(pts["redeemed"] or 0)
+                    points_earned = 0
+                    points_redeemed = 0
                     
                     cursor.execute(
                         """
@@ -2573,8 +2085,8 @@ def get_analytics():
     total_revenue = sum(float(o.get("total", 0.0)) for o in memory_orders)
     aov = total_revenue / total_orders if total_orders > 0 else 0.0
     
-    points_earned = sum(int(o.get("earned_points", 0)) for o in memory_orders)
-    points_redeemed = sum(int(o.get("redeemed_points", 0)) for o in memory_orders)
+    points_earned = 0
+    points_redeemed = 0
     
     category_sales = {"men": 0.0, "women": 0.0, "kids": 0.0}
     for order in memory_orders:
@@ -2735,76 +2247,10 @@ def create_order():
         delivery = 0
         other_charges = 0
 
-    # Loyalty points processing
-    loyalty_enabled = settings.get("loyalty_enabled", "1") == "1"
-    loyalty_redeem_ratio = float(settings.get("loyalty_redeem_ratio", 10.0))
-    loyalty_min_order_to_earn = float(settings.get("loyalty_min_order_to_earn", 0.0))
-    loyalty_min_order_to_redeem = float(settings.get("loyalty_min_order_to_redeem", 0.0))
-    loyalty_max_redemption_percent = float(settings.get("loyalty_max_redemption_percent", 100.0))
-    loyalty_tier1_limit = float(settings.get("loyalty_tier1_limit", 1000.0))
-    loyalty_tier1_rate = float(settings.get("loyalty_tier1_rate", 5.0))
-    loyalty_tier2_limit = float(settings.get("loyalty_tier2_limit", 3000.0))
-    loyalty_tier2_rate = float(settings.get("loyalty_tier2_rate", 10.0))
-    loyalty_tier3_limit = float(settings.get("loyalty_tier3_limit", 5000.0))
-    loyalty_tier3_rate = float(settings.get("loyalty_tier3_rate", 15.0))
-    loyalty_tier4_limit = float(settings.get("loyalty_tier4_limit", 7000.0))
-    loyalty_tier4_rate = float(settings.get("loyalty_tier4_rate", 20.0))
-    loyalty_tier5_limit = float(settings.get("loyalty_tier5_limit", 10000.0))
-    loyalty_tier5_rate = float(settings.get("loyalty_tier5_rate", 25.0))
-    loyalty_tier6_limit = float(settings.get("loyalty_tier6_limit", 15000.0))
-    loyalty_tier6_rate = float(settings.get("loyalty_tier6_rate", 30.0))
-    loyalty_tier7_rate = float(settings.get("loyalty_tier7_rate", 35.0))
-
-    redeemed_points = safe_int(data.get("redeemed_points"), 0)
+    # Loyalty points processing (purged)
     applied_redeemed_points = 0
     points_discount = 0.0
-    user_points = 100
-
-    if loyalty_enabled and redeemed_points > 0 and subtotal >= loyalty_min_order_to_redeem and loyalty_redeem_ratio > 0:
-        if check_db_health():
-            try:
-                with db_connection() as connection:
-                    with connection.cursor() as cursor:
-                        cursor.execute("SELECT loyalty_points FROM users WHERE id = %s", (user["id"],))
-                        u_row = cursor.fetchone()
-                        if u_row and u_row[0] is not None:
-                            user_points = u_row[0]
-            except Exception:
-                pass
-        else:
-            user_points = memory_users.get(user["username"], {}).get("loyalty_points", 100)
-
-        if redeemed_points > user_points:
-            return jsonify({"error": "Insufficient loyalty points"}), 400
-        
-        points_discount = float(redeemed_points) / loyalty_redeem_ratio
-        
-        max_allowed_discount = (subtotal - discount) * (loyalty_max_redemption_percent / 100.0)
-        if points_discount > max_allowed_discount:
-            points_discount = max_allowed_discount
-            
-        applied_redeemed_points = int(points_discount * loyalty_redeem_ratio)
-
-    if loyalty_enabled and subtotal >= loyalty_min_order_to_earn:
-        if subtotal < loyalty_tier1_limit:
-            earn_rate = loyalty_tier1_rate
-        elif subtotal < loyalty_tier2_limit:
-            earn_rate = loyalty_tier2_rate
-        elif subtotal < loyalty_tier3_limit:
-            earn_rate = loyalty_tier3_rate
-        elif subtotal < loyalty_tier4_limit:
-            earn_rate = loyalty_tier4_rate
-        elif subtotal < loyalty_tier5_limit:
-            earn_rate = loyalty_tier5_rate
-        elif subtotal < loyalty_tier6_limit:
-            earn_rate = loyalty_tier6_rate
-        else:
-            earn_rate = loyalty_tier7_rate
-        
-        net_spent = max(0.0, subtotal - discount - points_discount)
-        earned_points = int((net_spent * earn_rate) // 100)
-    else:
-        earned_points = 0
+    earned_points = 0
 
     tax = (subtotal - discount - points_discount) * gst_rate
     if tax < 0:
@@ -2836,10 +2282,10 @@ def create_order():
                     
                     cursor.execute(
                         """
-                        INSERT INTO orders (user_id, customer_name, phone, address, payment_mode, total, redeemed_points, earned_points)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        INSERT INTO orders (user_id, customer_name, phone, address, payment_mode, total)
+                        VALUES (%s, %s, %s, %s, %s, %s)
                         """,
-                        (user["id"], customer_name, phone, address, payment_mode, total, applied_redeemed_points, earned_points),
+                        (user["id"], customer_name, phone, address, payment_mode, total),
                     )
                     order_id = cursor.lastrowid
                     for item in order_items:
@@ -2858,13 +2304,6 @@ def create_order():
                             cursor.execute("UPDATE products SET stock = %s WHERE id = %s", (new_stock, item["product_id"]))
                     if coupon_code:
                         cursor.execute("UPDATE coupons SET usage_count = usage_count + 1 WHERE code = %s", (coupon_code,))
-                    
-                    # Update user points in database
-                    cursor.execute("SELECT loyalty_points FROM users WHERE id = %s", (user["id"],))
-                    u_row = cursor.fetchone()
-                    current_pts = u_row[0] if u_row and u_row[0] is not None else 100
-                    new_pts = max(0, current_pts - applied_redeemed_points + earned_points)
-                    cursor.execute("UPDATE users SET loyalty_points = %s WHERE id = %s", (new_pts, user["id"]))
                     
                     connection.commit()
         except Exception as exc:
@@ -2897,13 +2336,6 @@ def create_order():
                     c["usage_count"] = c.get("usage_count", 0) + 1
                     break
                     
-        # Update user points in memory
-        username = user["username"]
-        if username in memory_users:
-            current_pts = memory_users[username].get("loyalty_points", 100)
-            new_pts = max(0, current_pts - applied_redeemed_points + earned_points)
-            memory_users[username]["loyalty_points"] = new_pts
-
         memory_orders.insert(
             0,
             {
@@ -2915,15 +2347,9 @@ def create_order():
                 "total": total,
                 "status": "New",
                 "items": order_items,
-                "redeemed_points": applied_redeemed_points,
-                "earned_points": earned_points,
                 "created_at": datetime.now(UTC).isoformat(),
             },
         )
-
-    update_quest_progress(user["id"], "place_order")
-    if subtotal >= 3000:
-        update_quest_progress(user["id"], "high_spender")
 
     return jsonify({
         "order_id": order_id, 
@@ -2933,10 +2359,7 @@ def create_order():
         "delivery": delivery,
         "tax": tax,
         "other": other_charges,
-        "coupon_code": coupon_code,
-        "redeemed_points": applied_redeemed_points,
-        "earned_points": earned_points,
-        "points_discount": points_discount
+        "coupon_code": coupon_code
     })
 
 

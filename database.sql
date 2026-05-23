@@ -10,8 +10,6 @@ CREATE TABLE IF NOT EXISTS users (
   saved_name VARCHAR(120) DEFAULT NULL,
   saved_phone VARCHAR(40) DEFAULT NULL,
   saved_address TEXT DEFAULT NULL,
-  loyalty_points INT DEFAULT 100,
-  last_spin TIMESTAMP NULL DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -41,8 +39,6 @@ CREATE TABLE IF NOT EXISTS orders (
   payment_mode VARCHAR(80) NOT NULL,
   total DECIMAL(10,2) NOT NULL,
   status VARCHAR(40) NOT NULL DEFAULT 'New',
-  redeemed_points INT DEFAULT 0,
-  earned_points INT DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
@@ -112,15 +108,3 @@ CREATE TABLE IF NOT EXISTS wishlists (
   UNIQUE KEY unique_user_product (user_id, product_id)
 );
 
-CREATE TABLE IF NOT EXISTS user_quests (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT NOT NULL,
-  quest_key VARCHAR(80) NOT NULL,
-  progress INT DEFAULT 0,
-  target INT DEFAULT 1,
-  completed TINYINT DEFAULT 0,
-  claimed TINYINT DEFAULT 0,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  UNIQUE KEY unique_user_quest (user_id, quest_key)
-);
