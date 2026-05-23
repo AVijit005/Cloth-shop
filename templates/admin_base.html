@@ -13,12 +13,12 @@
             theme: {
                 extend: {
                     colors: {
-                        primary: '#4f46e5', // indigo-600
-                        primaryHover: '#4338ca', // indigo-700
+                        primary: '#171717', // neutral-900
+                        primaryHover: '#262626', // neutral-800
                         success: '#10b981', // emerald-500
                         danger: '#ef4444', // red-500
                         warning: '#f59e0b', // amber-500
-                        darkBg: '#0f172a', // slate-900
+                        darkBg: '#0a0a0a', // neutral-950
                     },
                     fontFamily: {
                         sans: ['Outfit', 'Inter', 'sans-serif'],
@@ -46,44 +46,43 @@
 <body class="bg-slate-50 text-slate-800 min-h-screen flex">
 
     <!-- Sidebar Navigation -->
-    <aside class="w-64 bg-slate-900 text-slate-300 flex-shrink-0 flex flex-col hidden md:flex border-r border-slate-800">
+    <aside class="w-64 bg-[#0a0a0a] text-neutral-400 flex-shrink-0 flex flex-col hidden md:flex border-r border-neutral-900">
         <!-- Sidebar Brand Header -->
-        <div class="h-20 flex items-center px-6 border-b border-slate-800 gap-2.5">
-            <span class="bg-indigo-600 text-white p-2 rounded-xl">
-                <i class="fa-solid fa-toolbox text-base"></i>
+        <div class="h-20 flex items-center px-6 border-b border-neutral-900 gap-2">
+            <span class="font-light text-base tracking-[0.2em] text-white uppercase">
+                ADMIN PORTAL
             </span>
-            <span class="font-extrabold text-xl tracking-tight text-white">ADMIN CONSOLE</span>
         </div>
         
         <!-- Sidebar Nav Links -->
-        <nav class="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
-            <a href="/admin" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold hover:bg-slate-800 hover:text-white transition duration-200 {% if request.path == '/admin' %}bg-indigo-600 text-white hover:bg-indigo-600{% endif %}">
-                <i class="fa-solid fa-chart-line text-lg"></i> Overview / Alerts
+        <nav class="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
+            <a href="/admin" class="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-semibold uppercase tracking-wider hover:bg-neutral-900 hover:text-white transition duration-200 {% if request.path == '/admin' %}bg-neutral-900 text-white{% endif %}">
+                <i class="fa-solid fa-chart-line text-base"></i> Overview
             </a>
-            <a href="/admin/products" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold hover:bg-slate-800 hover:text-white transition duration-200 {% if request.path == '/admin/products' %}bg-indigo-600 text-white hover:bg-indigo-600{% endif %}">
-                <i class="fa-solid fa-shirt text-lg"></i> Products Catalog
+            <a href="/admin/products" class="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-semibold uppercase tracking-wider hover:bg-neutral-900 hover:text-white transition duration-200 {% if request.path == '/admin/products' %}bg-neutral-900 text-white{% endif %}">
+                <i class="fa-solid fa-shirt text-base"></i> Products
             </a>
-            <a href="/admin/orders" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold hover:bg-slate-800 hover:text-white transition duration-200 {% if request.path == '/admin/orders' %}bg-indigo-600 text-white hover:bg-indigo-600{% endif %}">
-                <i class="fa-solid fa-receipt text-lg"></i> Orders Manager
+            <a href="/admin/orders" class="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-semibold uppercase tracking-wider hover:bg-neutral-900 hover:text-white transition duration-200 {% if request.path == '/admin/orders' %}bg-neutral-900 text-white{% endif %}">
+                <i class="fa-solid fa-receipt text-base"></i> Orders
             </a>
-            <a href="/admin/customers" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold hover:bg-slate-800 hover:text-white transition duration-200 {% if request.path == '/admin/customers' %}bg-indigo-600 text-white hover:bg-indigo-600{% endif %}">
-                <i class="fa-solid fa-users text-lg"></i> Customers
+            <a href="/admin/customers" class="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-semibold uppercase tracking-wider hover:bg-neutral-900 hover:text-white transition duration-200 {% if request.path == '/admin/customers' %}bg-neutral-900 text-white{% endif %}">
+                <i class="fa-solid fa-users text-base"></i> Customers
             </a>
-            <a href="/admin/reviews" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold hover:bg-slate-800 hover:text-white transition duration-200 {% if request.path == '/admin/reviews' %}bg-indigo-600 text-white hover:bg-indigo-600{% endif %}">
-                <i class="fa-solid fa-star-half-stroke text-lg"></i> Reviews Mod
+            <a href="/admin/reviews" class="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-semibold uppercase tracking-wider hover:bg-neutral-900 hover:text-white transition duration-200 {% if request.path == '/admin/reviews' %}bg-neutral-900 text-white{% endif %}">
+                <i class="fa-solid fa-star-half-stroke text-base"></i> Reviews
             </a>
-            <a href="/admin/analytics" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold hover:bg-slate-800 hover:text-white transition duration-200 {% if request.path == '/admin/analytics' %}bg-indigo-600 text-white hover:bg-indigo-600{% endif %}">
-                <i class="fa-solid fa-chart-pie text-lg"></i> Financial Charts
+            <a href="/admin/analytics" class="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-semibold uppercase tracking-wider hover:bg-neutral-900 hover:text-white transition duration-200 {% if request.path == '/admin/analytics' %}bg-neutral-900 text-white{% endif %}">
+                <i class="fa-solid fa-chart-pie text-base"></i> Analytics
             </a>
         </nav>
         
         <!-- Sidebar Footer Options -->
-        <div class="p-4 border-t border-slate-800 space-y-2">
-            <a href="/" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-800 text-slate-400 hover:text-white transition">
+        <div class="p-4 border-t border-neutral-900 space-y-2">
+            <a href="/" class="flex items-center gap-3 px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider hover:bg-neutral-900 text-neutral-500 hover:text-white transition">
                 <i class="fa-solid fa-arrow-left"></i> View Live Shop
             </a>
-            <button id="adminLogoutBtn" class="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-rose-950 text-rose-400 hover:text-rose-200 transition">
-                <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout console
+            <button id="adminLogoutBtn" class="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider hover:bg-red-950 text-red-400 hover:text-red-200 transition">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
             </button>
         </div>
     </aside>
@@ -91,41 +90,41 @@
     <!-- Content Panel Wrapper -->
     <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
         <!-- Top header bar -->
-        <header class="h-20 bg-white border-b border-slate-200 flex-shrink-0 flex items-center justify-between px-6 sm:px-8">
+        <header class="h-20 bg-white border-b border-neutral-100 flex-shrink-0 flex items-center justify-between px-6 sm:px-8">
             <div class="flex items-center gap-4">
                 <!-- Mobile menu toggle -->
-                <button class="md:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-lg" id="adminMobileMenuToggle">
+                <button class="md:hidden p-2 text-neutral-500 hover:bg-neutral-50 rounded-lg" id="adminMobileMenuToggle">
                     <i class="fa-solid fa-bars text-xl"></i>
                 </button>
-                <h1 class="text-xl sm:text-2xl font-black text-slate-800">
+                <h1 class="text-xs sm:text-sm font-bold uppercase tracking-widest text-neutral-800">
                     {% block page_title %}Dashboard{% endblock %}
                 </h1>
             </div>
             
             <div class="flex items-center gap-4">
-                <div id="adminDBStatusAlert" class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600 border border-emerald-100">
-                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span> MySQL Active
+                <div id="adminDBStatusAlert" class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider font-semibold bg-emerald-50 text-emerald-600 border border-emerald-100">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> MySQL Active
                 </div>
                 <div class="flex items-center gap-3">
-                    <span class="w-9 h-9 rounded-full bg-indigo-600 text-white font-extrabold flex items-center justify-center text-sm shadow">
+                    <span class="w-8 h-8 rounded-full bg-neutral-900 text-white font-bold flex items-center justify-center text-[10px] uppercase">
                         AD
                     </span>
-                    <span class="hidden sm:inline text-sm font-bold text-slate-700">Shibani Administrator</span>
+                    <span class="hidden sm:inline text-xs font-bold uppercase tracking-wider text-neutral-700">Administrator</span>
                 </div>
             </div>
         </header>
 
         <!-- Admin Mobile Navigation (Hidden by default) -->
-        <div id="adminMobileNavMenu" class="hidden md:hidden border-b border-slate-200 bg-slate-900 text-slate-300 py-4 px-6 space-y-2 flex flex-col font-semibold">
-            <a href="/admin" class="hover:text-white py-1.5 transition">Overview / Alerts</a>
-            <a href="/admin/products" class="hover:text-white py-1.5 transition">Products Catalog</a>
-            <a href="/admin/orders" class="hover:text-white py-1.5 transition">Orders Manager</a>
+        <div id="adminMobileNavMenu" class="hidden md:hidden border-b border-neutral-200 bg-[#0a0a0a] text-neutral-400 py-4 px-6 space-y-2 flex flex-col font-semibold text-xs uppercase tracking-wider">
+            <a href="/admin" class="hover:text-white py-1.5 transition">Overview</a>
+            <a href="/admin/products" class="hover:text-white py-1.5 transition">Products</a>
+            <a href="/admin/orders" class="hover:text-white py-1.5 transition">Orders</a>
             <a href="/admin/customers" class="hover:text-white py-1.5 transition">Customers</a>
-            <a href="/admin/reviews" class="hover:text-white py-1.5 transition">Reviews Mod</a>
-            <a href="/admin/analytics" class="hover:text-white py-1.5 transition">Financial Charts</a>
-            <div class="border-t border-slate-800 my-2"></div>
-            <a href="/" class="text-slate-400 hover:text-white py-1 transition">View Live Shop</a>
-            <button id="adminMobileLogoutBtn" class="text-rose-400 hover:text-rose-200 py-1 text-left transition">Logout Console</button>
+            <a href="/admin/reviews" class="hover:text-white py-1.5 transition">Reviews</a>
+            <a href="/admin/analytics" class="hover:text-white py-1.5 transition">Analytics</a>
+            <div class="border-t border-neutral-900 my-2"></div>
+            <a href="/" class="text-neutral-500 hover:text-white py-1 transition">View Live Shop</a>
+            <button id="adminMobileLogoutBtn" class="text-red-400 hover:text-red-200 py-1 text-left transition">Logout Console</button>
         </div>
 
         <!-- Dashboard Content Body -->

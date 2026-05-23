@@ -3,39 +3,39 @@
 {% block title %}Contact Support | Shibani Fashion{% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 space-y-16">
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 space-y-16 animate-fade-in">
     <div class="text-center max-w-xl mx-auto space-y-4">
-        <span class="bg-indigo-50 text-indigo-600 font-extrabold text-xs px-3.5 py-1 rounded-full uppercase tracking-wider">
+        <span class="text-[10px] text-neutral-400 font-light uppercase tracking-widest">
             Get in Touch
         </span>
-        <h1 class="text-4xl sm:text-5xl font-extrabold text-slate-800 tracking-tight leading-none">
+        <h1 class="text-xl sm:text-2xl font-light text-neutral-900 tracking-widest uppercase leading-none">
             We are Here to Help
         </h1>
-        <p class="text-slate-400 text-sm sm:text-base leading-relaxed">
+        <p class="text-neutral-400 text-[10px] font-light uppercase tracking-wider leading-relaxed">
             Need sizing support, order tracking assistance, or custom catalog orders? Feel free to contact us.
         </p>
     </div>
     
     <div class="grid grid-cols-1 md:grid-cols-2 gap-12 sm:gap-16 items-start">
         <!-- Contact form -->
-        <form class="space-y-4 bg-white border border-slate-100 p-8 rounded-3xl shadow-md" id="contactUsForm">
-            <h3 class="font-extrabold text-slate-800 text-lg mb-2">Send Message</h3>
+        <form class="space-y-4 bg-white border border-neutral-200 p-8" id="contactUsForm">
+            <h3 class="font-medium text-neutral-900 text-xs uppercase tracking-widest mb-4">Send Message</h3>
             <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1">Your Name</label>
+                <label class="block text-[10px] font-medium uppercase tracking-widest text-neutral-500 mb-1">Your Name</label>
                 <input type="text" required placeholder="e.g. John Doe" 
-                       class="w-full bg-slate-100 border-none rounded-2xl px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                       class="w-full bg-neutral-50 border border-neutral-200 px-5 py-3 text-xs font-light tracking-wider placeholder-neutral-400 focus:outline-none focus:border-neutral-900 focus:ring-0" />
             </div>
             <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1">Email Address</label>
+                <label class="block text-[10px] font-medium uppercase tracking-widest text-neutral-500 mb-1">Email Address</label>
                 <input type="email" required placeholder="e.g. john@example.com" 
-                       class="w-full bg-slate-100 border-none rounded-2xl px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                       class="w-full bg-neutral-50 border border-neutral-200 px-5 py-3 text-xs font-light tracking-wider placeholder-neutral-400 focus:outline-none focus:border-neutral-900 focus:ring-0" />
             </div>
             <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1">Message</label>
+                <label class="block text-[10px] font-medium uppercase tracking-widest text-neutral-500 mb-1">Message</label>
                 <textarea rows="4" required placeholder="Detail your question here..." 
-                          class="w-full bg-slate-100 border-none rounded-2xl p-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"></textarea>
+                          class="w-full bg-neutral-50 border border-neutral-200 p-4 text-xs font-light tracking-wider placeholder-neutral-400 focus:outline-none focus:border-neutral-900 focus:ring-0"></textarea>
             </div>
-            <button type="submit" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-2xl transition shadow-lg">
+            <button type="submit" class="w-full py-3.5 bg-neutral-900 hover:bg-neutral-800 text-white font-light text-[10px] uppercase tracking-widest transition duration-300">
                 Submit Message
             </button>
         </form>
@@ -43,34 +43,34 @@
         <!-- Contact details -->
         <div class="space-y-8">
             <div class="space-y-4">
-                <h3 class="font-extrabold text-slate-800 text-lg">Support Channels</h3>
-                <p class="text-sm text-slate-400 leading-relaxed">
+                <h3 class="font-medium text-neutral-900 text-xs uppercase tracking-widest">Support Channels</h3>
+                <p class="text-[10px] text-neutral-400 uppercase tracking-wider font-light leading-relaxed">
                     Our customer care desk is open Monday to Saturday from 9:00 AM to 6:00 PM.
                 </p>
             </div>
             
-            <div class="space-y-6 text-sm text-slate-500 font-semibold">
+            <div class="space-y-6 text-xs text-neutral-500 font-light tracking-wider">
                 <div class="flex items-start gap-4">
-                    <span class="p-3 bg-indigo-50 text-indigo-600 rounded-xl text-lg"><i class="fa-solid fa-phone"></i></span>
+                    <span class="text-neutral-900 text-lg"><i class="fa-solid fa-phone"></i></span>
                     <div>
-                        <h4 class="font-extrabold text-slate-800">Phone Support</h4>
-                        <p class="text-slate-400 mt-0.5">+91 98765 43210</p>
+                        <h4 class="font-medium text-neutral-900 text-xs uppercase tracking-widest">Phone Support</h4>
+                        <p class="text-neutral-400 mt-0.5 text-[10px] tracking-widest font-light">+91 98765 43210</p>
                     </div>
                 </div>
                 
                 <div class="flex items-start gap-4">
-                    <span class="p-3 bg-emerald-50 text-emerald-600 rounded-xl text-lg"><i class="fa-solid fa-envelope"></i></span>
+                    <span class="text-neutral-900 text-lg"><i class="fa-solid fa-envelope"></i></span>
                     <div>
-                        <h4 class="font-extrabold text-slate-800">Email Address</h4>
-                        <p class="text-slate-400 mt-0.5">care@shibanifashion.com</p>
+                        <h4 class="font-medium text-neutral-900 text-xs uppercase tracking-widest">Email Address</h4>
+                        <p class="text-neutral-400 mt-0.5 text-[10px] tracking-widest font-light">care@shibanifashion.com</p>
                     </div>
                 </div>
                 
                 <div class="flex items-start gap-4">
-                    <span class="p-3 bg-amber-50 text-amber-600 rounded-xl text-lg"><i class="fa-solid fa-location-dot"></i></span>
+                    <span class="text-neutral-900 text-lg"><i class="fa-solid fa-location-dot"></i></span>
                     <div>
-                        <h4 class="font-extrabold text-slate-800">Flagship Boutique</h4>
-                        <p class="text-slate-400 mt-0.5 leading-relaxed">123, Handloom Plaza, MG Road, Bangalore, India</p>
+                        <h4 class="font-medium text-neutral-900 text-xs uppercase tracking-widest">Flagship Boutique</h4>
+                        <p class="text-neutral-400 mt-0.5 text-[10px] tracking-widest font-light leading-relaxed">123, Handloom Plaza, MG Road, Bangalore, India</p>
                     </div>
                 </div>
             </div>
@@ -78,3 +78,4 @@
     </div>
 </div>
 {% endblock %}
+

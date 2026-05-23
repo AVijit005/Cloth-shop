@@ -13,11 +13,12 @@
             theme: {
                 extend: {
                     colors: {
-                        primary: '#4f46e5', // indigo-600
-                        primaryHover: '#4338ca', // indigo-700
-                        secondary: '#0ea5e9', // sky-500
-                        accent: '#14b8a6', // teal-500
-                        darkBg: '#0f172a', // slate-900
+                        primary: '#171717', // neutral-900
+                        primaryHover: '#262626', // neutral-800
+                        secondary: '#737373', // neutral-500
+                        accent: '#a3a3a3', // neutral-400
+                        darkBg: '#0a0a0a', // neutral-950
+                        luxuryGold: '#c5a880',
                     },
                     fontFamily: {
                         sans: ['Outfit', 'Inter', 'sans-serif'],
@@ -64,105 +65,102 @@
 <body class="bg-slate-50 text-slate-800 flex flex-col min-h-screen">
 
     <!-- Sticky Header -->
-    <header class="sticky top-0 z-50 glass-nav border-b border-slate-100 shadow-sm transition-all duration-300">
+    <header class="sticky top-0 z-50 glass-nav border-b border-neutral-100 shadow-sm transition-all duration-300">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16 sm:h-20">
                 
                 <!-- Logo & Brand Name -->
                 <div class="flex-shrink-0 flex items-center">
-                    <a href="/" class="flex items-center gap-2 group">
-                        <span class="bg-indigo-600 text-white p-2 rounded-xl shadow-md shadow-indigo-200 group-hover:scale-105 transition-transform duration-300">
-                            <i class="fa-solid fa-bag-shopping text-lg"></i>
-                        </span>
-                        <span class="font-extrabold text-xl sm:text-2xl tracking-tight bg-gradient-to-r from-indigo-600 to-sky-500 bg-clip-text text-transparent">
+                    <a href="/" class="flex items-center group">
+                        <span class="font-light text-lg sm:text-2xl tracking-[0.25em] text-neutral-900 group-hover:opacity-80 transition-opacity uppercase">
                             SHIBANI
                         </span>
                     </a>
                 </div>
                 
                 <!-- Search bar (Desktop) -->
-                <div class="hidden md:flex flex-1 max-w-md mx-8">
+                <div class="hidden md:flex flex-1 max-w-xs mx-8">
                     <form id="globalSearchForm" class="w-full relative">
-                        <input type="text" id="globalSearchInput" placeholder="Search premium sarees, shirts, kids set..." 
-                               class="w-full bg-slate-100 border-none rounded-full px-5 py-2.5 pl-12 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all duration-300" />
-                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                        <input type="text" id="globalSearchInput" placeholder="SEARCH COLLECTIONS..." 
+                               class="w-full bg-transparent border-b border-neutral-200 py-1.5 pl-6 pr-2 text-xs tracking-wider uppercase focus:outline-none focus:border-neutral-900 transition-all duration-300" />
+                        <span class="absolute left-0 top-1/2 -translate-y-1/2 text-neutral-400 text-xs">
                             <i class="fa-solid fa-magnifying-glass"></i>
                         </span>
                     </form>
                 </div>
                 
                 <!-- Navigation menu (Desktop) -->
-                <nav class="hidden lg:flex space-x-8 font-semibold text-slate-600">
-                    <a href="/" class="hover:text-indigo-600 transition-colors">Home</a>
-                    <a href="/shop" class="hover:text-indigo-600 transition-colors">Shop</a>
-                    <a href="/about" class="hover:text-indigo-600 transition-colors">About Us</a>
-                    <a href="/contact" class="hover:text-indigo-600 transition-colors">Contact</a>
+                <nav class="hidden lg:flex space-x-8 text-xs font-semibold uppercase tracking-widest text-neutral-600">
+                    <a href="/" class="hover:text-neutral-900 transition-colors">Home</a>
+                    <a href="/shop" class="hover:text-neutral-900 transition-colors">Shop</a>
+                    <a href="/about" class="hover:text-neutral-900 transition-colors">About Us</a>
+                    <a href="/contact" class="hover:text-neutral-900 transition-colors">Contact</a>
                 </nav>
                 
                 <!-- Utility Icons & User Menu -->
-                <div class="flex items-center gap-2 sm:gap-4">
+                <div class="flex items-center gap-1 sm:gap-2">
                     <!-- Search toggle for mobile -->
-                    <button class="md:hidden p-2 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-full transition" id="mobileSearchToggle">
-                        <i class="fa-solid fa-magnifying-glass text-lg"></i>
+                    <button class="md:hidden p-2 text-neutral-500 hover:text-neutral-900 rounded-full transition" id="mobileSearchToggle">
+                        <i class="fa-solid fa-magnifying-glass text-base"></i>
                     </button>
                     
                     <!-- Wishlist icon -->
-                    <a href="/wishlist" class="p-2.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-full relative transition">
-                        <i class="fa-regular fa-heart text-xl"></i>
-                        <span id="wishlistBadge" class="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-white scale-0 transition-transform duration-300">0</span>
+                    <a href="/wishlist" class="p-2 text-neutral-500 hover:text-neutral-900 relative transition">
+                        <i class="fa-regular fa-heart text-lg"></i>
+                        <span id="wishlistBadge" class="absolute top-0 right-0 bg-neutral-900 text-white text-[9px] font-bold rounded-full w-4.5 h-4.5 flex items-center justify-center border border-white scale-0 transition-transform duration-300">0</span>
                     </a>
                     
                     <!-- Cart icon -->
-                    <a href="/cart" class="p-2.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-full relative transition">
-                        <i class="fa-solid fa-cart-shopping text-xl"></i>
-                        <span id="cartBadge" class="absolute -top-1 -right-1 bg-indigo-600 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-white scale-0 transition-transform duration-300">0</span>
+                    <a href="/cart" class="p-2 text-neutral-500 hover:text-neutral-900 relative transition">
+                        <i class="fa-solid fa-cart-shopping text-lg"></i>
+                        <span id="cartBadge" class="absolute top-0 right-0 bg-neutral-900 text-white text-[9px] font-bold rounded-full w-4.5 h-4.5 flex items-center justify-center border border-white scale-0 transition-transform duration-300">0</span>
                     </a>
                     
                     <!-- User profile dropdown / Login button -->
-                    <div class="relative" id="userMenuDropdownContainer">
+                    <div class="relative ml-2" id="userMenuDropdownContainer">
                         {% if session.get('user') %}
-                            <button id="userDropdownTrigger" class="flex items-center gap-2 p-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-full transition pr-3 focus:outline-none">
-                                <span class="w-8 h-8 rounded-full bg-indigo-600 text-white font-extrabold flex items-center justify-center text-sm shadow-md">
+                            <button id="userDropdownTrigger" class="flex items-center gap-2 p-1 bg-white hover:bg-neutral-50 border border-neutral-200 rounded-full transition pr-3 focus:outline-none">
+                                <span class="w-7 h-7 rounded-full bg-neutral-900 text-white font-bold flex items-center justify-center text-[10px] uppercase">
                                     {{ session['user']['full_name'][:2] | upper }}
                                 </span>
-                                <span class="hidden sm:inline text-sm font-semibold text-slate-700 max-w-[100px] truncate">
+                                <span class="hidden sm:inline text-xs font-semibold text-neutral-700 max-w-[80px] truncate uppercase tracking-wider">
                                     {{ session['user']['full_name'].split(' ')[0] }}
                                 </span>
-                                <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 hidden sm:inline"></i>
+                                <i class="fa-solid fa-chevron-down text-[8px] text-neutral-400 hidden sm:inline"></i>
                             </button>
                             <!-- Dropdown menu -->
-                            <div id="userDropdownMenu" class="absolute right-0 mt-2.5 w-56 bg-white border border-slate-100 rounded-2xl shadow-xl py-2 hidden z-50 transform origin-top-right transition-all duration-200">
-                                <div class="px-4 py-2 border-b border-slate-50">
-                                    <p class="text-xs text-slate-400">Signed in as</p>
-                                    <p class="text-sm font-bold text-slate-700 truncate">{{ session['user']['username'] }}</p>
+                            <div id="userDropdownMenu" class="absolute right-0 mt-2 w-52 bg-white border border-neutral-100 rounded-lg shadow-lg py-1.5 hidden z-50 transform origin-top-right transition-all duration-200">
+                                <div class="px-4 py-2 border-b border-neutral-50">
+                                    <p class="text-[10px] text-neutral-400 uppercase tracking-wider">Signed in as</p>
+                                    <p class="text-xs font-bold text-neutral-800 truncate">{{ session['user']['username'] }}</p>
                                 </div>
-                                <a href="/profile" class="flex items-center gap-3 px-4 py-2.5 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 text-sm transition">
-                                    <i class="fa-regular fa-user text-base"></i> My Profile
+                                <a href="/profile" class="flex items-center gap-3 px-4 py-2 text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 text-xs uppercase tracking-wider transition">
+                                    <i class="fa-regular fa-user text-sm"></i> My Profile
                                 </a>
-                                <a href="/orders" class="flex items-center gap-3 px-4 py-2.5 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 text-sm transition">
-                                    <i class="fa-solid fa-clock-rotate-left text-base"></i> My Orders
+                                <a href="/orders" class="flex items-center gap-3 px-4 py-2 text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 text-xs uppercase tracking-wider transition">
+                                    <i class="fa-solid fa-clock-rotate-left text-sm"></i> My Orders
                                 </a>
                                 {% if session['user']['role'] == 'admin' %}
-                                    <div class="border-t border-slate-50 my-1.5"></div>
-                                    <a href="/admin" class="flex items-center gap-3 px-4 py-2.5 text-indigo-600 bg-indigo-50/50 hover:bg-indigo-50 text-sm font-bold transition">
-                                        <i class="fa-solid fa-toolbox text-base"></i> Admin Portal
+                                    <div class="border-t border-neutral-100 my-1"></div>
+                                    <a href="/admin" class="flex items-center gap-3 px-4 py-2 text-neutral-900 bg-neutral-50 hover:bg-neutral-100 text-xs font-bold uppercase tracking-wider transition">
+                                        <i class="fa-solid fa-toolbox text-sm"></i> Admin Portal
                                     </a>
                                 {% endif %}
-                                <div class="border-t border-slate-50 my-1.5"></div>
-                                <button id="globalLogoutBtn" class="w-full flex items-center gap-3 px-4 py-2.5 text-rose-500 hover:bg-rose-50 text-left text-sm font-semibold transition">
-                                    <i class="fa-solid fa-arrow-right-from-bracket text-base"></i> Logout
+                                <div class="border-t border-neutral-100 my-1"></div>
+                                <button id="globalLogoutBtn" class="w-full flex items-center gap-3 px-4 py-2 text-red-500 hover:bg-red-50 text-left text-xs font-bold uppercase tracking-wider transition">
+                                    <i class="fa-solid fa-arrow-right-from-bracket text-sm"></i> Logout
                                 </button>
                             </div>
                         {% else %}
-                            <a href="/login" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-full shadow-md shadow-indigo-100 hover:-translate-y-0.5 active:translate-y-0 transition duration-300 block">
-                                <i class="fa-solid fa-arrow-right-to-bracket mr-1.5"></i> Login
+                            <a href="/login" class="px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-xs uppercase tracking-widest transition duration-300 block">
+                                Login
                             </a>
                         {% endif %}
                     </div>
                     
                     <!-- Mobile Hamburger menu -->
-                    <button class="lg:hidden p-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-full transition focus:outline-none" id="mobileMenuToggle">
-                        <i class="fa-solid fa-bars text-xl"></i>
+                    <button class="lg:hidden p-2 text-neutral-600 hover:text-neutral-900 rounded-full transition focus:outline-none" id="mobileMenuToggle">
+                        <i class="fa-solid fa-bars text-lg"></i>
                     </button>
                 </div>
             </div>
@@ -170,9 +168,9 @@
             <!-- Mobile Search Bar (Collapsible) -->
             <div id="mobileSearchContainer" class="hidden pb-4 md:hidden">
                 <form id="mobileSearchForm" class="relative">
-                    <input type="text" id="mobileSearchInput" placeholder="Search premium clothes..." 
-                           class="w-full bg-slate-100 border-none rounded-full px-5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
-                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                    <input type="text" id="mobileSearchInput" placeholder="SEARCH COLLECTIONS..." 
+                           class="w-full bg-neutral-50 border border-neutral-200 rounded-none px-4 py-2 pl-10 text-xs tracking-wider uppercase focus:outline-none focus:border-neutral-900" />
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 text-xs">
                         <i class="fa-solid fa-magnifying-glass"></i>
                     </span>
                 </form>
@@ -180,11 +178,11 @@
         </div>
         
         <!-- Mobile Dropdown Nav Menu -->
-        <div id="mobileNavMenu" class="hidden lg:hidden border-t border-slate-100 bg-white shadow-lg py-4 px-6 space-y-3 flex flex-col font-bold text-slate-600 transition-all duration-300">
-            <a href="/" class="hover:text-indigo-600 py-1.5 transition">Home</a>
-            <a href="/shop" class="hover:text-indigo-600 py-1.5 transition">Shop Catalog</a>
-            <a href="/about" class="hover:text-indigo-600 py-1.5 transition">About Us</a>
-            <a href="/contact" class="hover:text-indigo-600 py-1.5 transition">Contact Us</a>
+        <div id="mobileNavMenu" class="hidden lg:hidden border-t border-neutral-100 bg-white shadow-lg py-4 px-6 space-y-3 flex flex-col font-bold text-xs uppercase tracking-widest text-neutral-600 transition-all duration-300">
+            <a href="/" class="hover:text-neutral-900 py-1.5 transition">Home</a>
+            <a href="/shop" class="hover:text-neutral-900 py-1.5 transition">Shop Catalog</a>
+            <a href="/about" class="hover:text-neutral-900 py-1.5 transition">About Us</a>
+            <a href="/contact" class="hover:text-neutral-900 py-1.5 transition">Contact Us</a>
         </div>
     </header>
 
@@ -205,64 +203,61 @@
     <div id="toastContainer" class="fixed bottom-5 right-5 z-[9999] flex flex-col gap-3 max-w-sm w-full pointer-events-none"></div>
 
     <!-- Footer Section -->
-    <footer class="bg-slate-900 text-slate-400 border-t border-slate-800">
+    <footer class="bg-neutral-950 text-neutral-400 border-t border-neutral-900">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
                 <!-- Column 1: Info -->
                 <div class="space-y-4">
-                    <div class="flex items-center gap-2">
-                        <span class="bg-indigo-600 text-white p-2 rounded-xl">
-                            <i class="fa-solid fa-bag-shopping"></i>
-                        </span>
-                        <span class="font-extrabold text-2xl tracking-tight text-white">SHIBANI</span>
+                    <div class="flex items-center">
+                        <span class="font-light text-xl tracking-[0.25em] text-white uppercase">SHIBANI</span>
                     </div>
-                    <p class="text-sm leading-relaxed text-slate-400">
+                    <p class="text-xs leading-relaxed text-neutral-500">
                         Discover top-tier Indian & Western outfits. Hand-selected sarees, formal cotton shirts, and comfortable kidswear. 
                     </p>
-                    <div class="flex gap-4 pt-2">
-                        <a href="#" class="p-2 bg-slate-800 hover:bg-indigo-600 text-white rounded-full transition duration-300">
-                            <i class="fa-brands fa-facebook-f w-4 h-4 flex items-center justify-center"></i>
+                    <div class="flex gap-3 pt-2">
+                        <a href="#" class="p-2 bg-neutral-900 hover:bg-neutral-800 text-white transition duration-300">
+                            <i class="fa-brands fa-facebook-f w-3.5 h-3.5 flex items-center justify-center"></i>
                         </a>
-                        <a href="#" class="p-2 bg-slate-800 hover:bg-indigo-600 text-white rounded-full transition duration-300">
-                            <i class="fa-brands fa-instagram w-4 h-4 flex items-center justify-center"></i>
+                        <a href="#" class="p-2 bg-neutral-900 hover:bg-neutral-800 text-white transition duration-300">
+                            <i class="fa-brands fa-instagram w-3.5 h-3.5 flex items-center justify-center"></i>
                         </a>
-                        <a href="#" class="p-2 bg-slate-800 hover:bg-indigo-600 text-white rounded-full transition duration-300">
-                            <i class="fa-brands fa-twitter w-4 h-4 flex items-center justify-center"></i>
+                        <a href="#" class="p-2 bg-neutral-900 hover:bg-neutral-800 text-white transition duration-300">
+                            <i class="fa-brands fa-twitter w-3.5 h-3.5 flex items-center justify-center"></i>
                         </a>
                     </div>
                 </div>
                 
                 <!-- Column 2: Quick Links -->
                 <div>
-                    <h3 class="text-white font-bold text-lg mb-6">Quick Links</h3>
-                    <ul class="space-y-3.5 text-sm">
+                    <h3 class="text-white font-semibold text-xs tracking-widest uppercase mb-6">Quick Links</h3>
+                    <ul class="space-y-3 text-xs tracking-wider uppercase">
                         <li><a href="/shop" class="hover:text-white transition">Shop All Collections</a></li>
                         <li><a href="/about" class="hover:text-white transition">Our Story</a></li>
-                        <li><a href="/contact" class="hover:text-white transition">Contact & Help Desk</a></li>
+                        <li><a href="/contact" class="hover:text-white transition">Contact & Help</a></li>
                     </ul>
                 </div>
                 
                 <!-- Column 3: Customer Care -->
                 <div>
-                    <h3 class="text-white font-bold text-lg mb-6">Customer Care</h3>
-                    <ul class="space-y-3.5 text-sm">
-                        <li><a href="/orders" class="hover:text-white transition">Track Your Order</a></li>
-                        <li><a href="/cart" class="hover:text-white transition">My Shopping Cart</a></li>
-                        <li><a href="/profile" class="hover:text-white transition">My Saved Addresses</a></li>
-                        <li><a href="#" class="hover:text-white transition">Terms & Privacy Policy</a></li>
+                    <h3 class="text-white font-semibold text-xs tracking-widest uppercase mb-6">Customer Care</h3>
+                    <ul class="space-y-3 text-xs tracking-wider uppercase">
+                        <li><a href="/orders" class="hover:text-white transition">Track Order</a></li>
+                        <li><a href="/cart" class="hover:text-white transition">Shopping Bag</a></li>
+                        <li><a href="/profile" class="hover:text-white transition">My Addresses</a></li>
+                        <li><a href="#" class="hover:text-white transition">Terms & Privacy</a></li>
                     </ul>
                 </div>
                 
                 <!-- Column 4: Newsletter -->
                 <div class="space-y-4">
-                    <h3 class="text-white font-bold text-lg">Newsletter</h3>
-                    <p class="text-sm text-slate-400">Subscribe to get notifications about fresh arrivals and coupons!</p>
+                    <h3 class="text-white font-semibold text-xs tracking-widest uppercase">Newsletter</h3>
+                    <p class="text-xs text-neutral-500">Subscribe to get notifications about fresh arrivals and coupons!</p>
                     <form id="newsletterForm" class="flex flex-col gap-2">
                         <div class="relative">
-                            <input type="email" placeholder="Your Email Address" required 
-                                   class="w-full bg-slate-800 border-none rounded-full px-5 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                            <input type="email" placeholder="YOUR EMAIL ADDRESS" required 
+                                   class="w-full bg-neutral-900 border-none rounded-none px-4 py-2.5 text-xs text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-white transition" />
                         </div>
-                        <button type="submit" class="w-full px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-full shadow transition duration-300">
+                        <button type="submit" class="w-full px-4 py-2.5 bg-white hover:bg-neutral-200 text-neutral-900 font-bold text-xs uppercase tracking-widest transition duration-300">
                             Subscribe
                         </button>
                     </form>
@@ -270,7 +265,7 @@
             </div>
             
             <!-- Bottom Copyright -->
-            <div class="border-t border-slate-800 mt-16 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-slate-500">
+            <div class="border-t border-neutral-900 mt-16 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-neutral-500">
                 <p>&copy; 2026 Shibani Fashion Store. All rights reserved.</p>
                 <div class="flex gap-4 text-lg">
                     <i class="fa-brands fa-cc-visa"></i>

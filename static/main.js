@@ -287,59 +287,60 @@ function renderProductCard(product) {
     const isWishlisted = appState.wishlist.includes(product.id);
     const parsedImages = parseProductImages(product.image, product.images);
     const mainImg = parsedImages[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400';
+    const secondaryImg = parsedImages[1] || null;
     
     const sizes = (product.size || "").split(",").map(s => s.trim()).filter(Boolean);
     const firstSize = sizes[0] || "M";
     
     return `
-    <div class="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-md hover:shadow-2xl transition duration-500 flex flex-col justify-between group h-full relative" data-product-card-id="${product.id}">
+    <div class="bg-white border border-neutral-100 flex flex-col justify-between group h-full relative" data-product-card-id="${product.id}">
         <!-- Wishlist toggle -->
-        <button type="button" class="wishlist-card-toggle absolute top-4 right-4 z-20 p-2.5 bg-white/80 hover:bg-white backdrop-blur rounded-full shadow-md text-sm transition duration-300 ${isWishlisted ? 'text-rose-500' : 'text-slate-400'}" data-wishlist-id="${product.id}">
-            <i class="fa-solid fa-heart"></i>
+        <button type="button" class="wishlist-card-toggle absolute top-4 right-4 z-20 p-2 text-neutral-400 hover:text-neutral-900 transition duration-300 ${isWishlisted ? 'text-rose-500 hover:text-rose-600' : 'text-neutral-400'}" data-wishlist-id="${product.id}">
+            <i class="fa-solid fa-heart text-base"></i>
         </button>
         
-        <!-- Hover Zoom Image wrapper -->
-        <div class="relative aspect-square overflow-hidden bg-slate-50 cursor-pointer" onclick="window.location.href='/product/${product.id}'">
-            <img src="${mainImg}" alt="${escapeHTML(product.name)}" class="w-full h-full object-cover object-top transition duration-700 group-hover:scale-105" />
+        <!-- Aspect 3/4 Image Container with Double-Image Hover Swap -->
+        <div class="relative aspect-[3/4] overflow-hidden bg-neutral-50 cursor-pointer" onclick="window.location.href='/product/${product.id}'">
+            <img src="${mainImg}" alt="${escapeHTML(product.name)}" loading="lazy" class="w-full h-full object-cover object-top transition duration-700 ease-in-out group-hover:scale-102" />
+            ${secondaryImg ? `
+            <img src="${secondaryImg}" alt="${escapeHTML(product.name)}" loading="lazy" class="absolute inset-0 w-full h-full object-cover object-top opacity-0 transition-opacity duration-700 ease-in-out group-hover:opacity-100 group-hover:scale-102" />
+            ` : ''}
             
             ${product.badge ? `
-            <span class="absolute bottom-4 left-4 bg-indigo-600 text-white font-bold text-[10px] px-3 py-1 rounded-full uppercase tracking-wider shadow">
+            <span class="absolute top-4 left-4 bg-neutral-900 text-white font-light text-[9px] px-2.5 py-1 uppercase tracking-widest z-10">
                 ${product.badge}
             </span>` : ''}
         </div>
         
         <!-- Info & Controls -->
-        <div class="p-6 space-y-4 flex-grow flex flex-col justify-between">
-            <div class="space-y-1.5">
-                <div class="flex justify-between items-center text-xs font-semibold text-slate-400 uppercase">
+        <div class="p-4 sm:p-5 space-y-3 flex-grow flex flex-col justify-between">
+            <div class="space-y-1">
+                <div class="flex justify-between items-center text-[10px] font-light text-neutral-400 uppercase tracking-widest">
                     <span>${product.category}</span>
-                    <span class="text-amber-500"><i class="fa-solid fa-star"></i> ${product.rating}</span>
+                    <span class="text-neutral-500 flex items-center gap-1"><i class="fa-solid fa-star text-[9px]"></i> ${product.rating}</span>
                 </div>
-                <h3 class="font-bold text-slate-800 text-base leading-tight group-hover:text-indigo-600 transition duration-300 line-clamp-1 cursor-pointer" onclick="window.location.href='/product/${product.id}'">
+                <h3 class="font-medium text-neutral-900 text-xs uppercase tracking-wider group-hover:text-neutral-600 transition duration-300 line-clamp-1 cursor-pointer" onclick="window.location.href='/product/${product.id}'">
                     ${escapeHTML(product.name)}
                 </h3>
-                <p class="text-xs text-slate-400 line-clamp-2 leading-relaxed">
-                    ${escapeHTML(product.description || 'Premium tailored fashion coordinates.')}
-                </p>
             </div>
             
-            <div class="space-y-3 pt-3 border-t border-slate-50">
+            <div class="space-y-3 pt-2 border-t border-neutral-100">
                 <div class="flex justify-between items-baseline">
-                    <strong class="text-slate-800 font-extrabold text-lg">${formatPrice(product.price)}</strong>
+                    <strong class="text-neutral-900 font-medium text-sm tracking-wider">${formatPrice(product.price)}</strong>
                     ${product.old_price > product.price ? `
-                    <span class="text-xs text-slate-400 line-through">${formatPrice(product.old_price)}</span>` : ''}
+                    <span class="text-[10px] text-neutral-400 line-through tracking-wider">${formatPrice(product.old_price)}</span>` : ''}
                 </div>
                 
                 <!-- Bottom Action Row -->
                 <div class="flex gap-2">
-                    <button type="button" class="add-to-cart-quick-btn flex-grow py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-md transition duration-300" 
+                    <button type="button" class="add-to-cart-quick-btn flex-grow py-2 bg-neutral-900 hover:bg-neutral-800 text-white font-light text-[10px] uppercase tracking-widest transition duration-300" 
                             data-quick-cart-id="${product.id}" data-size="${firstSize}" data-color="${product.color || 'Default'}">
-                        Add to Cart
+                        ADD TO BAG
                     </button>
                     <!-- Compare check -->
-                    <label class="flex items-center gap-1 p-2 bg-slate-50 border border-slate-100 rounded-xl cursor-pointer text-[10px] font-bold text-slate-500 transition hover:bg-indigo-50">
-                        <input type="checkbox" class="compare-checkbox-quick w-3.5 h-3.5 rounded text-indigo-600 border-slate-300 focus:ring-none" data-compare-id="${product.id}" />
-                        <span>Compare</span>
+                    <label class="flex items-center gap-1.5 px-3 border border-neutral-200 hover:border-neutral-400 bg-neutral-50 cursor-pointer text-[10px] font-light tracking-widest text-neutral-500 uppercase transition">
+                        <input type="checkbox" class="compare-checkbox-quick w-3 h-3 accent-black border-neutral-300 rounded-none focus:ring-0" data-compare-id="${product.id}" />
+                        <span>COMPARE</span>
                     </label>
                 </div>
             </div>
@@ -347,6 +348,7 @@ function renderProductCard(product) {
     </div>
     `;
 }
+
 
 function parseProductImages(fallbackImg, imagesJson) {
     let list = [];
@@ -443,10 +445,9 @@ async function initShop() {
     
     document.querySelectorAll(".size-filter-btn").forEach(btn => {
         btn.addEventListener("click", () => {
-            btn.classList.toggle("bg-indigo-600");
+            btn.classList.toggle("bg-neutral-900");
             btn.classList.toggle("text-white");
-            btn.classList.toggle("bg-slate-100");
-            btn.classList.toggle("text-slate-600");
+            btn.classList.toggle("border-neutral-900");
             filterAndRenderShop("");
         });
     });
@@ -465,8 +466,7 @@ async function initShop() {
                 priceValLabel.textContent = formatPrice(15000);
             }
             document.querySelectorAll(".size-filter-btn").forEach(btn => {
-                btn.classList.remove("bg-indigo-600", "text-white");
-                btn.classList.add("bg-slate-100", "text-slate-600");
+                btn.classList.remove("bg-neutral-900", "text-white", "border-neutral-900");
             });
             if (sortSelect) sortSelect.value = "default";
             filterAndRenderShop("");
@@ -486,7 +486,7 @@ function filterAndRenderShop(searchQuery = "") {
     // 1. Gather filter states
     const selectedCategories = Array.from(document.querySelectorAll('input[name="categoryFilter"]:checked')).map(cb => cb.value);
     const maxPrice = Number(document.getElementById("priceRangeFilter")?.value || 15000);
-    const selectedSizes = Array.from(document.querySelectorAll(".size-filter-btn.bg-indigo-600")).map(btn => btn.dataset.size);
+    const selectedSizes = Array.from(document.querySelectorAll(".size-filter-btn.bg-neutral-900")).map(btn => btn.dataset.size);
     const sortMode = document.getElementById("shopSortSelect")?.value || "default";
     
     // 2. Filter products list
@@ -1134,19 +1134,19 @@ function renderSaveForLater() {
         const parsedImages = parseProductImages(product.image, product.images);
 
         return `
-        <div class="bg-slate-50/50 border border-slate-100 rounded-3xl p-4 sm:p-6 flex gap-4 sm:gap-6 items-center">
-            <img src="${parsedImages[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=100'}" class="w-16 h-16 rounded-2xl object-cover flex-shrink-0 opacity-80" />
-            <div class="flex-grow space-y-0.5">
-                <h4 class="font-bold text-slate-700 text-sm leading-tight">${escapeHTML(product.name)}</h4>
-                <div class="flex flex-wrap gap-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    <span>Size: <strong>${escapeHTML(item.size)}</strong></span>
-                    <span>Color: <strong>${escapeHTML(item.color)}</strong></span>
+        <div class="bg-white border border-neutral-200 p-4 sm:p-5 flex gap-4 sm:gap-6 items-center">
+            <img src="${parsedImages[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=100'}" class="w-16 h-20 object-cover flex-shrink-0 opacity-90" />
+            <div class="flex-grow space-y-1">
+                <h4 class="font-medium text-neutral-900 text-xs uppercase tracking-wider leading-tight">${escapeHTML(product.name)}</h4>
+                <div class="flex flex-wrap gap-3 text-[10px] font-light text-neutral-400 uppercase tracking-widest">
+                    <span>Size: <strong class="font-medium text-neutral-700">${escapeHTML(item.size)}</strong></span>
+                    <span>Color: <strong class="font-medium text-neutral-700">${escapeHTML(item.color)}</strong></span>
                 </div>
-                <strong class="text-slate-600 font-bold text-xs block">${formatPrice(product.price)}</strong>
+                <strong class="text-neutral-950 font-medium text-xs block tracking-wider">${formatPrice(product.price)}</strong>
             </div>
-            <div class="flex flex-col sm:flex-row gap-2.5 flex-shrink-0">
-                <button type="button" onclick="moveToCart(${idx})" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow transition">Move to Bag</button>
-                <button type="button" onclick="removeSavedLater(${idx})" class="px-4 py-2 border border-slate-200 hover:bg-slate-100 text-slate-500 font-bold text-xs rounded-xl transition">Remove</button>
+            <div class="flex flex-col sm:flex-row gap-2 flex-shrink-0">
+                <button type="button" onclick="moveToCart(${idx})" class="px-4 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white font-light text-[10px] uppercase tracking-widest transition duration-300">Move to Bag</button>
+                <button type="button" onclick="removeSavedLater(${idx})" class="px-4 py-2.5 border border-neutral-200 hover:bg-neutral-50 text-neutral-500 font-light text-[10px] uppercase tracking-widest transition duration-300">Remove</button>
             </div>
         </div>`;
     }).join("");
@@ -2028,11 +2028,11 @@ async function initAdminOrders() {
     document.querySelectorAll(".order-tab").forEach(tab => {
         tab.addEventListener("click", () => {
             document.querySelectorAll(".order-tab").forEach(t => {
-                t.classList.remove("bg-indigo-600", "text-white", "shadow");
-                t.classList.add("bg-slate-100", "text-slate-600");
+                t.classList.remove("bg-neutral-900", "text-white", "border-neutral-900");
+                t.classList.add("bg-transparent", "text-neutral-500", "border-neutral-200");
             });
-            tab.classList.add("bg-indigo-600", "text-white", "shadow");
-            tab.classList.remove("bg-slate-100", "text-slate-600");
+            tab.classList.add("bg-neutral-900", "text-white", "border-neutral-900");
+            tab.classList.remove("bg-transparent", "text-neutral-500", "border-neutral-200");
             
             loadAdminOrders(tab.dataset.status);
         });
@@ -2042,7 +2042,7 @@ async function initAdminOrders() {
     const searchInput = document.getElementById("adminOrderSearchInput");
     if (searchInput) {
         searchInput.addEventListener("input", () => {
-            const activeTab = document.querySelector(".order-tab.bg-indigo-600");
+            const activeTab = document.querySelector(".order-tab.bg-neutral-900");
             const status = activeTab ? activeTab.dataset.status : "all";
             loadAdminOrders(status, searchInput.value.trim());
         });
@@ -2116,7 +2116,7 @@ async function updateAdminOrderStatus(orderId, newStatus) {
         });
         showToast(`Order status updated to ${newStatus}!`);
         
-        const activeTab = document.querySelector(".order-tab.bg-indigo-600");
+        const activeTab = document.querySelector(".order-tab.bg-neutral-900");
         const status = activeTab ? activeTab.dataset.status : "all";
         loadAdminOrders(status);
     } catch (err) {
@@ -2194,40 +2194,40 @@ async function loadAdminReviews() {
         const reviews = data.reviews || [];
         
         if (reviews.length === 0) {
-            list.innerHTML = `<p class="text-center text-slate-400 font-semibold py-12 bg-white border border-slate-100 rounded-3xl shadow-sm">All customer reviews are moderated!</p>`;
+            list.innerHTML = `<p class="text-center text-neutral-400 font-light py-12 bg-white border border-neutral-200 uppercase tracking-widest text-[10px]">All customer reviews are moderated!</p>`;
             return;
         }
         
         list.innerHTML = reviews.map(r => `
-        <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+        <div class="bg-white border border-neutral-200 p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
             <div class="space-y-2 flex-grow">
                 <div class="flex items-center gap-3">
-                    <span class="w-8 h-8 rounded-full bg-slate-100 text-indigo-600 font-extrabold flex items-center justify-center text-xs uppercase">${(r.username || '').slice(0, 2)}</span>
-                    <strong class="text-slate-800 font-bold text-sm">${escapeHTML(r.username)}</strong>
-                    <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                        r.status === 'approved' ? 'bg-emerald-50 text-emerald-500 border border-emerald-100' : 'bg-amber-50 text-amber-500 border border-amber-100'
+                    <span class="w-8 h-8 bg-neutral-900 text-white font-light flex items-center justify-center text-[10px] uppercase">${(r.username || '').slice(0, 2)}</span>
+                    <strong class="text-neutral-900 font-medium text-xs uppercase tracking-wider">${escapeHTML(r.username)}</strong>
+                    <span class="px-2 py-0.5 text-[9px] font-medium uppercase tracking-wider ${
+                        r.status === 'approved' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'
                     }">${r.status}</span>
                 </div>
-                <p class="text-slate-500 text-sm leading-relaxed">${escapeHTML(r.comment)}</p>
-                <div class="flex gap-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    <span>Product ID: <strong class="text-slate-700">#${r.product_id}</strong></span>
-                    <span>Rating: <strong class="text-amber-500">${r.rating} / 5</strong></span>
-                    <span>Sizing Fit: <strong class="text-indigo-600">${escapeHTML(r.sizing_fit)}</strong></span>
+                <p class="text-neutral-500 text-xs font-light tracking-wide leading-relaxed">${escapeHTML(r.comment)}</p>
+                <div class="flex gap-4 text-[9px] font-light text-neutral-400 uppercase tracking-widest">
+                    <span>Product ID: <strong class="font-medium text-neutral-700">#${r.product_id}</strong></span>
+                    <span>Rating: <strong class="text-neutral-900 font-medium">${r.rating} / 5</strong></span>
+                    <span>Sizing Fit: <strong class="text-neutral-900 font-medium">${escapeHTML(r.sizing_fit)}</strong></span>
                 </div>
             </div>
             
             <div class="flex gap-2.5 flex-shrink-0 w-full sm:w-auto">
                 ${r.status === 'pending' ? `
-                <button type="button" onclick="moderateAdminReview(${r.id}, 'approved')" class="flex-grow sm:flex-grow-0 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow transition">
+                <button type="button" onclick="moderateAdminReview(${r.id}, 'approved')" class="flex-grow sm:flex-grow-0 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white font-light text-[10px] uppercase tracking-widest transition duration-300">
                     Approve
                 </button>` : ''}
-                <button type="button" onclick="deleteAdminReview(${r.id})" class="flex-grow sm:flex-grow-0 px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-500 font-bold text-xs rounded-xl transition">
+                <button type="button" onclick="deleteAdminReview(${r.id})" class="flex-grow sm:flex-grow-0 px-4 py-2 border border-neutral-200 text-red-500 hover:bg-red-50 font-light text-[10px] uppercase tracking-widest transition duration-300">
                     Delete
                 </button>
             </div>
         </div>`).join("");
     } catch (err) {
-        list.innerHTML = `<p class="text-center text-slate-400 py-8">Failed to load reviews.</p>`;
+        list.innerHTML = `<p class="text-center text-neutral-400 py-8 uppercase tracking-widest text-[10px]">Failed to load reviews.</p>`;
     }
 }
 
@@ -2356,8 +2356,8 @@ function drawSalesTrendLineChart(weeklySales) {
     }
     
     // Plot Line
-    ctx.strokeStyle = "#4f46e5";
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#171717";
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
     
     entries.forEach(([date, val], idx) => {
@@ -2381,10 +2381,10 @@ function drawSalesTrendLineChart(weeklySales) {
         const y = padding + chartHeight - (chartHeight * (val - minVal)) / (maxVal - minVal);
         
         ctx.fillStyle = "#ffffff";
-        ctx.strokeStyle = "#4f46e5";
-        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = "#171717";
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(x, y, 5, 0, 2 * Math.PI);
+        ctx.arc(x, y, 4, 0, 2 * Math.PI);
         ctx.fill();
         ctx.stroke();
     });
@@ -2414,7 +2414,7 @@ function drawCategorySalesPieChart(categorySales) {
         return;
     }
     
-    const colors = ["#4f46e5", "#0ea5e9", "#14b8a6", "#f59e0b"];
+    const colors = ["#171717", "#404040", "#737373", "#a3a3a3"];
     let currentAngle = 0;
     
     legend.innerHTML = "";
@@ -2430,7 +2430,7 @@ function drawCategorySalesPieChart(categorySales) {
         ctx.fillStyle = color;
         ctx.fill();
         ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 1.5;
         ctx.stroke();
         
         currentAngle += sliceAngle;
@@ -2438,16 +2438,14 @@ function drawCategorySalesPieChart(categorySales) {
         // Populate Legend
         const percentage = Math.round((val / total) * 100);
         legend.innerHTML += `
-        <div class="flex items-center gap-2 text-xs font-semibold text-slate-500">
-            <span class="w-3.5 h-3.5 rounded-full flex-shrink-0" style="background-color: ${color};"></span>
-            <span class="truncate uppercase flex-grow">${category}</span>
-            <span class="text-slate-800 font-bold">${percentage}%</span>
+        <div class="flex items-center gap-2 text-xs font-semibold text-neutral-500">
+            <span class="w-3.5 h-3.5 flex-shrink-0" style="background-color: ${color};"></span>
+            <span class="truncate uppercase flex-grow text-[10px] font-light tracking-wider">${category}</span>
+            <span class="text-neutral-900 font-medium text-[10px] tracking-wider">${percentage}%</span>
         </div>`;
     });
 }
 
-
-// --- 14.5. LOGIN & SIGNUP CONTROLLERS ---
 async function initLogin() {
     const loginForm = document.getElementById("loginForm");
     const loginMessage = document.getElementById("loginMessage");
@@ -2525,11 +2523,12 @@ async function initSignup() {
     signupForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         const full_name = document.getElementById("signupFullNameInput").value.trim();
+        const email = document.getElementById("signupEmailInput").value.trim();
         const username = document.getElementById("signupUsernameInput").value.trim();
         const password = document.getElementById("signupPasswordInput").value;
         const submitBtn = document.getElementById("signupSubmitBtn");
         
-        if (!full_name || !username || !password) {
+        if (!full_name || !email || !username || !password) {
             signupMessage.textContent = "Please fill in all fields.";
             signupMessage.classList.remove("hidden");
             return;
@@ -2543,15 +2542,15 @@ async function initSignup() {
         
         try {
             submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating Account...';
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> CREATING ACCOUNT...';
             signupMessage.classList.add("hidden");
             
             const res = await api("/api/register", {
                 method: "POST",
-                body: JSON.stringify({ full_name, username, password })
+                body: JSON.stringify({ full_name, email, username, password })
             });
             
-            showToast("Welcome to Shibani Club! 100 free coins earned.");
+            showToast("Welcome to Shibani! Your account has been created.");
             setTimeout(() => {
                 window.location.href = "/";
             }, 1000);
@@ -2559,9 +2558,7 @@ async function initSignup() {
             signupMessage.textContent = err.message || "Failed to create account.";
             signupMessage.classList.remove("hidden");
             submitBtn.disabled = false;
-            submitBtn.innerHTML = `<span class="absolute left-0 inset-y-0 flex items-center pl-3 text-indigo-500 group-hover:text-indigo-400">
-                <i class="fa-solid fa-user-plus"></i>
-            </span> Sign Up`;
+            submitBtn.innerHTML = `Sign Up`;
         }
     });
 }

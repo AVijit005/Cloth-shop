@@ -1,33 +1,31 @@
 {% extends "base.html" %}
 
-{% block title %}Shibani Fashion | Home{% endblock %}
+{% block title %}Shibani Fashion | Haute Couture & Premium Wardrobe{% endblock %}
 
 {% block content %}
 <!-- Hero Section -->
-<section class="relative bg-slate-900 overflow-hidden h-[500px] sm:h-[600px] flex items-center">
-    <div class="absolute inset-0 z-0 opacity-40">
-        <img src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1600" alt="Hero Background" class="w-full h-full object-cover object-center" />
+<section class="relative bg-neutral-900 overflow-hidden h-[75vh] min-h-[500px] flex items-center">
+    <div class="absolute inset-0 z-0">
+        <img src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=1600&auto=format&fit=crop" 
+             alt="Hero Background" 
+             class="w-full h-full object-cover object-center opacity-70 mix-blend-luminosity transform scale-105 animate-slow-pan" />
     </div>
-    <div class="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-900/90 to-transparent z-10"></div>
+    <div class="absolute inset-0 bg-black/40 z-10"></div>
     
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20 w-full text-left text-white">
-        <div class="max-w-xl lg:max-w-2xl space-y-6">
-            <span class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                <i class="fa-solid fa-sparkles"></i> NEW SUMMER ARRIVALS
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20 w-full text-center">
+        <div class="max-w-2xl mx-auto space-y-6">
+            <span class="text-xs tracking-[0.4em] font-light text-neutral-300 uppercase block">
+                Summer Campaign 2026
             </span>
-            <h1 class="text-4xl sm:text-6xl font-black tracking-tight leading-none">
-                Elegance in <br class="hidden sm:inline" />
-                <span class="bg-gradient-to-r from-indigo-400 to-sky-400 bg-clip-text text-transparent">Every Thread</span>
+            <h1 class="text-3xl sm:text-5xl lg:text-6xl font-light tracking-[0.2em] text-white uppercase leading-tight">
+                Quiet Luxury
             </h1>
-            <p class="text-base sm:text-lg text-slate-300 max-w-lg leading-relaxed">
-                Discover our hand-picked collection of premium printed sarees, formal cotton shirts, and child-friendly coordinates. Premium quality, guaranteed fit.
+            <p class="text-xs sm:text-sm text-neutral-300 max-w-md mx-auto leading-relaxed tracking-wider uppercase font-light">
+                Hand-picked linen sets, premium cotton essentials, and timeless sarees crafted for the modern wardrobe.
             </p>
-            <div class="flex flex-col sm:flex-row gap-4 pt-2">
-                <a href="/shop" class="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-2xl shadow-lg shadow-indigo-500/20 hover:-translate-y-0.5 transition duration-300 text-center">
-                    Shop Collections <i class="fa-solid fa-arrow-right ml-2"></i>
-                </a>
-                <a href="/about" class="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold rounded-2xl border border-slate-700 text-center transition duration-300">
-                    Our Story
+            <div class="pt-4">
+                <a href="/shop" class="inline-block px-8 py-3.5 bg-white hover:bg-neutral-100 text-neutral-900 font-semibold text-xs tracking-widest uppercase transition duration-300">
+                    Explore Catalog
                 </a>
             </div>
         </div>
@@ -35,55 +33,58 @@
 </section>
 
 <!-- Categories Section -->
-<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 bg-white">
     <div class="text-center max-w-xl mx-auto mb-16">
-        <h2 class="text-3xl font-extrabold text-slate-800 tracking-tight">Browse Categories</h2>
-        <p class="text-slate-400 mt-2">Find your perfect style from our curated clothing catalogs.</p>
+        <h2 class="text-xs tracking-[0.3em] font-bold text-neutral-900 uppercase">Browse Collections</h2>
+        <p class="text-xs tracking-wider text-neutral-400 uppercase mt-2">Discover curated seasonal capsules.</p>
     </div>
     
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-        <!-- Category Card 1 -->
-        <a href="/shop?category=women" class="group relative rounded-3xl overflow-hidden shadow-lg h-96 block transition duration-500 hover:-translate-y-1 hover:shadow-2xl">
-            <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/40 to-transparent z-10"></div>
-            <img src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=500" alt="Women Category" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-            <div class="absolute bottom-6 left-6 z-20 text-white">
-                <span class="text-xs font-bold text-indigo-400 uppercase tracking-widest block mb-1">Traditional & Western</span>
-                <h3 class="text-2xl font-black">Women's Closet</h3>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <!-- Category Card 1: Women -->
+        <a href="/shop?category=women" class="group relative aspect-[3/4] overflow-hidden block bg-neutral-100">
+            <img src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=600&auto=format&fit=crop" 
+                 alt="Women Closet" 
+                 class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-1000 mix-blend-multiply opacity-90" />
+            <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent flex flex-col justify-end p-8">
+                <span class="text-[10px] tracking-[0.3em] font-semibold text-white uppercase block mb-1">Traditional & Western</span>
+                <h3 class="text-lg tracking-widest font-light text-white uppercase">Women</h3>
             </div>
         </a>
         
-        <!-- Category Card 2 -->
-        <a href="/shop?category=men" class="group relative rounded-3xl overflow-hidden shadow-lg h-96 block transition duration-500 hover:-translate-y-1 hover:shadow-2xl">
-            <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/40 to-transparent z-10"></div>
-            <img src="https://images.unsplash.com/photo-1617137968427-85924c800a22?w=500" alt="Men Category" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-            <div class="absolute bottom-6 left-6 z-20 text-white">
-                <span class="text-xs font-bold text-indigo-400 uppercase tracking-widest block mb-1">Formal & Casual</span>
-                <h3 class="text-2xl font-black">Men's Wardrobe</h3>
+        <!-- Category Card 2: Men -->
+        <a href="/shop?category=men" class="group relative aspect-[3/4] overflow-hidden block bg-neutral-100">
+            <img src="https://images.unsplash.com/photo-1617137968427-85924c800a22?q=80&w=600&auto=format&fit=crop" 
+                 alt="Men Wardrobe" 
+                 class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-1000 mix-blend-multiply opacity-90" />
+            <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent flex flex-col justify-end p-8">
+                <span class="text-[10px] tracking-[0.3em] font-semibold text-white uppercase block mb-1">Tailored & Casual</span>
+                <h3 class="text-lg tracking-widest font-light text-white uppercase">Men</h3>
             </div>
         </a>
         
-        <!-- Category Card 3 -->
-        <a href="/shop?category=kids" class="group relative rounded-3xl overflow-hidden shadow-lg h-96 block sm:col-span-2 lg:col-span-1 transition duration-500 hover:-translate-y-1 hover:shadow-2xl">
-            <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/40 to-transparent z-10"></div>
-            <img src="https://images.unsplash.com/photo-1519457431-44ccd64a579b?w=500" alt="Kids Category" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-            <div class="absolute bottom-6 left-6 z-20 text-white">
-                <span class="text-xs font-bold text-indigo-400 uppercase tracking-widest block mb-1">Playful & Comfortable</span>
-                <h3 class="text-2xl font-black">Kids Fashion</h3>
+        <!-- Category Card 3: Kids -->
+        <a href="/shop?category=kids" class="group relative aspect-[3/4] overflow-hidden block bg-neutral-100">
+            <img src="https://images.unsplash.com/photo-1519457431-44ccd64a579b?q=80&w=600&auto=format&fit=crop" 
+                 alt="Kids Fashion" 
+                 class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-1000 mix-blend-multiply opacity-90" />
+            <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent flex flex-col justify-end p-8">
+                <span class="text-[10px] tracking-[0.3em] font-semibold text-white uppercase block mb-1">Soft & Durable</span>
+                <h3 class="text-lg tracking-widest font-light text-white uppercase">Kids</h3>
             </div>
         </a>
     </div>
 </section>
 
 <!-- Trending/Best Sellers Grid -->
-<section class="bg-slate-100/50 py-16 sm:py-24">
+<section class="bg-neutral-50 py-20 sm:py-28 border-t border-neutral-100">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-16 gap-4">
             <div>
-                <h2 class="text-3xl font-extrabold text-slate-800 tracking-tight">Best Sellers</h2>
-                <p class="text-slate-400 mt-2">Explore the designs our customers love the most.</p>
+                <h2 class="text-xs tracking-[0.3em] font-bold text-neutral-900 uppercase">Core Collection</h2>
+                <p class="text-xs tracking-wider text-neutral-400 uppercase mt-2">Our most sought-after products.</p>
             </div>
-            <a href="/shop" class="text-sm font-bold text-indigo-600 hover:text-indigo-700 transition flex items-center gap-1.5 hover:underline">
-                View All Collection <i class="fa-solid fa-arrow-right-long"></i>
+            <a href="/shop" class="text-xs tracking-widest font-bold text-neutral-900 hover:opacity-75 uppercase transition flex items-center gap-2">
+                View All <i class="fa-solid fa-arrow-right text-[10px]"></i>
             </a>
         </div>
         
@@ -91,70 +92,69 @@
         <div id="featuredProductsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             <!-- Loading Skeletons -->
             {% for i in range(4) %}
-            <div class="animate-pulse bg-white rounded-3xl p-4 border border-slate-100 space-y-4">
-                <div class="bg-slate-200 h-64 rounded-2xl w-full"></div>
-                <div class="h-4 bg-slate-200 rounded w-2/3"></div>
-                <div class="h-4 bg-slate-200 rounded w-1/3"></div>
-                <div class="h-10 bg-slate-200 rounded-xl w-full"></div>
+            <div class="animate-pulse bg-white p-4 border border-neutral-100 space-y-4">
+                <div class="bg-neutral-100 aspect-[3/4] w-full"></div>
+                <div class="h-3 bg-neutral-100 w-2/3"></div>
+                <div class="h-3 bg-neutral-100 w-1/3"></div>
+                <div class="h-9 bg-neutral-100 w-full"></div>
             </div>
             {% endfor %}
         </div>
     </div>
 </section>
 
-<!-- Special Deals & Promo Banner -->
-<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
-    <div class="bg-gradient-to-r from-indigo-900 to-slate-900 rounded-3xl overflow-hidden shadow-2xl relative p-8 sm:p-16 flex flex-col lg:flex-row items-center justify-between gap-8">
-        <div class="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(99,102,241,0.15),transparent)] pointer-events-none"></div>
-        <div class="space-y-4 max-w-xl text-center lg:text-left z-10 text-white">
-            <span class="bg-indigo-500/20 text-indigo-300 font-bold px-3 py-1 rounded-full text-xs uppercase border border-indigo-400/20">Special Offer</span>
-            <h2 class="text-3xl sm:text-4xl font-black">Get 10% Discount Instantly!</h2>
-            <p class="text-slate-300 leading-relaxed">
-                Unlock exclusive customer benefits. Register as a customer today, enter coupon code <strong class="text-white font-bold bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700">SHIBANI10</strong> at checkout and enjoy savings on your first purchase!
+<!-- Editorial Campaign Block -->
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 bg-white">
+    <div class="border border-neutral-200 p-8 sm:p-16 flex flex-col md:flex-row items-center justify-between gap-8 bg-[#FAF9F6]">
+        <div class="space-y-4 max-w-xl text-left">
+            <span class="text-[9px] tracking-[0.3em] font-bold text-neutral-500 uppercase">Limited Event</span>
+            <h2 class="text-2xl font-light tracking-widest text-neutral-900 uppercase">A Welcome Privilege</h2>
+            <p class="text-xs tracking-wider text-neutral-500 uppercase leading-relaxed font-light font-sans">
+                Unlock exclusive first-order benefits. Register as a customer today, enter coupon code <strong class="text-neutral-900 font-bold bg-white px-2 py-1 border border-neutral-200">SHIBANI10</strong> at checkout and enjoy 10% savings on your initial collection order.
             </p>
         </div>
-        <div class="z-10 flex-shrink-0">
-            <a href="/signup" class="px-8 py-4 bg-white text-indigo-900 hover:bg-slate-50 font-black rounded-2xl transition duration-300 shadow-lg block text-center">
-                Register & Claim Now
+        <div class="flex-shrink-0 w-full md:w-auto">
+            <a href="/signup" class="px-8 py-3.5 bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-xs uppercase tracking-widest transition duration-300 block text-center">
+                Create Account
             </a>
         </div>
     </div>
 </section>
 
-<!-- Why Choose Us -->
-<section class="bg-white border-y border-slate-100 py-16 sm:py-24">
+<!-- Quality Commitments -->
+<section class="bg-neutral-50 border-t border-neutral-100 py-16">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
             <!-- Box 1 -->
-            <div class="flex flex-col items-center text-center space-y-4">
-                <span class="p-4 bg-indigo-50 text-indigo-600 rounded-2xl text-2xl shadow-sm">
+            <div class="flex flex-col items-center text-center space-y-3">
+                <span class="text-neutral-900 text-xl">
                     <i class="fa-solid fa-truck-fast"></i>
                 </span>
-                <h3 class="font-extrabold text-lg text-slate-800">Free Shipping</h3>
-                <p class="text-sm text-slate-400 leading-relaxed max-w-xs">
-                    Get free standard delivery on all orders above Rs. 999. Fast dispatch within 24 hours.
+                <h3 class="text-xs tracking-widest font-bold uppercase text-neutral-900">Complimentary Shipping</h3>
+                <p class="text-xs text-neutral-500 leading-relaxed max-w-xs font-light uppercase tracking-wider">
+                    Free standard delivery on all domestic orders above Rs. 999. Dispatch within 24 hours.
                 </p>
             </div>
             
             <!-- Box 2 -->
-            <div class="flex flex-col items-center text-center space-y-4">
-                <span class="p-4 bg-emerald-50 text-emerald-600 rounded-2xl text-2xl shadow-sm">
+            <div class="flex flex-col items-center text-center space-y-3">
+                <span class="text-neutral-900 text-xl">
                     <i class="fa-solid fa-award"></i>
                 </span>
-                <h3 class="font-extrabold text-lg text-slate-800">Quality Guarantee</h3>
-                <p class="text-sm text-slate-400 leading-relaxed max-w-xs">
-                    Hand-crafted materials. 100% fine fabrics checked for strength, softness, and skin comfort.
+                <h3 class="text-xs tracking-widest font-bold uppercase text-neutral-900">Artisan Integrity</h3>
+                <p class="text-xs text-neutral-500 leading-relaxed max-w-xs font-light uppercase tracking-wider">
+                    Hand-crafted materials. 100% fine fabrics vetted for durability, comfort, and premium textures.
                 </p>
             </div>
             
             <!-- Box 3 -->
-            <div class="flex flex-col items-center text-center space-y-4">
-                <span class="p-4 bg-amber-50 text-amber-600 rounded-2xl text-2xl shadow-sm">
+            <div class="flex flex-col items-center text-center space-y-3">
+                <span class="text-neutral-900 text-xl">
                     <i class="fa-solid fa-lock"></i>
                 </span>
-                <h3 class="font-extrabold text-lg text-slate-800">Secure Checkout</h3>
-                <p class="text-sm text-slate-400 leading-relaxed max-w-xs">
-                    Your transactions are safe with us. We support Cash on Delivery and secure UPI payment methods.
+                <h3 class="text-xs tracking-widest font-bold uppercase text-neutral-900">Encrypted checkout</h3>
+                <p class="text-xs text-neutral-500 leading-relaxed max-w-xs font-light uppercase tracking-wider">
+                    Committed to purchase security. We support Cash on Delivery, UPI, and major card networks.
                 </p>
             </div>
         </div>
@@ -162,57 +162,57 @@
 </section>
 
 <!-- Testimonials Section -->
-<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 bg-white border-t border-neutral-100">
     <div class="text-center max-w-xl mx-auto mb-16">
-        <h2 class="text-3xl font-extrabold text-slate-800 tracking-tight">What Customers Say</h2>
-        <p class="text-slate-400 mt-2">Read testimonials from real shoppers at Shibani Fashion.</p>
+        <h2 class="text-xs tracking-[0.3em] font-bold text-neutral-900 uppercase">Client Notes</h2>
+        <p class="text-xs tracking-wider text-neutral-400 uppercase mt-2">Reflections from our community.</p>
     </div>
     
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
         <!-- Review 1 -->
-        <div class="bg-white border border-slate-100 p-8 rounded-3xl shadow-md flex flex-col justify-between space-y-6">
-            <p class="text-slate-500 italic leading-relaxed text-sm">
-                "The Elegance Printed Saree has a beautiful drape. Soft fabric, rose pink tone looks very rich. Got delivered in just 2 days. Highly recommended!"
+        <div class="border border-neutral-200 p-8 flex flex-col justify-between space-y-6 bg-neutral-50">
+            <p class="text-neutral-600 font-light leading-relaxed text-xs uppercase tracking-wide">
+                "The Elegance Saree has a beautiful drape. Soft fabric, premium texture. Delivered in just 2 days. Exceptional service."
             </p>
             <div class="flex items-center gap-3">
-                <span class="w-10 h-10 rounded-full bg-slate-100 text-indigo-600 font-extrabold flex items-center justify-center text-sm">
+                <span class="w-8 h-8 rounded-full bg-neutral-900 text-white font-bold flex items-center justify-center text-[10px]">
                     PS
                 </span>
                 <div>
-                    <h4 class="font-bold text-sm text-slate-800">Pooja Sharma</h4>
-                    <span class="text-[10px] text-slate-400 font-bold uppercase">Verified Buyer</span>
+                    <h4 class="font-bold text-xs uppercase tracking-wider text-neutral-800">Pooja Sharma</h4>
+                    <span class="text-[9px] text-neutral-400 font-bold uppercase tracking-widest">Verified Buyer</span>
                 </div>
             </div>
         </div>
         
         <!-- Review 2 -->
-        <div class="bg-white border border-slate-100 p-8 rounded-3xl shadow-md flex flex-col justify-between space-y-6">
-            <p class="text-slate-500 italic leading-relaxed text-sm">
-                "Bought a cotton shirt for office use. Perfect fit, fabric is breathable and doesn't shrink. Will buy another shade soon."
+        <div class="border border-neutral-200 p-8 flex flex-col justify-between space-y-6 bg-neutral-50">
+            <p class="text-neutral-600 font-light leading-relaxed text-xs uppercase tracking-wide">
+                "Bought a cotton shirt. Perfect fit, breathable linen-style weave. Does not shrink. Will purchase again."
             </p>
             <div class="flex items-center gap-3">
-                <span class="w-10 h-10 rounded-full bg-slate-100 text-indigo-600 font-extrabold flex items-center justify-center text-sm">
+                <span class="w-8 h-8 rounded-full bg-neutral-900 text-white font-bold flex items-center justify-center text-[10px]">
                     AP
                 </span>
                 <div>
-                    <h4 class="font-bold text-sm text-slate-800">Amit Patel</h4>
-                    <span class="text-[10px] text-slate-400 font-bold uppercase">Verified Buyer</span>
+                    <h4 class="font-bold text-xs uppercase tracking-wider text-neutral-800">Amit Patel</h4>
+                    <span class="text-[9px] text-neutral-400 font-bold uppercase tracking-widest">Verified Buyer</span>
                 </div>
             </div>
         </div>
         
         <!-- Review 3 -->
-        <div class="bg-white border border-slate-100 p-8 rounded-3xl shadow-md flex flex-col justify-between space-y-6 md:col-span-2 lg:col-span-1">
-            <p class="text-slate-500 italic leading-relaxed text-sm">
-                "We loved the kids cotton set. The color is bright, fits my son perfectly and feels extremely soft. Perfect for daily play."
+        <div class="border border-neutral-200 p-8 flex flex-col justify-between space-y-6 bg-neutral-50">
+            <p class="text-neutral-600 font-light leading-relaxed text-xs uppercase tracking-wide">
+                "We loved the kids cotton set. The color is bright, fits perfectly and feels soft. Perfect daily playwear."
             </p>
             <div class="flex items-center gap-3">
-                <span class="w-10 h-10 rounded-full bg-slate-100 text-indigo-600 font-extrabold flex items-center justify-center text-sm">
+                <span class="w-8 h-8 rounded-full bg-neutral-900 text-white font-bold flex items-center justify-center text-[10px]">
                     MK
                 </span>
                 <div>
-                    <h4 class="font-bold text-sm text-slate-800">Meera Krishnan</h4>
-                    <span class="text-[10px] text-slate-400 font-bold uppercase">Verified Buyer</span>
+                    <h4 class="font-bold text-xs uppercase tracking-wider text-neutral-800">Meera Krishnan</h4>
+                    <span class="text-[9px] text-neutral-400 font-bold uppercase tracking-widest">Verified Buyer</span>
                 </div>
             </div>
         </div>

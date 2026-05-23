@@ -4,29 +4,29 @@
 {% block page_title %}Products Catalog{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="space-y-6 bg-slate-50">
     <!-- Controls Header -->
-    <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
+    <div class="bg-white border border-neutral-200 p-6 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-sm">
         <div class="relative w-full sm:max-w-xs">
-            <input type="text" id="adminProductSearch" placeholder="Search catalog clothes..." 
-                   class="w-full bg-slate-100 border-none rounded-xl px-4 py-2.5 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
-            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+            <input type="text" id="adminProductSearch" placeholder="SEARCH CATALOG CLOTHES..." 
+                   class="w-full bg-neutral-50 border border-neutral-200 px-3 py-2.5 pl-10 text-xs tracking-wider uppercase focus:outline-none focus:border-neutral-900" />
+            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 text-sm">
                 <i class="fa-solid fa-magnifying-glass"></i>
             </span>
         </div>
         
         <button type="button" id="adminAddNewProductBtn" 
-                class="w-full sm:w-auto px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-sm rounded-xl shadow transition duration-200">
+                class="w-full sm:w-auto px-5 py-3 bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-xs uppercase tracking-widest transition duration-200">
             + Add New Product
         </button>
     </div>
     
     <!-- Products Table Card -->
-    <div class="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+    <div class="bg-white border border-neutral-200 overflow-hidden shadow-sm">
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
-                    <tr class="bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    <tr class="bg-neutral-50 border-b border-neutral-200 text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
                         <th class="py-4 px-6">ID</th>
                         <th class="py-4 px-6">Outfit</th>
                         <th class="py-4 px-6">Category</th>
@@ -35,10 +35,10 @@
                         <th class="py-4 px-6 text-right">Actions</th>
                     </tr>
                 </thead>
-                <tbody id="adminProductsTableBody" class="divide-y divide-slate-100 text-sm font-semibold text-slate-600">
+                <tbody id="adminProductsTableBody" class="divide-y divide-neutral-200 text-xs uppercase tracking-wider font-semibold text-neutral-600">
                     <!-- Loaded dynamically via JS -->
                     <tr>
-                        <td colspan="6" class="py-12 text-center text-slate-400">Loading catalog items...</td>
+                        <td colspan="6" class="py-12 text-center text-neutral-400">Loading catalog items...</td>
                     </tr>
                 </tbody>
             </table>
@@ -47,12 +47,12 @@
 </div>
 
 <!-- Product Add/Edit Modal (Hidden by default) -->
-<div id="productModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[999] flex items-center justify-center p-4 hidden">
-    <div class="bg-white rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden border border-slate-100 transform scale-95 transition-all duration-300 max-h-[90vh] flex flex-col">
+<div id="productModal" class="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm z-[999] flex items-center justify-center p-4 hidden">
+    <div class="bg-white max-w-2xl w-full border border-neutral-200 transform scale-95 transition-all duration-300 max-h-[90vh] flex flex-col">
         <!-- Header -->
-        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
-            <h3 class="font-extrabold text-slate-800 text-lg" id="productFormTitle">Add New Cloth</h3>
-            <button id="closeProductModalBtn" class="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition"><i class="fa-solid fa-xmark"></i></button>
+        <div class="px-6 py-4 border-b border-neutral-200 flex items-center justify-between flex-shrink-0">
+            <h3 class="font-bold text-xs uppercase tracking-widest text-neutral-900" id="productFormTitle">Add New Cloth</h3>
+            <button id="closeProductModalBtn" class="p-2 text-neutral-400 hover:text-neutral-900 transition"><i class="fa-solid fa-xmark"></i></button>
         </div>
         
         <!-- Form Body (Scrollable) -->
@@ -61,15 +61,15 @@
             
             <!-- Photo Upload Area -->
             <div class="space-y-2">
-                <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider">Outfit Images</label>
+                <label class="block text-[9px] font-bold uppercase tracking-widest text-neutral-500">Outfit Images</label>
                 <div class="flex gap-4 items-center">
-                    <div class="w-24 h-24 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center text-xs text-slate-400 overflow-hidden" id="photoPreview">
+                    <div class="w-20 h-20 bg-neutral-50 border border-dashed border-neutral-200 flex items-center justify-center text-[10px] text-neutral-400 overflow-hidden" id="photoPreview">
                         No image
                     </div>
                     <div class="flex-grow">
                         <input id="photoInput" type="file" accept="image/*" multiple 
-                               class="w-full text-xs text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100 cursor-pointer" />
-                        <span class="text-[10px] text-slate-400 mt-1 block">Upload main image or multiple thumbnails.</span>
+                               class="w-full text-[10px] tracking-wider uppercase text-neutral-500 file:mr-4 file:py-2 file:px-4 file:border-0 file:text-[10px] file:font-bold file:bg-neutral-900 file:text-white file:cursor-pointer" />
+                        <span class="text-[9px] text-neutral-400 mt-1 block uppercase">Upload main image or multiple thumbnails.</span>
                     </div>
                 </div>
             </div>
@@ -77,14 +77,14 @@
             <!-- Text Fields grid -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div class="sm:col-span-2">
-                    <label for="nameInput" class="block text-xs font-bold text-slate-600 mb-1">Product Title</label>
-                    <input id="nameInput" type="text" required placeholder="e.g. Elegant Printed Saree" 
-                           class="w-full bg-slate-100 border-none rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                    <label for="nameInput" class="block text-[9px] font-bold uppercase tracking-widest text-neutral-500 mb-1">Product Title</label>
+                    <input id="nameInput" type="text" required placeholder="E.G. ELEGANT PRINTED SAREE" 
+                           class="w-full bg-neutral-50 border border-neutral-200 px-3 py-2 text-xs tracking-wider uppercase focus:outline-none focus:border-neutral-900" />
                 </div>
                 
                 <div>
-                    <label for="categoryInput" class="block text-xs font-bold text-slate-600 mb-1">Category</label>
-                    <select id="categoryInput" class="w-full bg-slate-100 border-none rounded-xl px-4 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+                    <label for="categoryInput" class="block text-[9px] font-bold uppercase tracking-widest text-neutral-500 mb-1">Category</label>
+                    <select id="categoryInput" class="w-full bg-neutral-50 border border-neutral-200 px-3 py-2 text-xs tracking-wider uppercase focus:outline-none focus:border-neutral-900 font-bold">
                         <option value="women">Women</option>
                         <option value="men">Men</option>
                         <option value="kids">Kids</option>
@@ -92,8 +92,8 @@
                 </div>
                 
                 <div>
-                    <label for="stockInput" class="block text-xs font-bold text-slate-600 mb-1">Stock Level</label>
-                    <select id="stockInput" class="w-full bg-slate-100 border-none rounded-xl px-4 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+                    <label for="stockInput" class="block text-[9px] font-bold uppercase tracking-widest text-neutral-500 mb-1">Stock Level</label>
+                    <select id="stockInput" class="w-full bg-neutral-50 border border-neutral-200 px-3 py-2 text-xs tracking-wider uppercase focus:outline-none focus:border-neutral-900 font-bold">
                         <option value="In stock">In stock</option>
                         <option value="Limited stock">Limited stock</option>
                         <option value="Out of stock">Out of stock</option>
@@ -101,54 +101,54 @@
                 </div>
                 
                 <div>
-                    <label for="priceInput" class="block text-xs font-bold text-slate-600 mb-1">Price (Rs.)</label>
-                    <input id="priceInput" type="number" min="1" required placeholder="e.g. 1299" 
-                           class="w-full bg-slate-100 border-none rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                    <label for="priceInput" class="block text-[9px] font-bold uppercase tracking-widest text-neutral-500 mb-1">Price (Rs.)</label>
+                    <input id="priceInput" type="number" min="1" required placeholder="E.G. 1299" 
+                           class="w-full bg-neutral-50 border border-neutral-200 px-3 py-2 text-xs tracking-wider uppercase focus:outline-none focus:border-neutral-900" />
                 </div>
                 
                 <div>
-                    <label for="oldPriceInput" class="block text-xs font-bold text-slate-600 mb-1">Old Price (Rs.) (Optional)</label>
-                    <input id="oldPriceInput" type="number" min="0" placeholder="e.g. 1699" 
-                           class="w-full bg-slate-100 border-none rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                    <label for="oldPriceInput" class="block text-[9px] font-bold uppercase tracking-widest text-neutral-500 mb-1">Old Price (Rs.) (Optional)</label>
+                    <input id="oldPriceInput" type="number" min="0" placeholder="E.G. 1699" 
+                           class="w-full bg-neutral-50 border border-neutral-200 px-3 py-2 text-xs tracking-wider uppercase focus:outline-none focus:border-neutral-900" />
                 </div>
                 
                 <div>
-                    <label for="colorInput" class="block text-xs font-bold text-slate-600 mb-1">Color Shade</label>
-                    <input id="colorInput" type="text" required placeholder="e.g. Rose pink" 
-                           class="w-full bg-slate-100 border-none rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                    <label for="colorInput" class="block text-[9px] font-bold uppercase tracking-widest text-neutral-500 mb-1">Color Shade</label>
+                    <input id="colorInput" type="text" required placeholder="E.G. ROSE PINK" 
+                           class="w-full bg-neutral-50 border border-neutral-200 px-3 py-2 text-xs tracking-wider uppercase focus:outline-none focus:border-neutral-900" />
                 </div>
                 
                 <div>
-                    <label for="sizeInput" class="block text-xs font-bold text-slate-600 mb-1">Available Sizes</label>
-                    <input id="sizeInput" type="text" required placeholder="e.g. S, M, L, XL" 
-                           class="w-full bg-slate-100 border-none rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                    <label for="sizeInput" class="block text-[9px] font-bold uppercase tracking-widest text-neutral-500 mb-1">Available Sizes</label>
+                    <input id="sizeInput" type="text" required placeholder="E.G. S, M, L, XL" 
+                           class="w-full bg-neutral-50 border border-neutral-200 px-3 py-2 text-xs tracking-wider uppercase focus:outline-none focus:border-neutral-900" />
                 </div>
                 
                 <div>
-                    <label for="ratingInput" class="block text-xs font-bold text-slate-600 mb-1">Default Rating</label>
+                    <label for="ratingInput" class="block text-[9px] font-bold uppercase tracking-widest text-neutral-500 mb-1">Default Rating</label>
                     <input id="ratingInput" type="number" min="1" max="5" step="0.1" value="4.5" 
-                           class="w-full bg-slate-100 border-none rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                           class="w-full bg-neutral-50 border border-neutral-200 px-3 py-2 text-xs tracking-wider uppercase focus:outline-none focus:border-neutral-900" />
                 </div>
                 
                 <div>
-                    <label for="badgeInput" class="block text-xs font-bold text-slate-600 mb-1">Badge label (Optional)</label>
-                    <input id="badgeInput" type="text" placeholder="e.g. Best Seller, New, Sale" 
-                           class="w-full bg-slate-100 border-none rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                    <label for="badgeInput" class="block text-[9px] font-bold uppercase tracking-widest text-neutral-500 mb-1">Badge label (Optional)</label>
+                    <input id="badgeInput" type="text" placeholder="E.G. BEST SELLER, NEW, SALE" 
+                           class="w-full bg-neutral-50 border border-neutral-200 px-3 py-2 text-xs tracking-wider uppercase focus:outline-none focus:border-neutral-900" />
                 </div>
                 
                 <div class="sm:col-span-2">
-                    <label for="descriptionInput" class="block text-xs font-bold text-slate-600 mb-1">Fabric & Style Description</label>
-                    <textarea id="descriptionInput" rows="3" placeholder="Detail material, weaving type, styling advice..." 
-                              class="w-full bg-slate-100 border-none rounded-xl p-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"></textarea>
+                    <label for="descriptionInput" class="block text-[9px] font-bold uppercase tracking-widest text-neutral-500 mb-1">Fabric & Style Description</label>
+                    <textarea id="descriptionInput" rows="3" placeholder="DETAIL MATERIAL, WEAVING TYPE, STYLING ADVICE..." 
+                              class="w-full bg-neutral-50 border border-neutral-200 p-3 text-xs tracking-wider uppercase focus:outline-none focus:border-neutral-900"></textarea>
                 </div>
             </div>
             
             <!-- Submit/Cancel -->
-            <div class="pt-4 border-t border-slate-100 flex justify-end gap-3 flex-shrink-0">
-                <button type="button" id="cancelEditButton" class="px-5 py-3 border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-sm rounded-xl transition duration-200">
+            <div class="pt-4 border-t border-neutral-200 flex justify-end gap-3 flex-shrink-0">
+                <button type="button" id="cancelEditButton" class="px-5 py-3 border border-neutral-200 text-neutral-700 font-bold text-xs uppercase tracking-widest transition duration-200">
                     Cancel
                 </button>
-                <button type="submit" id="saveProductButton" class="px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-sm rounded-xl shadow transition duration-200">
+                <button type="submit" id="saveProductButton" class="px-5 py-3 bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-xs uppercase tracking-widest transition duration-200">
                     Add Product
                 </button>
             </div>
