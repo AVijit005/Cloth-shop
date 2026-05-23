@@ -1244,7 +1244,6 @@ def me():
 
 
 @app.get("/api/products")
-@require_login
 def products():
     if check_db_health():
         try:
@@ -1530,7 +1529,7 @@ def get_active_coupons():
                         r["min_subtotal"] = float(r["min_subtotal"])
                         if r.get("expires_at"):
                             r["expires_at"] = str(r["expires_at"])
-                    return jsonify(rows)
+                    return jsonify({"coupons": rows})
         except Exception as exc:
             return jsonify({"error": f"Database error: {str(exc)}"}), 500
     else:
@@ -1538,7 +1537,7 @@ def get_active_coupons():
         for c in active:
             c["discount_value"] = float(c["discount_value"])
             c["min_subtotal"] = float(c["min_subtotal"])
-        return jsonify(active)
+        return jsonify({"coupons": active})
 
 
 @app.get("/api/admin/coupons")
@@ -2299,7 +2298,6 @@ def claim_quest_reward():
 
 # --- Customer Product Reviews & Sizing Fit Feedback API ---
 @app.get("/api/reviews")
-@require_login
 def get_reviews():
     product_id = request.args.get("product_id", type=int)
     if not product_id:
