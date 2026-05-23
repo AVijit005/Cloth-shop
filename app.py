@@ -75,7 +75,6 @@ def save_base64_image(base64_str):
 memory_products = []
 memory_orders = []
 memory_users = {}
-memory_outfits = []
 memory_reviews = []
 memory_wishlists = []
 mysql_ready = False
@@ -631,21 +630,6 @@ def init_mysql():
                     cursor.execute("INSERT INTO coupons (code, discount_type, discount_value, min_subtotal, active) VALUES ('SHIBANI10', 'percentage', 10.0, 0.0, 1)")
                     cursor.execute("INSERT INTO coupons (code, discount_type, discount_value, min_subtotal, active) VALUES ('WELCOME200', 'fixed', 200.0, 1000.0, 1)")
                     cursor.execute("INSERT INTO coupons (code, discount_type, discount_value, min_subtotal, active) VALUES ('FREEDELIVERY', 'fixed', 0.0, 0.0, 1)")
-
-                cursor.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS outfits (
-                      id INT AUTO_INCREMENT PRIMARY KEY,
-                      user_id INT NOT NULL,
-                      name VARCHAR(160) NOT NULL,
-                      items TEXT NOT NULL,
-                      is_public TINYINT DEFAULT 1,
-                      likes INT DEFAULT 0,
-                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-                    )
-                    """
-                )
                 cursor.execute(
                     """
                     CREATE TABLE IF NOT EXISTS reviews (
@@ -683,8 +667,6 @@ def init_mysql():
                 ensure_column(cursor, "coupons", "expires_at", "DATETIME DEFAULT NULL")
                 ensure_column(cursor, "coupons", "usage_limit", "INT DEFAULT NULL")
                 ensure_column(cursor, "coupons", "usage_count", "INT DEFAULT 0")
-                ensure_column(cursor, "outfits", "is_public", "TINYINT DEFAULT 1")
-                ensure_column(cursor, "outfits", "likes", "INT DEFAULT 0")
 
                 seed_user(cursor, "admin", "admin123", "admin", "Shibani Admin")
                 seed_user(cursor, "customer", "customer123", "customer", "Shibani Customer")
@@ -788,11 +770,14 @@ def product_row_to_dict(row):
     }
 
 
-def parse_images(images_json, fallback_image=""):
-    try:
-        images = json.loads(images_json or "[]")
-    except (TypeError, json.JSONDecodeError):
-        images = []
+def parse_images(images_value, fallback_image=""):
+    if isinstance(images_value, list):
+        images = list(images_value)
+    else:
+        try:
+            images = json.loads(images_value or "[]")
+        except (TypeError, json.JSONDecodeError, ValueError):
+            images = []
     if fallback_image and fallback_image not in images:
         images.insert(0, fallback_image)
     return [image for image in images if image]
@@ -845,7 +830,7 @@ def product_page(product_id):
     if not product:
         return "Product not found", 404
         
-    images_list = parse_product_images(product.get("image"), product.get("images"))
+    images_list = parse_images(product.get("images"), product.get("image") or "")
     product["images_list"] = images_list
     return render_template("product.html", product=product)
 
@@ -899,11 +884,6 @@ def orders_page():
 def profile_page():
     return render_template("profile.html")
 
-
-@app.route("/rewards")
-@html_login_required
-def rewards_page():
-    return render_template("rewards.html")
 
 
 @app.route("/admin")

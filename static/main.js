@@ -79,6 +79,17 @@ async function initGlobal() {
         const data = await api("/api/me");
         if (data && data.user) {
             appState.user = data.user;
+            
+            // Sync wishlist with database when logged in
+            try {
+                const wishData = await api("/api/wishlist");
+                if (wishData && wishData.wishlist) {
+                    appState.wishlist = wishData.wishlist.map(p => p.id);
+                    localStorage.setItem("shibani_wishlist", JSON.stringify(appState.wishlist));
+                }
+            } catch (wErr) {
+                console.warn("Failed to sync wishlist from database:", wErr);
+            }
         }
     } catch (err) {
         console.warn("Session check failed, running as guest.");
@@ -206,11 +217,24 @@ function toggleWishlistItem(productId) {
     localStorage.setItem("shibani_wishlist", JSON.stringify(appState.wishlist));
     updateBadges();
     
+    // Sync with database if logged in
+    if (appState.user) {
+        api("/api/wishlist", {
+            method: "POST",
+            body: JSON.stringify({ product_id: Number(productId) })
+        }).catch(err => console.warn("Failed to sync wishlist toggle with database:", err));
+    }
+    
     // Update active state in document if present
     document.querySelectorAll(`[data-wishlist-id="${productId}"]`).forEach(btn => {
         btn.classList.toggle("text-rose-500");
         btn.classList.toggle("text-slate-400");
     });
+    
+    // Auto-update UI if on the My Wishlist page
+    if (window.location.pathname === "/wishlist") {
+        initWishlist();
+    }
 }
 
 function addToCart(productId, quantity = 1, size = "M", color = "Default") {
@@ -389,7 +413,8 @@ async function initShop() {
             filterAndRenderShop(searchVal);
         }
     } catch (err) {
-        container.innerHTML = `<p class="col-span-full text-center text-slate-400 font-semibold py-12">Failed to load catalog.</p>`;
+        console.error("Error loading shop catalog:", err);
+        container.innerHTML = `<p class="col-span-full text-center text-slate-400 font-semibold py-12">Failed to load catalog. Detail: ${err.message || err}</p>`;
     }
     
     // 3. Attach filter changes listeners
@@ -460,7 +485,7 @@ function filterAndRenderShop(searchQuery = "") {
     // Filter by search query
     if (searchQuery) {
         const q = searchQuery.toLowerCase();
-        filtered = filtered.filter(p => p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q));
+        filtered = filtered.filter(p => (p.name || "").toLowerCase().includes(q) || (p.description || "").toLowerCase().includes(q));
     }
     
     // Filter by category
@@ -474,7 +499,7 @@ function filterAndRenderShop(searchQuery = "") {
     // Filter by size
     if (selectedSizes.length > 0) {
         filtered = filtered.filter(p => {
-            const sizesList = p.size.split(",").map(s => s.trim().toUpperCase());
+            const sizesList = (p.size || "").split(",").map(s => s.trim().toUpperCase());
             return selectedSizes.some(sz => sizesList.includes(sz));
         });
     }
