@@ -2543,13 +2543,16 @@ def get_analytics():
                     )
                     trend_rows = cursor.fetchall()
                     daily_trend = []
+                    weekly_sales = {}
                     for row in trend_rows:
                         d_str = row["date"].strftime("%Y-%m-%d") if hasattr(row["date"], "strftime") else str(row["date"])
+                        daily_revenue = float(row["daily_revenue"] or 0.0)
                         daily_trend.append({
                             "date": d_str,
-                            "revenue": float(row["daily_revenue"] or 0.0),
+                            "revenue": daily_revenue,
                             "orders": int(row["daily_orders"] or 0)
                         })
+                        weekly_sales[d_str] = daily_revenue
                         
             return jsonify({
                 "summary": {
@@ -2560,7 +2563,8 @@ def get_analytics():
                     "points_redeemed": points_redeemed
                 },
                 "category_sales": category_sales,
-                "daily_trend": daily_trend
+                "daily_trend": daily_trend,
+                "weekly_sales": weekly_sales
             })
         except Exception as exc:
             return jsonify({"error": f"Database error: {str(exc)}"}), 500
@@ -2591,12 +2595,15 @@ def get_analytics():
         trend_dict[d_str]["orders"] += 1
         
     daily_trend = []
+    weekly_sales = {}
     for d_str in sorted(trend_dict.keys()):
+        daily_revenue = trend_dict[d_str]["revenue"]
         daily_trend.append({
             "date": d_str,
-            "revenue": trend_dict[d_str]["revenue"],
+            "revenue": daily_revenue,
             "orders": trend_dict[d_str]["orders"]
         })
+        weekly_sales[d_str] = daily_revenue
         
     return jsonify({
         "summary": {
@@ -2607,7 +2614,8 @@ def get_analytics():
             "points_redeemed": points_redeemed
         },
         "category_sales": category_sales,
-        "daily_trend": daily_trend
+        "daily_trend": daily_trend,
+        "weekly_sales": weekly_sales
     })
 
 
