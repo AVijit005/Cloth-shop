@@ -2584,6 +2584,126 @@ function drawCategorySalesPieChart(categorySales) {
 }
 
 
+// --- 14.5. LOGIN & SIGNUP CONTROLLERS ---
+async function initLogin() {
+    const loginForm = document.getElementById("loginForm");
+    const loginMessage = document.getElementById("loginMessage");
+    const quickAdmin = document.getElementById("quickLoginAdminBtn");
+    const quickCustomer = document.getElementById("quickLoginCustomerBtn");
+    
+    if (!loginForm) return;
+    
+    loginForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const username = document.getElementById("usernameInput").value.trim();
+        const password = document.getElementById("passwordInput").value;
+        const submitBtn = document.getElementById("loginSubmitBtn");
+        
+        if (!username || !password) {
+            loginMessage.textContent = "Please fill in all fields.";
+            loginMessage.classList.remove("hidden");
+            return;
+        }
+        
+        try {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Signing In...';
+            loginMessage.classList.add("hidden");
+            
+            const res = await api("/api/login", {
+                method: "POST",
+                body: JSON.stringify({ username, password })
+            });
+            
+            showToast("Successfully signed in!");
+            
+            // Redirect based on role
+            setTimeout(() => {
+                if (res.user && res.user.role === "admin") {
+                    window.location.href = "/admin";
+                } else {
+                    window.location.href = "/";
+                }
+            }, 500);
+        } catch (err) {
+            loginMessage.textContent = err.message || "Invalid credentials.";
+            loginMessage.classList.remove("hidden");
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `<span class="absolute left-0 inset-y-0 flex items-center pl-3 text-indigo-500 group-hover:text-indigo-400">
+                <i class="fa-solid fa-lock-open"></i>
+            </span> Sign In`;
+        }
+    });
+    
+    // Quick Demo Credentials Buttons
+    if (quickAdmin) {
+        quickAdmin.addEventListener("click", () => {
+            document.getElementById("usernameInput").value = "admin";
+            document.getElementById("passwordInput").value = "admin123";
+            loginForm.dispatchEvent(new Event("submit"));
+        });
+    }
+    
+    if (quickCustomer) {
+        quickCustomer.addEventListener("click", () => {
+            document.getElementById("usernameInput").value = "customer";
+            document.getElementById("passwordInput").value = "customer123";
+            loginForm.dispatchEvent(new Event("submit"));
+        });
+    }
+}
+
+async function initSignup() {
+    const signupForm = document.getElementById("signupForm");
+    const signupMessage = document.getElementById("signupMessage");
+    
+    if (!signupForm) return;
+    
+    signupForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const full_name = document.getElementById("signupFullNameInput").value.trim();
+        const username = document.getElementById("signupUsernameInput").value.trim();
+        const password = document.getElementById("signupPasswordInput").value;
+        const submitBtn = document.getElementById("signupSubmitBtn");
+        
+        if (!full_name || !username || !password) {
+            signupMessage.textContent = "Please fill in all fields.";
+            signupMessage.classList.remove("hidden");
+            return;
+        }
+        
+        if (password.length < 6) {
+            signupMessage.textContent = "Password must be at least 6 characters.";
+            signupMessage.classList.remove("hidden");
+            return;
+        }
+        
+        try {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating Account...';
+            signupMessage.classList.add("hidden");
+            
+            const res = await api("/api/register", {
+                method: "POST",
+                body: JSON.stringify({ full_name, username, password })
+            });
+            
+            showToast("Welcome to Shibani Club! 100 free coins earned.");
+            setTimeout(() => {
+                window.location.href = "/";
+            }, 1000);
+        } catch (err) {
+            signupMessage.textContent = err.message || "Failed to create account.";
+            signupMessage.classList.remove("hidden");
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `<span class="absolute left-0 inset-y-0 flex items-center pl-3 text-indigo-500 group-hover:text-indigo-400">
+                <i class="fa-solid fa-user-plus"></i>
+            </span> Sign Up`;
+        }
+    });
+}
+
+
 // --- 15. DYNAMIC ROUTING ENTRY POINT ---
 document.addEventListener("DOMContentLoaded", () => {
     // Initialize global headers, buttons, logout handlers
@@ -2596,6 +2716,10 @@ document.addEventListener("DOMContentLoaded", () => {
         initHome();
     } else if (path === "/shop") {
         initShop();
+    } else if (path === "/login") {
+        initLogin();
+    } else if (path === "/signup") {
+        initSignup();
     } else if (path.startsWith("/product/")) {
         initProductDetail();
     } else if (path === "/cart") {
