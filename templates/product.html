@@ -216,6 +216,30 @@
             </div>
         </div>
     </section>
+
+    <!-- Related Products Section -->
+    <section class="mt-20 border-t border-slate-100 pt-16">
+        <div class="mb-10 flex justify-between items-end">
+            <div>
+                <h3 class="text-2xl font-extrabold text-slate-800 tracking-tight">You May Also Like</h3>
+                <p class="text-slate-400 text-sm mt-1">Recommended premium items from the same collection.</p>
+            </div>
+        </div>
+        <div id="relatedProductsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            <!-- Loaded dynamically by JS -->
+        </div>
+    </section>
+
+    <!-- Recently Viewed Section -->
+    <section id="recentlyViewedSection" class="mt-20 border-t border-slate-100 pt-16 hidden">
+        <div class="mb-10">
+            <h3 class="text-2xl font-extrabold text-slate-800 tracking-tight">Recently Viewed</h3>
+            <p class="text-slate-400 text-sm mt-1">Items you viewed during this session.</p>
+        </div>
+        <div id="recentlyViewedGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            <!-- Loaded dynamically by JS -->
+        </div>
+    </section>
 </div>
 
 <!-- Sizing Fit Finder Modal (Hidden by default) -->

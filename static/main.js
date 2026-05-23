@@ -17,8 +17,18 @@ const appState = {
 
 // Global API Helper
 async function api(path, options = {}) {
+    const method = (options.method || "GET").toUpperCase();
+    const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+    
+    if (["POST", "PUT", "DELETE"].includes(method)) {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (csrfToken) {
+            headers["X-CSRF-Token"] = csrfToken;
+        }
+    }
+
     const response = await fetch(path, {
-        headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+        headers: headers,
         credentials: "same-origin",
         ...options
     });
@@ -748,6 +758,12 @@ async function initProductDetail() {
     
     // 7. Load approved reviews list
     loadProductReviews(productId);
+    
+    // 8. Track recently viewed products
+    trackRecentlyViewed(productId);
+    
+    // 9. Load related and recently viewed grids
+    loadRelatedAndRecentlyViewed(productId);
 }
 
 function calculateFitRecommendation() {
@@ -820,6 +836,69 @@ async function loadProductReviews(productId) {
 }
 
 
+function trackRecentlyViewed(productId) {
+    let recent = JSON.parse(localStorage.getItem("shibani_recent_viewed") || "[]");
+    recent = recent.filter(id => id !== productId);
+    recent.unshift(productId);
+    if (recent.length > 5) {
+        recent = recent.slice(0, 5);
+    }
+    localStorage.setItem("shibani_recent_viewed", JSON.stringify(recent));
+}
+
+async function loadRelatedAndRecentlyViewed(currentProductId) {
+    try {
+        let products = appState.products;
+        if (!products || products.length === 0) {
+            const data = await api("/api/products");
+            products = data.products || [];
+            appState.products = products;
+        }
+
+        const currentProduct = products.find(p => p.id === currentProductId);
+        if (!currentProduct) return;
+
+        // 1. Related Products
+        const relatedGrid = document.getElementById("relatedProductsGrid");
+        if (relatedGrid) {
+            const related = products
+                .filter(p => p.category === currentProduct.category && p.id !== currentProduct.id)
+                .slice(0, 4);
+
+            if (related.length === 0) {
+                relatedGrid.innerHTML = `<p class="col-span-full text-slate-400 font-semibold py-8 text-center text-sm">No related products found.</p>`;
+            } else {
+                relatedGrid.innerHTML = related.map(p => renderProductCard(p)).join("");
+                attachCardEvents(relatedGrid);
+            }
+        }
+
+        // 2. Recently Viewed
+        const recentSection = document.getElementById("recentlyViewedSection");
+        const recentGrid = document.getElementById("recentlyViewedGrid");
+        if (recentSection && recentGrid) {
+            const recentIds = JSON.parse(localStorage.getItem("shibani_recent_viewed") || "[]")
+                .filter(id => id !== currentProductId);
+
+            const recentProducts = recentIds
+                .map(id => products.find(p => p.id === id))
+                .filter(Boolean)
+                .slice(0, 4);
+
+            if (recentProducts.length > 0) {
+                recentSection.classList.remove("hidden");
+                recentGrid.innerHTML = recentProducts.map(p => renderProductCard(p)).join("");
+                attachCardEvents(recentGrid);
+            } else {
+                recentSection.classList.add("hidden");
+            }
+        }
+    } catch (err) {
+        console.warn("Failed to load related or recently viewed products:", err);
+    }
+}
+
+
 // --- 4. CART & CHECKOUT CONTROLLER ---
 async function initCart() {
     const container = document.getElementById("cartItemsList");
@@ -878,6 +957,25 @@ async function initCart() {
     
     // Render shopping bag
     renderCart();
+    renderSaveForLater();
+    
+    // Progress bar interactive updates
+    const nameInput = document.getElementById("checkoutName");
+    const phoneInput = document.getElementById("checkoutPhone");
+    const addrInput = document.getElementById("checkoutAddress");
+    const progressTrack = document.getElementById("checkoutProgressTrack");
+    
+    function updateProgress() {
+        if (!progressTrack) return;
+        if ((nameInput && nameInput.value.trim()) || (phoneInput && phoneInput.value.trim()) || (addrInput && addrInput.value.trim())) {
+            progressTrack.style.width = "66%";
+        } else {
+            progressTrack.style.width = "33%";
+        }
+    }
+    if (nameInput) nameInput.addEventListener("input", updateProgress);
+    if (phoneInput) phoneInput.addEventListener("input", updateProgress);
+    if (addrInput) addrInput.addEventListener("input", updateProgress);
     
     // Coupon form validation
     const applyCouponBtn = document.getElementById("applyPromoBtn");
@@ -885,10 +983,8 @@ async function initCart() {
         applyCouponBtn.addEventListener("click", applyCouponCode);
     }
     
-
-    
     // Submit order event
-    const checkoutForm = document.getElementById("orderForm");
+    const checkoutForm = document.getElementById("checkoutForm");
     if (checkoutForm) {
         checkoutForm.addEventListener("submit", handleCheckoutSubmit);
     }
@@ -936,12 +1032,16 @@ function renderCart() {
                     <span class="w-8 text-center text-slate-800">${item.quantity}</span>
                     <button type="button" onclick="adjustCartQty(${idx}, 1)" class="w-8 h-8 flex items-center justify-center hover:bg-slate-200">+</button>
                 </div>
-                <button type="button" onclick="adjustCartQty(${idx}, -999)" class="text-rose-500 hover:text-rose-600 text-xs font-bold flex items-center gap-1"><i class="fa-solid fa-trash-can"></i> Remove</button>
+                <div class="flex gap-2">
+                    <button type="button" onclick="saveForLater(${idx})" class="text-indigo-600 hover:text-indigo-700 text-[10px] font-bold flex items-center gap-0.5"><i class="fa-regular fa-bookmark"></i> Save</button>
+                    <button type="button" onclick="adjustCartQty(${idx}, -999)" class="text-rose-500 hover:text-rose-600 text-[10px] font-bold flex items-center gap-0.5"><i class="fa-solid fa-trash-can"></i> Remove</button>
+                </div>
             </div>
         </div>`;
     }).join("");
     
-
+    // Render Saved for Later
+    renderSaveForLater();
     
     // Calculate final bill
     calculateBillingTotals();
@@ -963,6 +1063,99 @@ function adjustCartQty(index, amount) {
     renderCart();
     updateBadges();
 }
+
+
+function saveForLater(index) {
+    const item = appState.cart[index];
+    if (!item) return;
+
+    let saved = JSON.parse(localStorage.getItem("shibani_saved_later") || "[]");
+    const existing = saved.find(s => s.product_id === item.product_id && s.size === item.size && s.color === item.color);
+    if (!existing) {
+        saved.push(item);
+    }
+    localStorage.setItem("shibani_saved_later", JSON.stringify(saved));
+    
+    appState.cart.splice(index, 1);
+    localStorage.setItem("shibani_cart", JSON.stringify(appState.cart));
+    
+    showToast("Outfit moved to Save for Later.");
+    renderCart();
+    updateBadges();
+}
+
+function moveToCart(index) {
+    let saved = JSON.parse(localStorage.getItem("shibani_saved_later") || "[]");
+    const item = saved[index];
+    if (!item) return;
+
+    const existing = appState.cart.find(c => c.product_id === item.product_id && c.size === item.size && c.color === item.color);
+    if (existing) {
+        existing.quantity += item.quantity;
+    } else {
+        appState.cart.push(item);
+    }
+    localStorage.setItem("shibani_cart", JSON.stringify(appState.cart));
+    
+    saved.splice(index, 1);
+    localStorage.setItem("shibani_saved_later", JSON.stringify(saved));
+    
+    showToast("Outfit moved to shopping bag.");
+    renderCart();
+    updateBadges();
+}
+
+function removeSavedLater(index) {
+    let saved = JSON.parse(localStorage.getItem("shibani_saved_later") || "[]");
+    saved.splice(index, 1);
+    localStorage.setItem("shibani_saved_later", JSON.stringify(saved));
+    
+    showToast("Saved outfit removed.");
+    renderSaveForLater();
+}
+
+function renderSaveForLater() {
+    const section = document.getElementById("saveForLaterSection");
+    const list = document.getElementById("saveForLaterList");
+    if (!section || !list) return;
+
+    const saved = JSON.parse(localStorage.getItem("shibani_saved_later") || "[]");
+    if (saved.length === 0) {
+        section.classList.add("hidden");
+        list.innerHTML = "";
+        return;
+    }
+
+    section.classList.remove("hidden");
+    list.innerHTML = saved.map((item, idx) => {
+        const product = appState.products.find(p => p.id === item.product_id);
+        if (!product) return '';
+
+        const parsedImages = parseProductImages(product.image, product.images);
+
+        return `
+        <div class="bg-slate-50/50 border border-slate-100 rounded-3xl p-4 sm:p-6 flex gap-4 sm:gap-6 items-center">
+            <img src="${parsedImages[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=100'}" class="w-16 h-16 rounded-2xl object-cover flex-shrink-0 opacity-80" />
+            <div class="flex-grow space-y-0.5">
+                <h4 class="font-bold text-slate-700 text-sm leading-tight">${escapeHTML(product.name)}</h4>
+                <div class="flex flex-wrap gap-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    <span>Size: <strong>${escapeHTML(item.size)}</strong></span>
+                    <span>Color: <strong>${escapeHTML(item.color)}</strong></span>
+                </div>
+                <strong class="text-slate-600 font-bold text-xs block">${formatPrice(product.price)}</strong>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-2.5 flex-shrink-0">
+                <button type="button" onclick="moveToCart(${idx})" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow transition">Move to Bag</button>
+                <button type="button" onclick="removeSavedLater(${idx})" class="px-4 py-2 border border-slate-200 hover:bg-slate-100 text-slate-500 font-bold text-xs rounded-xl transition">Remove</button>
+            </div>
+        </div>`;
+    }).join("");
+}
+
+window.saveForLater = saveForLater;
+window.moveToCart = moveToCart;
+window.removeSavedLater = removeSavedLater;
+window.renderSaveForLater = renderSaveForLater;
 
 
 
@@ -1093,7 +1286,7 @@ async function handleCheckoutSubmit(e) {
             });
             showToast(`🎉 Order #${data.order_id} placed successfully!`);
             localStorage.removeItem("shibani_cart");
-            setTimeout(() => window.location.href = "/orders", 1500);
+            setTimeout(() => window.location.href = "/order-confirmation?order_id=" + data.order_id, 1500);
         } catch (err) {
             showToast(err.message || "Failed to place order.", "error");
         }
@@ -1148,7 +1341,7 @@ async function handleCheckoutSubmit(e) {
                         });
                         showToast(`🎉 Order #${data.order_id} placed successfully!`);
                         localStorage.removeItem("shibani_cart");
-                        setTimeout(() => window.location.href = "/orders", 1500);
+                        setTimeout(() => window.location.href = "/order-confirmation?order_id=" + data.order_id, 1500);
                     } catch (err) {
                         showToast(err.message || "Failed to place order.", "error");
                         overlay.classList.add("hidden");

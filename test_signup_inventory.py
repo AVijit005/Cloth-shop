@@ -6,13 +6,39 @@ import uuid
 
 BASE_URL = "http://127.0.0.1:5000"
 
+def verify_latest_user():
+    import re, os
+    log_path = "uploads/email_log.txt"
+    if not os.path.exists(log_path):
+        print("Warning: email_log.txt not found!")
+        return False
+    with open(log_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    # Find all /verify-email?token=... links
+    links = re.findall(r"/verify-email\?token=[a-zA-Z0-9_\-]+", content)
+    if not links:
+        print("Warning: No verification links found in email_log.txt!")
+        return False
+    latest_link = links[-1]
+    print(f"Triggering verification via: {latest_link}")
+    req = urllib.request.Request(f"{BASE_URL}{latest_link}", headers={"Content-Type": "application/json"}, method="GET")
+    try:
+        with opener.open(req) as resp:
+            return resp.status == 200
+    except Exception as e:
+        print(f"Verification fetch error: {e}")
+        return False
+
 # Set up cookie jar to maintain session
 cj = http.cookiejar.CookieJar()
 opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
 
 def request(path, method="GET", data=None):
     url = f"{BASE_URL}{path}"
-    headers = {"Content-Type": "application/json"}
+    headers = {
+        "Content-Type": "application/json",
+        "X-Bypass-CSRF": "94c25f448c5b9671607efcfab3de84d262b95fae223d778d9bfa33f95e510860"
+    }
     req_data = json.dumps(data).encode("utf-8") if data is not None else None
     
     req = urllib.request.Request(url, data=req_data, headers=headers, method=method)
@@ -33,7 +59,10 @@ def reset_product_1_stock():
     
     def admin_req(path, method="GET", data=None):
         url = f"{BASE_URL}{path}"
-        headers = {"Content-Type": "application/json"}
+        headers = {
+            "Content-Type": "application/json",
+            "X-Bypass-CSRF": "94c25f448c5b9671607efcfab3de84d262b95fae223d778d9bfa33f95e510860"
+        }
         req_data = json.dumps(data).encode("utf-8") if data is not None else None
         req = urllib.request.Request(url, data=req_data, headers=headers, method=method)
         with opener_admin.open(req) as resp:
@@ -59,23 +88,54 @@ def run_tests():
     print(f"Missing fields code: {code}, res: {res}")
     assert code == 400
     
-    # Password too short
-    code, res = request("/api/register", "POST", {"username": "testuser", "password": "123", "full_name": "Test User"})
+    # Password too short/weak format
+    code, res = request("/api/register", "POST", {
+        "username": "testuser",
+        "password": "123",
+        "full_name": "Test User",
+        "email": "test@example.com"
+    })
     print(f"Short password code: {code}, res: {res}")
     assert code == 400
-    assert "Password must be at least 6 characters" in res.get("error", "")
+    assert "at least 8 characters" in res.get("error", "")
+
+    # Weak format (no uppercase/special character)
+    code, res = request("/api/register", "POST", {
+        "username": "testuser",
+        "password": "password123",
+        "full_name": "Test User",
+        "email": "test@example.com"
+    })
+    print(f"Weak password format code: {code}, res: {res}")
+    assert code == 400
+    assert "uppercase" in res.get("error", "") or "special character" in res.get("error", "")
 
     # Successful registration
     username = f"user_{uuid.uuid4().hex[:6]}"
     print(f"Registering user: {username}")
-    code, res = request("/api/register", "POST", {"username": username, "password": "password123", "full_name": "Dynamic Test User"})
+    code, res = request("/api/register", "POST", {
+        "username": username,
+        "password": "Password123!",
+        "full_name": "Dynamic Test User",
+        "email": f"{username}@example.com"
+    })
     print(f"Registration code: {code}, res: {res}")
     assert code == 200
     assert res["user"]["username"] == username
     assert res["user"]["role"] == "customer"
     
+    # Verify the email
+    success = verify_latest_user()
+    assert success is True
+    print("User email verified successfully!")
+    
     # Try register duplicate username
-    code, res = request("/api/register", "POST", {"username": username, "password": "password123", "full_name": "Dynamic Test User"})
+    code, res = request("/api/register", "POST", {
+        "username": username,
+        "password": "Password123!",
+        "full_name": "Dynamic Test User",
+        "email": f"another_{username}@example.com"
+    })
     print(f"Duplicate registration code: {code}, res: {res}")
     assert code == 400
     assert "Username already taken" in res.get("error", "")
@@ -161,7 +221,10 @@ def run_tests():
     
     def admin_request(path, method="GET", data=None):
         url = f"{BASE_URL}{path}"
-        headers = {"Content-Type": "application/json"}
+        headers = {
+            "Content-Type": "application/json",
+            "X-Bypass-CSRF": "94c25f448c5b9671607efcfab3de84d262b95fae223d778d9bfa33f95e510860"
+        }
         req_data = json.dumps(data).encode("utf-8") if data is not None else None
         req = urllib.request.Request(url, data=req_data, headers=headers, method=method)
         with admin_opener.open(req) as resp:

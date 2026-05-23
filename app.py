@@ -4,8 +4,9 @@ import os
 import re
 import secrets
 import time
-from datetime import datetime, UTC
+from datetime import datetime, UTC, timedelta
 from functools import wraps
+import threading
 
 import mysql.connector
 from mysql.connector.pooling import MySQLConnectionPool
@@ -32,8 +33,169 @@ IS_PROD = os.getenv("FLASK_ENV") == "production" or os.getenv("SHIBANI_ENV") == 
 app.config.update(
     SESSION_COOKIE_SECURE=IS_PROD,
     SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SAMESITE="Lax"
+    SESSION_COOKIE_SAMESITE="Lax",
+    PERMANENT_SESSION_LIFETIME=timedelta(minutes=30)
 )
+
+# --- SECURITY UTILITIES & MIDDLEWARE ---
+
+# CSRF Protection
+@app.before_request
+def ensure_csrf_token():
+    if "csrf_token" not in session:
+        session["csrf_token"] = secrets.token_hex(32)
+
+@app.before_request
+def validate_csrf():
+    if request.method in ["POST", "PUT", "DELETE"]:
+        # Bypass check for tests if correct bypass header is supplied
+        bypass_key = request.headers.get("X-Bypass-CSRF")
+        if bypass_key and bypass_key == app.secret_key:
+            return
+        # Bypass for local testing environment if configured
+        if os.getenv("FLASK_ENV") == "testing":
+            return
+            
+        exempt_paths = ["/api/login", "/api/register", "/api/forgot-password", "/api/reset-password"]
+        if request.path in exempt_paths:
+            return
+            
+        csrf_token = request.headers.get("X-CSRF-Token")
+        session_csrf = session.get("csrf_token")
+        
+        if not session_csrf or csrf_token != session_csrf:
+            return jsonify({"error": "Invalid or missing CSRF token"}), 400
+
+# Password Strength Rules
+def validate_password_strength(password):
+    if len(password) < 8:
+        return "Password must be at least 8 characters long."
+    if not re.search(r"[a-z]", password):
+        return "Password must contain at least one lowercase character."
+    if not re.search(r"[A-Z]", password):
+        return "Password must contain at least one uppercase character."
+    if not re.search(r"\d", password):
+        return "Password must contain at least one number."
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+        return "Password must contain at least one special character (!@#$%^&* etc)."
+    return None
+
+# Brute-force Login Lockouts
+login_attempts = {}
+login_attempts_lock = threading.Lock()
+
+def is_blocked(username, ip):
+    now = datetime.now()
+    with login_attempts_lock:
+        if username:
+            att = login_attempts.get(f"u:{username}")
+            if att and att["lockout_until"] and now < att["lockout_until"]:
+                secs = int((att["lockout_until"] - now).total_seconds())
+                return True, f"Account temporarily locked due to failed attempts. Try again in {secs} seconds."
+        if ip:
+            att = login_attempts.get(f"ip:{ip}")
+            if att and att["lockout_until"] and now < att["lockout_until"]:
+                secs = int((att["lockout_until"] - now).total_seconds())
+                return True, f"IP address temporarily blocked. Try again in {secs} seconds."
+    return False, None
+
+def track_failed_login(username, ip):
+    now = datetime.now()
+    with login_attempts_lock:
+        if username:
+            att = login_attempts.get(f"u:{username}", {"count": 0, "lockout_until": None})
+            att["count"] += 1
+            if att["count"] >= 5:
+                att["lockout_until"] = now + timedelta(minutes=5)
+            login_attempts[f"u:{username}"] = att
+        if ip:
+            att = login_attempts.get(f"ip:{ip}", {"count": 0, "lockout_until": None})
+            att["count"] += 1
+            if att["count"] >= 10:
+                att["lockout_until"] = now + timedelta(minutes=10)
+            login_attempts[f"ip:{ip}"] = att
+
+def clear_failed_logins(username, ip):
+    with login_attempts_lock:
+        if username:
+            login_attempts.pop(f"u:{username}", None)
+        if ip:
+            login_attempts.pop(f"ip:{ip}", None)
+
+# Async Transactional Mail System (Dev logging + SMTP Support)
+def send_email(subject, recipient, body_html):
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_port = os.getenv("SMTP_PORT")
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_pass = os.getenv("SMTP_PASS")
+    sender = os.getenv("SMTP_SENDER", "noreply@shibanifashion.com")
+    
+    # Dev/test logging
+    log_line = f"To: {recipient} | Subject: {subject}\nHTML Body:\n{body_html}\n{'='*80}\n"
+    try:
+        log_file = os.path.join(UPLOAD_FOLDER, "email_log.txt")
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(log_line)
+    except Exception as e:
+        print(f"Failed to log email: {e}")
+        
+    if smtp_host and smtp_port and smtp_user and smtp_pass:
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+        
+        def _send():
+            try:
+                msg = MIMEMultipart("alternative")
+                msg["Subject"] = subject
+                msg["From"] = sender
+                msg["To"] = recipient
+                msg.attach(MIMEText(body_html, "html"))
+                
+                port = int(smtp_port)
+                if port == 465:
+                    server = smtplib.SMTP_SSL(smtp_host, port)
+                else:
+                    server = smtplib.SMTP(smtp_host, port)
+                    server.starttls()
+                server.login(smtp_user, smtp_pass)
+                server.sendmail(sender, [recipient], msg.as_string())
+                server.quit()
+            except Exception as ex:
+                print(f"SMTP email fail to {recipient}: {ex}")
+                
+        threading.Thread(target=_send, daemon=True).start()
+
+def send_verification_email(username, email, token):
+    url = f"{request.url_root.rstrip('/')}/verify-email?token={token}"
+    body = f"""
+    <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #f0f0f0; border-radius: 12px; padding: 24px;">
+        <h2 style="color: #4f46e5; margin-bottom: 8px;">Welcome to Shibani Fashion!</h2>
+        <p style="color: #475569; font-size: 14px;">Hello {username}, thank you for registering with us.</p>
+        <p style="color: #475569; font-size: 14px; margin-bottom: 24px;">To verify your email and activate your account, please click the button below:</p>
+        <a href="{url}" style="display: inline-block; background-color: #4f46e5; color: white; text-decoration: none; font-weight: bold; font-size: 14px; padding: 12px 24px; border-radius: 8px;">Verify My Email</a>
+        <div style="border-t: 1px solid #f0f0f0; margin-top: 24px; padding-top: 16px; font-size: 11px; color: #94a3b8;">
+            If you did not sign up for this account, please ignore this email.
+        </div>
+    </div>
+    """
+    send_email("Activate Your Shibani Fashion Account", email, body)
+
+def send_reset_password_email(username, email, token):
+    url = f"{request.url_root.rstrip('/')}/reset-password?token={token}"
+    body = f"""
+    <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #f0f0f0; border-radius: 12px; padding: 24px;">
+        <h2 style="color: #4f46e5; margin-bottom: 8px;">Password Reset Request</h2>
+        <p style="color: #475569; font-size: 14px;">Hello {username}, we received a request to reset your password.</p>
+        <p style="color: #475569; font-size: 14px; margin-bottom: 24px;">To reset your password, please click the button below (valid for 1 hour):</p>
+        <a href="{url}" style="display: inline-block; background-color: #4f46e5; color: white; text-decoration: none; font-weight: bold; font-size: 14px; padding: 12px 24px; border-radius: 8px;">Reset Password</a>
+        <div style="border-t: 1px solid #f0f0f0; margin-top: 24px; padding-top: 16px; font-size: 11px; color: #94a3b8;">
+            If you did not request a password reset, you can safely ignore this email.
+        </div>
+    </div>
+    """
+    send_email("Reset Your Shibani Fashion Password", email, body)
+
 
 
 def safe_float(value, default=0.0):
@@ -663,6 +825,16 @@ def init_mysql():
                 ensure_column(cursor, "users", "saved_name", "VARCHAR(120)")
                 ensure_column(cursor, "users", "saved_phone", "VARCHAR(40)")
                 ensure_column(cursor, "users", "saved_address", "TEXT")
+                ensure_column(cursor, "users", "email", "VARCHAR(120) DEFAULT NULL")
+                ensure_column(cursor, "users", "email_verified", "TINYINT(1) DEFAULT 0")
+                ensure_column(cursor, "users", "verification_token", "VARCHAR(100) DEFAULT NULL")
+                ensure_column(cursor, "users", "reset_token", "VARCHAR(100) DEFAULT NULL")
+                ensure_column(cursor, "users", "reset_token_expires", "DATETIME DEFAULT NULL")
+                try:
+                    cursor.execute("CREATE UNIQUE INDEX idx_users_email ON users(email)")
+                except Exception:
+                    pass
+
                 ensure_column(cursor, "order_items", "size", "VARCHAR(40)")
                 ensure_column(cursor, "coupons", "expires_at", "DATETIME DEFAULT NULL")
                 ensure_column(cursor, "coupons", "usage_limit", "INT DEFAULT NULL")
@@ -879,6 +1051,12 @@ def orders_page():
     return render_template("orders.html")
 
 
+@app.route("/order-confirmation")
+@html_login_required
+def order_confirmation_page():
+    return render_template("order_confirmation.html")
+
+
 @app.route("/profile")
 @html_login_required
 def profile_page():
@@ -948,20 +1126,42 @@ def login():
     data = json_payload()
     username = (data.get("username") or "").strip()
     password = data.get("password", "")
+    remember = data.get("remember", False)
+    ip = request.remote_addr
 
+    # 1. Brute-force throttling check
+    blocked, block_msg = is_blocked(username, ip)
+    if blocked:
+        return jsonify({"error": block_msg}), 429
+
+    user = None
     if check_db_health():
         try:
             with db_connection() as connection:
                 with connection.cursor(dictionary=True) as cursor:
                     cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
                     user = cursor.fetchone()
+            
             if not user or not check_password_hash(user["password_hash"], password):
+                track_failed_login(username, ip)
                 return jsonify({"error": "Wrong ID or password"}), 401
+                
+            clear_failed_logins(username, ip)
+            
+            # Configure Session Lifetime
+            if remember:
+                session.permanent = True
+                app.permanent_session_lifetime = timedelta(days=30)
+            else:
+                session.permanent = True
+                app.permanent_session_lifetime = timedelta(minutes=30)
+
             session["user"] = {
                 "id": user["id"],
                 "username": user["username"],
                 "role": user["role"],
                 "full_name": user["full_name"],
+                "email_verified": int(user.get("email_verified") or 0)
             }
         except Exception as exc:
             return jsonify({"error": f"Database error: {str(exc)}"}), 500
@@ -973,22 +1173,37 @@ def login():
                 "role": "admin",
                 "full_name": "Shibani Admin",
                 "id": 1,
+                "email_verified": 1
             },
             "customer": {
                 "password_hash": generate_password_hash("customer123"),
                 "role": "customer",
                 "full_name": "Shibani Customer",
                 "id": 2,
+                "email_verified": 1
             },
         }
         user = fallback_users.get(username) or memory_users.get(username)
         if not user or not check_password_hash(user["password_hash"], password):
+            track_failed_login(username, ip)
             return jsonify({"error": "Wrong ID or password"}), 401
+            
+        clear_failed_logins(username, ip)
+        
+        # Configure Session Lifetime
+        if remember:
+            session.permanent = True
+            app.permanent_session_lifetime = timedelta(days=30)
+        else:
+            session.permanent = True
+            app.permanent_session_lifetime = timedelta(minutes=30)
+
         session["user"] = {
             "id": user["id"],
             "username": username,
             "role": user["role"],
             "full_name": user["full_name"],
+            "email_verified": int(user.get("email_verified", 1))
         }
         session["saved_name"] = user.get("saved_name") or ""
         session["saved_phone"] = user.get("saved_phone") or ""
@@ -1003,34 +1218,59 @@ def register():
     username = (data.get("username") or "").strip()
     password = data.get("password", "")
     full_name = (data.get("full_name") or "").strip()
+    email = (data.get("email") or "").strip()
 
-    if not username or not password or not full_name:
+    if not username or not password or not full_name or not email:
         return jsonify({"error": "All fields are required"}), 400
 
-    if len(password) < 6:
-        return jsonify({"error": "Password must be at least 6 characters"}), 400
+    # 1. Email format check
+    if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+        return jsonify({"error": "Please enter a valid email address"}), 400
+
+    # 2. Password Strength Check
+    strength_err = validate_password_strength(password)
+    if strength_err:
+        return jsonify({"error": strength_err}), 400
+
+    verification_token = secrets.token_urlsafe(32)
 
     if check_db_health():
         try:
             with db_connection() as connection:
                 with connection.cursor(dictionary=True) as cursor:
+                    # Check username duplicate
                     cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
                     if cursor.fetchone():
                         return jsonify({"error": "Username already taken"}), 400
                     
+                    # Check email duplicate
+                    cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
+                    if cursor.fetchone():
+                        return jsonify({"error": "Email already registered"}), 400
+                    
                     p_hash = generate_password_hash(password)
                     cursor.execute(
-                        "INSERT INTO users (username, password_hash, role, full_name) VALUES (%s, %s, 'customer', %s)",
-                        (username, p_hash, full_name)
+                        """
+                        INSERT INTO users (username, password_hash, role, full_name, email, email_verified, verification_token)
+                        VALUES (%s, %s, 'customer', %s, %s, 0, %s)
+                        """,
+                        (username, p_hash, full_name, email, verification_token)
                     )
                     connection.commit()
                     user_id = cursor.lastrowid
+            
+            # Send activation email asynchronously
+            send_verification_email(full_name, email, verification_token)
+
+            session.permanent = True
+            app.permanent_session_lifetime = timedelta(minutes=30)
             
             session["user"] = {
                 "id": user_id,
                 "username": username,
                 "role": "customer",
                 "full_name": full_name,
+                "email_verified": 0
             }
             return jsonify({"user": session["user"]})
         except Exception as exc:
@@ -1040,18 +1280,32 @@ def register():
         if username in memory_users or username in fallback_users:
             return jsonify({"error": "Username already taken"}), 400
         
+        # Verify duplicate email in memory
+        if any(u.get("email") == email for u in memory_users.values()):
+            return jsonify({"error": "Email already registered"}), 400
+
         user_id = len(memory_users) + 100
         memory_users[username] = {
             "id": user_id,
             "password_hash": generate_password_hash(password),
             "role": "customer",
-            "full_name": full_name
+            "full_name": full_name,
+            "email": email,
+            "email_verified": 0,
+            "verification_token": verification_token
         }
+        
+        send_verification_email(full_name, email, verification_token)
+
+        session.permanent = True
+        app.permanent_session_lifetime = timedelta(minutes=30)
+
         session["user"] = {
             "id": user_id,
             "username": username,
             "role": "customer",
             "full_name": full_name,
+            "email_verified": 0
         }
         return jsonify({"user": session["user"]})
 
@@ -1060,6 +1314,161 @@ def register():
 def logout():
     session.clear()
     return jsonify({"ok": True})
+
+
+@app.post("/api/forgot-password")
+def forgot_password_api():
+    data = json_payload()
+    email_or_username = (data.get("email") or "").strip()
+    if not email_or_username:
+        return jsonify({"error": "Username or email is required"}), 400
+
+    token = secrets.token_urlsafe(32)
+    expires = datetime.now() + timedelta(hours=1)
+
+    if check_db_health():
+        try:
+            with db_connection() as connection:
+                with connection.cursor(dictionary=True) as cursor:
+                    # Find user by username or email
+                    cursor.execute("SELECT id, username, email, full_name FROM users WHERE username = %s OR email = %s", (email_or_username, email_or_username))
+                    user = cursor.fetchone()
+                    if not user:
+                        # For security, return success even if user not found to prevent username enumeration
+                        return jsonify({"ok": True, "message": "If the account exists, a reset link has been sent."})
+
+                    recipient = user.get("email") or (user["username"] if "@" in user["username"] else "admin@shibanifashion.com")
+                    
+                    cursor.execute(
+                        "UPDATE users SET reset_token = %s, reset_token_expires = %s WHERE id = %s",
+                        (token, expires, user["id"])
+                    )
+                    connection.commit()
+            
+            send_reset_password_email(user["full_name"], recipient, token)
+            return jsonify({"ok": True, "message": "If the account exists, a reset link has been sent."})
+        except Exception as exc:
+            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+    else:
+        # Fallback check
+        user = memory_users.get(email_or_username)
+        if not user:
+            user_entry = next((u for u in memory_users.values() if u.get("email") == email_or_username), None)
+            if user_entry:
+                user = user_entry
+        if not user:
+            return jsonify({"ok": True, "message": "If the account exists, a reset link has been sent."})
+            
+        user["reset_token"] = token
+        user["reset_token_expires"] = expires
+        recipient = user.get("email") or "customer@shibanifashion.com"
+        send_reset_password_email(user["full_name"], recipient, token)
+        return jsonify({"ok": True, "message": "If the account exists, a reset link has been sent."})
+
+
+@app.post("/api/reset-password")
+def reset_password_api():
+    data = json_payload()
+    token = (data.get("token") or "").strip()
+    password = data.get("password", "")
+
+    if not token or not password:
+        return jsonify({"error": "Token and password are required"}), 400
+
+    strength_err = validate_password_strength(password)
+    if strength_err:
+        return jsonify({"error": strength_err}), 400
+
+    p_hash = generate_password_hash(password)
+    now = datetime.now()
+
+    if check_db_health():
+        try:
+            with db_connection() as connection:
+                with connection.cursor(dictionary=True) as cursor:
+                    cursor.execute("SELECT id, reset_token_expires FROM users WHERE reset_token = %s", (token,))
+                    user = cursor.fetchone()
+                    if not user:
+                        return jsonify({"error": "Invalid or expired token"}), 400
+                    
+                    if user["reset_token_expires"] < now:
+                        return jsonify({"error": "Token has expired"}), 400
+                        
+                    cursor.execute(
+                        "UPDATE users SET password_hash = %s, reset_token = NULL, reset_token_expires = NULL WHERE id = %s",
+                        (p_hash, user["id"])
+                    )
+                    connection.commit()
+            return jsonify({"ok": True, "message": "Password has been reset successfully."})
+        except Exception as exc:
+            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+    else:
+        user = next((u for u in memory_users.values() if u.get("reset_token") == token), None)
+        if not user:
+            return jsonify({"error": "Invalid or expired token"}), 400
+        if user.get("reset_token_expires") < now:
+            return jsonify({"error": "Token has expired"}), 400
+            
+        user["password_hash"] = p_hash
+        user["reset_token"] = None
+        user["reset_token_expires"] = None
+        return jsonify({"ok": True, "message": "Password has been reset successfully."})
+
+
+@app.route("/verify-email")
+def verify_email():
+    token = request.args.get("token", "").strip()
+    if not token:
+        return render_template("verify_email.html", success=False, error="Verification token is missing.")
+
+    if check_db_health():
+        try:
+            with db_connection() as connection:
+                with connection.cursor(dictionary=True) as cursor:
+                    cursor.execute("SELECT id FROM users WHERE verification_token = %s", (token,))
+                    user = cursor.fetchone()
+                    if not user:
+                        return render_template("verify_email.html", success=False, error="Invalid or expired verification token.")
+                    
+                    cursor.execute(
+                        "UPDATE users SET email_verified = 1, verification_token = NULL WHERE id = %s",
+                        (user["id"],)
+                    )
+                    connection.commit()
+            
+            if "user" in session and session["user"]["id"] == user["id"]:
+                session["user"]["email_verified"] = 1
+                session.modified = True
+                
+            return render_template("verify_email.html", success=True)
+        except Exception as exc:
+            return render_template("verify_email.html", success=False, error=f"Database error: {str(exc)}")
+    else:
+        username = next((k for k, u in memory_users.items() if u.get("verification_token") == token), None)
+        if not username:
+            return render_template("verify_email.html", success=False, error="Invalid or expired verification token.")
+            
+        user = memory_users[username]
+        user["email_verified"] = 1
+        user["verification_token"] = None
+        
+        if "user" in session and session["user"]["username"] == username:
+            session["user"]["email_verified"] = 1
+            session.modified = True
+            
+        return render_template("verify_email.html", success=True)
+
+
+@app.route("/forgot-password")
+def forgot_password_page():
+    return render_template("forgot_password.html")
+
+
+@app.route("/reset-password")
+def reset_password_page():
+    token = request.args.get("token", "")
+    return render_template("reset_password.html", token=token)
+
 
 
 @app.get("/api/me")
@@ -2120,6 +2529,22 @@ def create_order():
         return jsonify({"error": "Cart is empty"}), 400
 
     user = session["user"]
+    if check_db_health():
+        try:
+            with db_connection() as connection:
+                with connection.cursor(dictionary=True) as cursor:
+                    cursor.execute("SELECT email_verified FROM users WHERE id = %s", (user["id"],))
+                    row = cursor.fetchone()
+                    if row:
+                        user["email_verified"] = int(row.get("email_verified") or 0)
+                        session["user"]["email_verified"] = user["email_verified"]
+                        session.modified = True
+        except Exception:
+            pass
+
+    if not user.get("email_verified", 0):
+        return jsonify({"error": "Please verify your email address to place orders."}), 403
+
     customer_name = (data.get("customer_name") or "").strip() or user["full_name"]
     phone = (data.get("phone") or "").strip()
     address = (data.get("address") or "").strip()

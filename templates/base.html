@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ session.get('csrf_token') }}">
     <title>{% block title %}Shibani Fashion | Premium Ecommerce{% endblock %}</title>
     
     <!-- Tailwind CSS Play CDN -->
@@ -189,6 +190,14 @@
 
     <!-- Main Content Area -->
     <main class="flex-grow">
+        {% if session.get('user') and session['user']['email_verified'] == 0 %}
+            <div class="bg-amber-50 border-b border-amber-200/60 py-3 px-4 sm:px-6 lg:px-8 text-center animate-pulse">
+                <p class="text-xs sm:text-sm font-semibold text-amber-700 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    Please verify your email address to unlock checkout. Check your inbox (or log) for the activation link.
+                </p>
+            </div>
+        {% endif %}
         {% block content %}{% endblock %}
     </main>
 

@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}Order Confirmed | Shibani Fashion{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-20">
+    <div class="bg-white border border-slate-100 rounded-3xl shadow-xl p-8 sm:p-12 space-y-10 text-center relative overflow-hidden">
+        <!-- Elegant Decorative Background Gradient -->
+        <div class="absolute -top-12 -left-12 w-48 h-48 bg-indigo-50/50 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-12 -right-12 w-48 h-48 bg-sky-50/50 rounded-full blur-3xl pointer-events-none"></div>
+
+        <!-- Success Animation & Title -->
+        <div class="space-y-4">
+            <div class="w-24 h-24 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner animate-bounce">
+                <i class="fa-solid fa-circle-check text-5xl"></i>
+            </div>
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight animate-fade-in">Thank you for your order!</h1>
+            <p class="text-sm text-slate-400 max-w-md mx-auto">Your purchase has been approved and is being processed. An invoice receipt has been compiled below for your records.</p>
+        </div>
+
+        <!-- Tracking Progress Steps -->
+        <div class="border-y border-slate-100 py-8">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">Delivery Tracking</h3>
+            <div class="grid grid-cols-4 gap-2 relative">
+                <!-- Progress bar track -->
+                <div class="absolute top-1/2 left-0 right-0 h-1 bg-slate-100 -translate-y-1/2 z-0"></div>
+                <div class="absolute top-1/2 left-0 w-1/4 h-1 bg-indigo-600 -translate-y-1/2 z-0"></div>
+
+                <!-- Step 1: Placed -->
+                <div class="flex flex-col items-center gap-2 relative z-10">
+                    <span class="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold ring-4 ring-white shadow-md">
+                        <i class="fa-solid fa-check"></i>
+                    </span>
+                    <span class="text-xs font-bold text-slate-800">Placed</span>
+                </div>
+                <!-- Step 2: Processing -->
+                <div class="flex flex-col items-center gap-2 relative z-10">
+                    <span class="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold ring-4 ring-white border border-indigo-200">
+                        2
+                    </span>
+                    <span class="text-xs font-bold text-slate-400">Processing</span>
+                </div>
+                <!-- Step 3: Shipped -->
+                <div class="flex flex-col items-center gap-2 relative z-10">
+                    <span class="w-8 h-8 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center text-xs font-bold ring-4 ring-white border border-slate-200">
+                        3
+                    </span>
+                    <span class="text-xs font-bold text-slate-400">Shipped</span>
+                </div>
+                <!-- Step 4: Delivered -->
+                <div class="flex flex-col items-center gap-2 relative z-10">
+                    <span class="w-8 h-8 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center text-xs font-bold ring-4 ring-white border border-slate-200">
+                        4
+                    </span>
+                    <span class="text-xs font-bold text-slate-400">Delivered</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Invoice / Receipt Area -->
+        <div id="invoiceContainer" class="bg-slate-50 rounded-2xl p-6 sm:p-8 text-left border border-slate-100 max-w-lg mx-auto space-y-6">
+            <p class="text-center text-slate-400 text-sm font-semibold">Loading receipt details...</p>
+        </div>
+
+        <!-- Call to Actions -->
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <button type="button" id="printConfirmInvoiceBtn" class="px-8 py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-2xl shadow transition duration-300 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-print"></i> Print Invoice
+            </button>
+            <a href="/shop" class="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-2xl shadow-lg shadow-indigo-100 hover:-translate-y-0.5 transition duration-300">
+                Continue Shopping
+            </a>
+            <a href="/orders" class="px-8 py-3.5 border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-sm rounded-2xl transition duration-300">
+                My Orders List
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const orderId = parseInt(urlParams.get("order_id"));
+    const invoice = document.getElementById("invoiceContainer");
+    if (!orderId || isNaN(orderId)) {
+        invoice.innerHTML = `<p class="text-center text-rose-500 font-bold py-4">Invalid Order ID. Please check from your profile page.</p>`;
+        return;
+    }
+
+    try {
+        const data = await api("/api/orders/my");
+        const orders = data.orders || [];
+        const order = orders.find(o => o.id === orderId);
+        
+        if (!order) {
+            invoice.innerHTML = `<p class="text-center text-rose-500 font-bold py-4">Receipt details could not be loaded.</p>`;
+            return;
+        }
+
+        const dateStr = order.created_at.split("T")[0];
+        const gstRate = 5;
+        const total = Number(order.total);
+        const subtotal = total / (1 + (gstRate / 100));
+        const gst = total - subtotal;
+
+        const itemsHTML = (order.items || []).map(item => `
+            <div class="flex justify-between py-2 border-b border-slate-200/50 last:border-none text-sm font-semibold text-slate-600">
+                <span>${escapeHTML(item.product_name)} <small class="text-slate-400">(${escapeHTML(item.size || 'M')})</small> x${item.quantity}</span>
+                <span class="text-slate-900">${formatPrice(item.price * item.quantity)}</span>
+            </div>
+        `).join("");
+
+        invoice.innerHTML = `
+            <div class="space-y-6">
+                <div class="flex justify-between items-center pb-4 border-b border-slate-200">
+                    <div>
+                        <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Invoice No</span>
+                        <strong class="text-slate-800 font-black text-sm">#SHB-${order.id}</strong>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Date</span>
+                        <strong class="text-slate-800 font-bold text-sm">${dateStr}</strong>
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Shipping Address:</span>
+                    <h4 class="text-slate-800 font-bold text-sm">${escapeHTML(order.customer_name)}</h4>
+                    <p class="text-slate-500 text-xs leading-relaxed">${escapeHTML(order.address)}</p>
+                    <p class="text-slate-500 text-xs">Phone: ${escapeHTML(order.phone)}</p>
+                </div>
+
+                <div class="border-y border-dashed border-slate-200 py-3 space-y-1">
+                    <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider block mb-2">Purchased Items:</span>
+                    ${itemsHTML}
+                </div>
+
+                <div class="space-y-2 text-sm font-semibold text-slate-500">
+                    <div class="flex justify-between">
+                        <span>Taxable Subtotal:</span>
+                        <span class="text-slate-800">${formatPrice(subtotal)}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>GST (Tax ${gstRate}%):</span>
+                        <span class="text-slate-800">${formatPrice(gst)}</span>
+                    </div>
+                    <div class="flex justify-between font-bold text-base text-indigo-600 pt-3 border-t border-slate-200">
+                        <span>Grand Total:</span>
+                        <span>${formatPrice(total)}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Bind print action
+        document.getElementById("printConfirmInvoiceBtn").onclick = () => {
+            const printContent = invoice.innerHTML;
+            const originalContent = document.body.innerHTML;
+            document.body.innerHTML = `
+                <div style="padding: 40px; font-family: sans-serif; max-width: 500px; margin: 0 auto; line-height: 1.6;">
+                    <div style="text-align: center; border-bottom: 2px dashed #ccc; padding-bottom: 20px; margin-bottom: 20px;">
+                        <h2>SHIBANI FASHION</h2>
+                        <p style="font-size: 12px; color: #666;">Official Purchase Receipt</p>
+                    </div>
+                    ${printContent}
+                </div>
+            `;
+            window.print();
+            document.body.innerHTML = originalContent;
+            window.location.reload();
+        };
+
+    } catch (err) {
+        invoice.innerHTML = `<p class="text-center text-rose-500 font-bold py-4">Error fetching receipt details.</p>`;
+    }
+});
+</script>
+{% endblock %}
