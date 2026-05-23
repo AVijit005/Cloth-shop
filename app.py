@@ -9,7 +9,7 @@ from functools import wraps
 
 import mysql.connector
 from mysql.connector.pooling import MySQLConnectionPool
-from flask import Flask, jsonify, request, send_from_directory, session, render_template
+from flask import Flask, jsonify, request, send_from_directory, session, render_template, redirect, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 from dotenv import load_dotenv
 
@@ -236,6 +236,246 @@ starter_products = [
         "badge": "Fresh",
         "description": "Lightweight kurti for comfortable all-day wear.",
     },
+    {
+        "name": "Banarasi Silk Saree",
+        "category": "women",
+        "price": 2999,
+        "old_price": 3999,
+        "size": "Free size",
+        "color": "Royal Red",
+        "stock": "In stock",
+        "rating": 4.9,
+        "badge": "Premium",
+        "description": "Luxurious Banarasi silk saree with intricate zari work, ideal for weddings and grand ceremonies.",
+    },
+    {
+        "name": "Georgette Floral Saree",
+        "category": "women",
+        "price": 1499,
+        "old_price": 1999,
+        "size": "Free size",
+        "color": "Lilac",
+        "stock": "In stock",
+        "rating": 4.6,
+        "badge": "Trending",
+        "description": "Light georgette saree featuring delicate floral prints, perfect for summer evening parties.",
+    },
+    {
+        "name": "Designer Anarkali Suit",
+        "category": "women",
+        "price": 2499,
+        "old_price": 3299,
+        "size": "S, M, L, XL",
+        "color": "Deep Teal",
+        "stock": "In stock",
+        "rating": 4.8,
+        "badge": "Best seller",
+        "description": "Floor-length cotton-silk Anarkali suit with gold embroidery and matching chiffon dupatta.",
+    },
+    {
+        "name": "Cotton Linen Kurta",
+        "category": "women",
+        "price": 999,
+        "old_price": 1399,
+        "size": "M, L, XL",
+        "color": "Beige",
+        "stock": "In stock",
+        "rating": 4.4,
+        "badge": "Casual",
+        "description": "Eco-friendly linen-blend straight kurta with classic neck patterns, perfect for work wear.",
+    },
+    {
+        "name": "Chanderi Silk Saree",
+        "category": "women",
+        "price": 1899,
+        "old_price": 2499,
+        "size": "Free size",
+        "color": "Golden Yellow",
+        "stock": "Limited stock",
+        "rating": 4.7,
+        "badge": "New",
+        "description": "Authentic Chanderi silk weave, lightweight and semi-sheer with a glossy texture.",
+    },
+    {
+        "name": "Cotton Palazzo Pants",
+        "category": "women",
+        "price": 599,
+        "old_price": 799,
+        "size": "M, L, XL",
+        "color": "Off-White",
+        "stock": "In stock",
+        "rating": 4.3,
+        "badge": "",
+        "description": "Comfortable wide-leg cotton palazzos, highly breathable and matches with all kurtis.",
+    },
+    {
+        "name": "Slim Fit Cotton Blazer",
+        "category": "men",
+        "price": 3499,
+        "old_price": 4999,
+        "size": "M, L, XL",
+        "color": "Charcoal Grey",
+        "stock": "In stock",
+        "rating": 4.7,
+        "badge": "Premium",
+        "description": "Structured slim-fit single-breasted blazer in breathable linen-cotton blend for business casuals.",
+    },
+    {
+        "name": "Casual Plaid Shirt",
+        "category": "men",
+        "price": 899,
+        "old_price": 1199,
+        "size": "S, M, L, XL",
+        "color": "Red/Black",
+        "stock": "In stock",
+        "rating": 4.5,
+        "badge": "Trending",
+        "description": "Soft brushed cotton flannel checkered shirt with dual chest pockets, perfect for casual outings.",
+    },
+    {
+        "name": "Linen Casual Trousers",
+        "category": "men",
+        "price": 1499,
+        "old_price": 1999,
+        "size": "30, 32, 34, 36",
+        "color": "Olive Green",
+        "stock": "In stock",
+        "rating": 4.4,
+        "badge": "Summer Special",
+        "description": "Regular fit lightweight linen trousers with drawstring waist and deep side pockets.",
+    },
+    {
+        "name": "Solid Polo T-Shirt",
+        "category": "men",
+        "price": 599,
+        "old_price": 799,
+        "size": "M, L, XL, XXL",
+        "color": "Navy Blue",
+        "stock": "In stock",
+        "rating": 4.6,
+        "badge": "Essential",
+        "description": "Classic pique cotton polo neck t-shirt with ribbed collars and sleeves for sport-casual wear.",
+    },
+    {
+        "name": "Formal Oxford Shirt",
+        "category": "men",
+        "price": 1199,
+        "old_price": 1599,
+        "size": "S, M, L, XL",
+        "color": "Classic White",
+        "stock": "In stock",
+        "rating": 4.7,
+        "badge": "Best seller",
+        "description": "Premium heavyweight Oxford cotton weave formal shirt with button-down collars.",
+    },
+    {
+        "name": "Ethnic Kurta Pajama Set",
+        "category": "men",
+        "price": 1799,
+        "old_price": 2399,
+        "size": "M, L, XL",
+        "color": "Maroon",
+        "stock": "Limited stock",
+        "rating": 4.8,
+        "badge": "Festive",
+        "description": "Elegant cotton-silk blend long kurta paired with comfortable white churidar pajamas.",
+    },
+    {
+        "name": "Kids Denim Dungarees",
+        "category": "kids",
+        "price": 899,
+        "old_price": 1299,
+        "size": "3-6 years",
+        "color": "Indigo Denim",
+        "stock": "In stock",
+        "rating": 4.6,
+        "badge": "Trending",
+        "description": "Durable denim dungaree dress with adjustable shoulder straps and colorful cute patchworks.",
+    },
+    {
+        "name": "Floral Party Gown",
+        "category": "kids",
+        "price": 1199,
+        "old_price": 1699,
+        "size": "4-9 years",
+        "color": "Peach Pink",
+        "stock": "In stock",
+        "rating": 4.7,
+        "badge": "Festive",
+        "description": "Elegant multi-layer net party dress with floral appliques and comfortable inner cotton lining.",
+    },
+    {
+        "name": "Toddler Cotton Romper",
+        "category": "kids",
+        "price": 399,
+        "old_price": 599,
+        "size": "0-18 months",
+        "color": "Sky Blue Print",
+        "stock": "In stock",
+        "rating": 4.8,
+        "badge": "Super Soft",
+        "description": "100% organic cotton snap-button romper with cute cartoon patterns, gentle on baby skin.",
+    },
+    {
+        "name": "Kids Kurta Dhoti Set",
+        "category": "kids",
+        "price": 999,
+        "old_price": 1399,
+        "size": "2-7 years",
+        "color": "Mustard Yellow",
+        "stock": "Limited stock",
+        "rating": 4.7,
+        "badge": "New",
+        "description": "Traditional cotton silk printed boys kurta paired with pre-stitched matching dhoti pants.",
+    },
+    {
+        "name": "Boys Graphic T-Shirt",
+        "category": "kids",
+        "price": 349,
+        "old_price": 499,
+        "size": "5-10 years",
+        "color": "Citrus Green",
+        "stock": "In stock",
+        "rating": 4.5,
+        "badge": "",
+        "description": "Fun graphic print cotton crewneck t-shirt, tagless label to prevent neck itching.",
+    },
+    {
+        "name": "Girls Casual Skirt Set",
+        "category": "kids",
+        "price": 699,
+        "old_price": 999,
+        "size": "3-8 years",
+        "color": "Pink stripes",
+        "stock": "In stock",
+        "rating": 4.4,
+        "badge": "Fresh",
+        "description": "Striped cotton top paired with matching dynamic tiered flared cotton skirt.",
+    },
+    {
+        "name": "Unisex Woolen Sweater",
+        "category": "kids",
+        "price": 799,
+        "old_price": 1099,
+        "size": "2-6 years",
+        "color": "Mustard Yellow",
+        "stock": "In stock",
+        "rating": 4.6,
+        "badge": "Winter",
+        "description": "Cozy and warm knitted round-neck woolen sweater made of non-scratchy soft acrylic yarn.",
+    },
+    {
+        "name": "Kids Summer Shorts Pack",
+        "category": "kids",
+        "price": 449,
+        "old_price": 599,
+        "size": "2-8 years",
+        "color": "Assorted 3-Pack",
+        "stock": "In stock",
+        "rating": 4.5,
+        "badge": "Value Pack",
+        "description": "Three-pack of comfortable pull-on elastic waistband cotton shorts with drawstring.",
+    }
 ]
 
 
@@ -711,9 +951,148 @@ def parse_images(images_json, fallback_image=""):
     return [image for image in images if image]
 
 
+def html_login_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if "user" not in session:
+            return redirect(url_for("login_page"))
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+def html_admin_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if "user" not in session:
+            return redirect(url_for("login_page"))
+        if session["user"].get("role") != "admin":
+            return redirect(url_for("index"))
+        return fn(*args, **kwargs)
+    return wrapper
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/shop")
+def shop_page():
+    return render_template("shop.html")
+
+
+@app.route("/product/<int:product_id>")
+def product_page(product_id):
+    product = None
+    if check_db_health():
+        try:
+            with db_connection() as connection:
+                with connection.cursor(dictionary=True) as cursor:
+                    cursor.execute("SELECT * FROM products WHERE id = %s", (product_id,))
+                    product = cursor.fetchone()
+        except Exception:
+            pass
+    if not product:
+        product = next((p for p in memory_products if p["id"] == product_id), None)
+    
+    if not product:
+        return "Product not found", 404
+        
+    images_list = parse_product_images(product.get("image"), product.get("images"))
+    product["images_list"] = images_list
+    return render_template("product.html", product=product)
+
+
+@app.route("/login")
+def login_page():
+    if "user" in session:
+        if session["user"].get("role") == "admin":
+            return redirect(url_for("admin_dashboard"))
+        return redirect(url_for("index"))
+    return render_template("login.html")
+
+
+@app.route("/signup")
+def signup_page():
+    if "user" in session:
+        return redirect(url_for("index"))
+    return render_template("signup.html")
+
+
+@app.route("/about")
+def about_page():
+    return render_template("about.html")
+
+
+@app.route("/contact")
+def contact_page():
+    return render_template("contact.html")
+
+
+@app.route("/cart")
+@html_login_required
+def cart_page():
+    return render_template("cart.html")
+
+
+@app.route("/wishlist")
+@html_login_required
+def wishlist_page():
+    return render_template("wishlist.html")
+
+
+@app.route("/orders")
+@html_login_required
+def orders_page():
+    return render_template("orders.html")
+
+
+@app.route("/profile")
+@html_login_required
+def profile_page():
+    return render_template("profile.html")
+
+
+@app.route("/rewards")
+@html_login_required
+def rewards_page():
+    return render_template("rewards.html")
+
+
+@app.route("/admin")
+@html_admin_required
+def admin_dashboard():
+    return render_template("admin/overview.html")
+
+
+@app.route("/admin/products")
+@html_admin_required
+def admin_products_page():
+    return render_template("admin/products.html")
+
+
+@app.route("/admin/orders")
+@html_admin_required
+def admin_orders_page():
+    return render_template("admin/orders.html")
+
+
+@app.route("/admin/customers")
+@html_admin_required
+def admin_customers_page():
+    return render_template("admin/customers.html")
+
+
+@app.route("/admin/reviews")
+@html_admin_required
+def admin_reviews_page():
+    return render_template("admin/reviews.html")
+
+
+@app.route("/admin/analytics")
+@html_admin_required
+def admin_analytics_page():
+    return render_template("admin/analytics.html")
 
 
 @app.route("/uploads/<path:filename>")

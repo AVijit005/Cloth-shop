@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Cart & Checkout | Shibani Fashion{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
+    <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight mb-8">Shopping Bag</h1>
+    
+    <div id="cartPageContainer" class="flex flex-col lg:flex-row gap-10 items-start">
+        
+        <!-- Left: Cart Items List -->
+        <div class="w-full lg:flex-grow space-y-6">
+            <div id="cartItemsList" class="space-y-4">
+                <!-- Cart items rendered dynamically by JS -->
+            </div>
+            
+            <!-- Empty state -->
+            <div id="cartEmptyState" class="hidden text-center py-20 bg-white border border-slate-100 rounded-3xl p-8 space-y-4 shadow-sm">
+                <span class="text-5xl text-slate-300 block"><i class="fa-solid fa-basket-shopping"></i></span>
+                <h3 class="font-extrabold text-lg text-slate-700">Your shopping bag is empty</h3>
+                <p class="text-slate-400 text-sm max-w-xs mx-auto">Explore our fresh catalog and add premium clothes to your cart.</p>
+                <a href="/shop" class="inline-block px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow">Go to Shop</a>
+            </div>
+        </div>
+        
+        <!-- Right: Checkout billing summary -->
+        <div id="checkoutSummaryPanel" class="w-full lg:w-[420px] bg-white border border-slate-100 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6 flex-shrink-0 hidden">
+            <h3 class="font-extrabold text-slate-800 text-lg">Order Summary</h3>
+            
+            <!-- Items billing summary details -->
+            <div class="space-y-3.5 text-sm font-semibold text-slate-500 border-b border-slate-100 pb-4">
+                <div class="flex justify-between">
+                    <span>Subtotal:</span>
+                    <span id="billSubtotal" class="text-slate-800">Rs. 0</span>
+                </div>
+                <div class="flex justify-between hidden" id="billDiscountRow">
+                    <span>Coupon Discount:</span>
+                    <span id="billDiscount" class="text-rose-500">-Rs. 0</span>
+                </div>
+                <div class="flex justify-between hidden" id="billPointsDiscountRow">
+                    <span>Points Redeemed Discount:</span>
+                    <span id="billPointsDiscount" class="text-rose-500">-Rs. 0</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>GST (Taxes):</span>
+                    <span id="billGst" class="text-slate-800">Rs. 0</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Delivery Fee:</span>
+                    <span id="billDelivery" class="text-slate-800">Rs. 0</span>
+                </div>
+                <div class="flex justify-between text-base font-extrabold text-slate-800 border-t border-slate-100 pt-3.5">
+                    <span>Estimated Total:</span>
+                    <span id="billTotal" class="text-indigo-600 text-lg">Rs. 0</span>
+                </div>
+            </div>
+            
+            <!-- Promo Code Coupon Form -->
+            <div class="space-y-2">
+                <label for="promoCodeInput" class="block text-xs font-bold text-slate-600 uppercase tracking-wider">Apply Coupon</label>
+                <div class="flex gap-2">
+                    <input type="text" id="promoCodeInput" placeholder="Enter coupon code" 
+                           class="flex-grow bg-slate-100 border-none rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 uppercase" />
+                    <button type="button" id="applyPromoBtn" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition">
+                        Apply
+                    </button>
+                </div>
+                <p id="promoMessage" class="text-xs font-bold hidden"></p>
+                <div id="availableCouponsContainer" class="flex flex-wrap gap-1.5 pt-1.5">
+                    <!-- Available badges loaded dynamically -->
+                </div>
+            </div>
+            
+            <!-- Loyalty Point Redemption Slider -->
+            <div class="space-y-3 bg-slate-50 p-4 border border-slate-100 rounded-2xl" id="checkoutLoyaltyRedeemContainer">
+                <div class="flex justify-between items-center text-xs font-bold text-slate-600 uppercase tracking-wider">
+                    <span>Redeem Coins</span>
+                    <span id="userPointsBalanceLabel" class="text-indigo-600">Balance: 100</span>
+                </div>
+                <div class="space-y-2">
+                    <input type="range" id="redeemPointsSlider" min="0" max="100" value="0" 
+                           class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600" />
+                    <div class="flex justify-between text-xs font-semibold text-slate-500">
+                        <span>0 pts</span>
+                        <span id="sliderPointsValue" class="text-indigo-600 font-bold">0 pts (-Rs. 0)</span>
+                    </div>
+                </div>
+                <p id="loyaltyMessage" class="text-xs font-semibold text-emerald-600 hidden"></p>
+            </div>
+            
+            <!-- Shipping Details Form -->
+            <form id="checkoutForm" class="space-y-4">
+                <h4 class="font-extrabold text-slate-800 text-sm">Shipping Details</h4>
+                
+                <!-- Saved Address selector -->
+                <div class="space-y-1.5" id="checkoutSavedAddressRow">
+                    <label for="checkoutAddressSelector" class="block text-xs font-bold text-slate-600 uppercase tracking-wider">Select Saved Address</label>
+                    <select id="checkoutAddressSelector" class="w-full bg-slate-100 border-none rounded-xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+                        <option value="new">-- Ship to a New Address --</option>
+                    </select>
+                </div>
+                
+                <!-- Full Name, Phone, Address fields -->
+                <div class="space-y-3" id="checkoutAddressFieldsContainer">
+                    <div>
+                        <input type="text" id="checkoutName" required placeholder="Recipient Full Name" 
+                               class="w-full bg-slate-100 border-none rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                    </div>
+                    <div>
+                        <input type="tel" id="checkoutPhone" required placeholder="Recipient Phone Number" 
+                               class="w-full bg-slate-100 border-none rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                    </div>
+                    <div>
+                        <textarea id="checkoutAddress" required rows="3" placeholder="Full Delivery Address" 
+                                  class="w-full bg-slate-100 border-none rounded-xl p-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"></textarea>
+                    </div>
+                    <!-- Save as address checkbox -->
+                    <label class="flex items-center gap-3 text-xs font-bold text-slate-600 cursor-pointer">
+                        <input type="checkbox" id="saveAddressCheckbox" class="w-4 h-4 rounded text-indigo-600 border-slate-300" checked />
+                        <span>Save to my address book</span>
+                    </label>
+                </div>
+                
+                <!-- Payment Mode selection -->
+                <div class="space-y-2">
+                    <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider">Payment Method</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="flex items-center justify-center gap-2 p-3 bg-slate-100 hover:bg-indigo-50 border border-transparent checked:border-indigo-600 rounded-xl cursor-pointer text-xs font-bold text-slate-700 transition">
+                            <input type="radio" name="paymentMode" value="COD" checked class="accent-indigo-600" />
+                            <span>Cash on Delivery</span>
+                        </label>
+                        <label class="flex items-center justify-center gap-2 p-3 bg-slate-100 hover:bg-indigo-50 border border-transparent checked:border-indigo-600 rounded-xl cursor-pointer text-xs font-bold text-slate-700 transition">
+                            <input type="radio" name="paymentMode" value="UPI" class="accent-indigo-600" />
+                            <span>UPI Scan QR</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Submit Order button -->
+                <button type="submit" id="placeOrderSubmitBtn" class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-sm rounded-2xl shadow-lg shadow-indigo-100 transition hover:-translate-y-0.5 mt-4">
+                    Place Order <i class="fa-solid fa-circle-check ml-1.5"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- UPI Payment QR Modal (Hidden by default) -->
+<div id="upiPaymentModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[999] flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-sm w-full shadow-2xl p-6 sm:p-8 border border-slate-100 text-center space-y-6 transform scale-95 transition-all">
+        <div class="flex items-center justify-center gap-2 text-indigo-600 font-extrabold">
+            <i class="fa-solid fa-qrcode"></i>
+            <span>Scan UPI QR Code</span>
+        </div>
+        
+        <p class="text-xs text-slate-500 leading-relaxed">
+            Please scan the QR code below using any UPI app (PhonePe, GPay, Paytm, BHIM) to complete your payment of <strong class="text-slate-800 font-bold" id="upiAmountLabel">Rs. 0</strong>.
+        </p>
+        
+        <!-- QR Code Placeholder container -->
+        <div class="flex justify-center bg-slate-50 p-4 border border-slate-100 rounded-2xl shadow-inner relative">
+            <img id="upiQrCode" src="" alt="UPI QR Code" class="w-48 h-48 block" />
+            <div id="upiStatusOverlay" class="absolute inset-0 bg-white/90 flex flex-col items-center justify-center gap-2 hidden">
+                <span class="text-3xl text-emerald-500 animate-bounce"><i class="fa-solid fa-circle-check"></i></span>
+                <span class="text-sm font-bold text-slate-700">Payment Verified!</span>
+            </div>
+        </div>
+        
+        <!-- Timer countdown -->
+        <div class="text-xs text-slate-400 font-semibold flex items-center justify-center gap-1">
+            <i class="fa-solid fa-stopwatch animate-pulse"></i>
+            <span>Session expires in <strong class="text-rose-500" id="upiTimer">05:00</strong></span>
+        </div>
+        
+        <div class="flex gap-3">
+            <button type="button" id="upiConfirmBtn" class="flex-grow py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow transition">
+                Confirm Paid
+            </button>
+            <button type="button" id="upiCancelBtn" class="py-3 px-5 border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-sm rounded-xl transition">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}

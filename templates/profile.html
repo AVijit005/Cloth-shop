@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}My Profile | Shibani Fashion{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 space-y-12">
+    <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">My Profile</h1>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-10 items-start">
+        
+        <!-- Left: Basic Details Card -->
+        <div class="md:col-span-1 bg-white border border-slate-100 rounded-3xl p-6 shadow-sm space-y-6 text-center">
+            <div class="flex justify-center">
+                <span class="w-16 h-16 rounded-full bg-indigo-600 text-white font-extrabold flex items-center justify-center text-xl shadow-lg">
+                    {{ session['user']['full_name'][:2] | upper }}
+                </span>
+            </div>
+            <div>
+                <h3 class="font-extrabold text-slate-800 text-lg leading-tight">{{ session['user']['full_name'] }}</h3>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-widest block mt-1">{{ session['user']['role'] }}</span>
+            </div>
+            
+            <div class="border-t border-slate-100 pt-6">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Loyalty Club Balance</span>
+                <span class="text-3xl font-black text-indigo-600" id="profileLoyaltyPointsLabel">100</span>
+                <span class="text-[10px] text-slate-400 font-semibold block mt-1">Coins earned on purchases</span>
+            </div>
+        </div>
+        
+        <!-- Right: Edit Form & Address Book -->
+        <div class="md:col-span-2 space-y-10">
+            <!-- Edit Profile details Form -->
+            <form id="profileForm" class="bg-white border border-slate-100 rounded-3xl p-6 sm:p-8 shadow-sm space-y-4">
+                <h3 class="font-extrabold text-slate-800 text-lg mb-2">Edit Account Information</h3>
+                <div>
+                    <label for="profileFullName" class="block text-xs font-bold text-slate-600 mb-1">Full Name</label>
+                    <input type="text" id="profileFullName" required value="{{ session['user']['full_name'] }}" 
+                           class="w-full bg-slate-100 border-none rounded-2xl px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                </div>
+                <div>
+                    <label for="profilePhone" class="block text-xs font-bold text-slate-600 mb-1">Default Phone</label>
+                    <input type="tel" id="profilePhone" placeholder="Enter default phone number" 
+                           class="w-full bg-slate-100 border-none rounded-2xl px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                </div>
+                <div>
+                    <button type="submit" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow transition duration-300">
+                        Update Information
+                    </button>
+                </div>
+            </form>
+            
+            <!-- Multi-Address Book Manager -->
+            <div class="bg-white border border-slate-100 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+                <div class="flex justify-between items-center">
+                    <h3 class="font-extrabold text-slate-800 text-lg">Shipping Address Book</h3>
+                    <button type="button" id="addNewAddressBtn" class="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold text-xs rounded-xl transition">
+                        + Add Address
+                    </button>
+                </div>
+                
+                <div id="profileAddressesList" class="space-y-4">
+                    <!-- Loaded dynamically via JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Address Creation Modal (Hidden by default) -->
+<div id="addressModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[999] flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl p-6 sm:p-8 border border-slate-100 space-y-6 transform scale-95 transition-all duration-300">
+        <div class="flex items-center justify-between">
+            <h3 class="font-extrabold text-slate-800 text-lg">Add New Shipping Address</h3>
+            <button id="closeAddressModalBtn" class="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        
+        <form id="addressForm" class="space-y-4">
+            <div>
+                <label for="addressLabelInput" class="block text-xs font-bold text-slate-600 mb-1">Label</label>
+                <input type="text" id="addressLabelInput" required placeholder="e.g. Home, Work, Parents Home" 
+                       class="w-full bg-slate-100 border-none rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+            </div>
+            <div>
+                <label for="addressNameInput" class="block text-xs font-bold text-slate-600 mb-1">Recipient Name</label>
+                <input type="text" id="addressNameInput" required placeholder="Full Name" 
+                       class="w-full bg-slate-100 border-none rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+            </div>
+            <div>
+                <label for="addressPhoneInput" class="block text-xs font-bold text-slate-600 mb-1">Recipient Phone</label>
+                <input type="tel" id="addressPhoneInput" required placeholder="Phone Number" 
+                       class="w-full bg-slate-100 border-none rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                </div>
+            <div>
+                <label for="addressDetailsInput" class="block text-xs font-bold text-slate-600 mb-1">Address details</label>
+                <textarea id="addressDetailsInput" required rows="3" placeholder="Full shipping address" 
+                          class="w-full bg-slate-100 border-none rounded-xl p-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"></textarea>
+            </div>
+            <button type="submit" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition shadow-lg">
+                Save Address
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

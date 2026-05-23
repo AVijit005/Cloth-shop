@@ -1,0 +1,100 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Overview | Admin Console{% endblock %}
+{% block page_title %}Dashboard Overview{% endblock %}
+
+{% block content %}
+<div class="space-y-10">
+    <!-- Top Statistics Cards -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" id="adminStatsGrid">
+        <!-- Card 1: Revenue -->
+        <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex items-center justify-between">
+            <div class="space-y-1.5">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Revenue</span>
+                <strong class="text-2xl font-black text-slate-800" id="adminStatRevenue">Rs. 0</strong>
+            </div>
+            <span class="p-3.5 bg-indigo-50 text-indigo-600 rounded-2xl text-xl"><i class="fa-solid fa-indian-rupee-sign"></i></span>
+        </div>
+        
+        <!-- Card 2: Orders -->
+        <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex items-center justify-between">
+            <div class="space-y-1.5">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Orders</span>
+                <strong class="text-2xl font-black text-slate-800" id="adminStatOrders">0</strong>
+            </div>
+            <span class="p-3.5 bg-emerald-50 text-emerald-600 rounded-2xl text-xl"><i class="fa-solid fa-receipt"></i></span>
+        </div>
+        
+        <!-- Card 3: Customers -->
+        <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex items-center justify-between">
+            <div class="space-y-1.5">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Active Customers</span>
+                <strong class="text-2xl font-black text-slate-800" id="adminStatCustomers">0</strong>
+            </div>
+            <span class="p-3.5 bg-sky-50 text-sky-600 rounded-2xl text-xl"><i class="fa-solid fa-users"></i></span>
+        </div>
+        
+        <!-- Card 4: Reviews -->
+        <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex items-center justify-between">
+            <div class="space-y-1.5">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Pending Reviews</span>
+                <strong class="text-2xl font-black text-slate-800" id="adminStatReviews">0</strong>
+            </div>
+            <span class="p-3.5 bg-amber-50 text-amber-600 rounded-2xl text-xl"><i class="fa-solid fa-star-half-stroke"></i></span>
+        </div>
+    </section>
+    
+    <!-- Mid Section: Settings and Stock Warnings -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        <!-- Settings Panel -->
+        <div class="lg:col-span-2 bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+            <h3 class="font-extrabold text-slate-800 text-lg flex items-center gap-2">
+                <i class="fa-solid fa-sliders text-indigo-600"></i> Global Store Configuration
+            </h3>
+            
+            <form id="settingsForm" class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div class="space-y-1.5">
+                    <label for="settingsGst" class="block text-xs font-bold text-slate-600 uppercase tracking-wider">GST Tax Rate (%)</label>
+                    <input type="number" id="settingsGst" step="0.1" min="0" required placeholder="5.0"
+                           class="w-full bg-slate-100 border-none rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                </div>
+                <div class="space-y-1.5">
+                    <label for="settingsDelivery" class="block text-xs font-bold text-slate-600 uppercase tracking-wider">Standard Delivery Fee (Rs.)</label>
+                    <input type="number" id="settingsDelivery" min="0" required placeholder="99"
+                           class="w-full bg-slate-100 border-none rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                </div>
+                <div class="space-y-1.5">
+                    <label for="settingsThreshold" class="block text-xs font-bold text-slate-600 uppercase tracking-wider">Free Delivery Threshold (Rs.)</label>
+                    <input type="number" id="settingsThreshold" min="0" required placeholder="999"
+                           class="w-full bg-slate-100 border-none rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                </div>
+                <div class="space-y-1.5">
+                    <label for="settingsOtherCharges" class="block text-xs font-bold text-slate-600 uppercase tracking-wider">Other Handling Charges (Rs.)</label>
+                    <input type="number" id="settingsOtherCharges" min="0" required placeholder="0"
+                           class="w-full bg-slate-100 border-none rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                </div>
+                
+                <div class="sm:col-span-2 pt-2 border-t border-slate-100 flex justify-end">
+                    <button type="submit" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow transition duration-200">
+                        Save Configuration
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Stock Warnings Panel -->
+        <div class="lg:col-span-1 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
+            <h3 class="font-extrabold text-slate-800 text-base flex items-center gap-2">
+                <i class="fa-solid fa-triangle-exclamation text-amber-500"></i> Stock Warnings
+            </h3>
+            
+            <div id="lowStockList" class="space-y-3">
+                <!-- Stock warnings loaded dynamically via JS, placeholders: -->
+                <div class="p-3.5 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-between text-xs font-bold">
+                    <span class="text-slate-700">Checking inventory...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

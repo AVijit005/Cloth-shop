@@ -1,0 +1,51 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Financial Analytics | Admin Console{% endblock %}
+{% block page_title %}Sales & Financial Analytics{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    
+    <!-- Charts grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        <!-- Sales Trend Line Chart Card -->
+        <div class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+            <h3 class="font-extrabold text-slate-800 text-lg flex items-center gap-2">
+                <i class="fa-solid fa-chart-line text-indigo-600"></i> Weekly Sales Revenue Trend
+            </h3>
+            
+            <div class="relative bg-slate-50 rounded-2xl p-4 border border-slate-100 flex items-center justify-center">
+                <canvas id="salesTrendCanvas" class="w-full h-[300px]"></canvas>
+            </div>
+        </div>
+        
+        <!-- Category Distribution Pie Chart Card -->
+        <div class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+            <h3 class="font-extrabold text-slate-800 text-lg flex items-center gap-2">
+                <i class="fa-solid fa-chart-pie text-indigo-600"></i> Category Sales Distribution
+            </h3>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 items-center">
+                <div class="sm:col-span-2 relative bg-slate-50 rounded-2xl p-4 border border-slate-100 flex justify-center items-center">
+                    <canvas id="categorySalesCanvas" width="220" height="220" class="w-[220px] h-[220px]"></canvas>
+                </div>
+                <div class="sm:col-span-1 space-y-4" id="categorySalesLegend">
+                    <!-- Loaded dynamically via JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Detailed Analytics Tables -->
+    <div class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+        <h3 class="font-extrabold text-slate-800 text-lg flex items-center gap-2">
+            <i class="fa-solid fa-table-list text-indigo-600"></i> Analytics Breakdown
+        </h3>
+        
+        <div id="analyticsDetailsSection" class="space-y-6 text-xs sm:text-sm font-semibold text-slate-500">
+            <!-- Rendered dynamically by JS -->
+            <div class="p-6 text-center text-slate-400">Compiling financial logs...</div>
+        </div>
+    </div>
+</div>
+{% endblock %}

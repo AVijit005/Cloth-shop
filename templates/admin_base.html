@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Admin Console | Shibani Fashion{% endblock %}</title>
+    
+    <!-- Tailwind CSS Play CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4f46e5', // indigo-600
+                        primaryHover: '#4338ca', // indigo-700
+                        success: '#10b981', // emerald-500
+                        danger: '#ef4444', // red-500
+                        warning: '#f59e0b', // amber-500
+                        darkBg: '#0f172a', // slate-900
+                    },
+                    fontFamily: {
+                        sans: ['Outfit', 'Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Google Fonts: Outfit & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Outfit', 'Inter', sans-serif;
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex">
+
+    <!-- Sidebar Navigation -->
+    <aside class="w-64 bg-slate-900 text-slate-300 flex-shrink-0 flex flex-col hidden md:flex border-r border-slate-800">
+        <!-- Sidebar Brand Header -->
+        <div class="h-20 flex items-center px-6 border-b border-slate-800 gap-2.5">
+            <span class="bg-indigo-600 text-white p-2 rounded-xl">
+                <i class="fa-solid fa-toolbox text-base"></i>
+            </span>
+            <span class="font-extrabold text-xl tracking-tight text-white">ADMIN CONSOLE</span>
+        </div>
+        
+        <!-- Sidebar Nav Links -->
+        <nav class="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
+            <a href="/admin" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold hover:bg-slate-800 hover:text-white transition duration-200 {% if request.path == '/admin' %}bg-indigo-600 text-white hover:bg-indigo-600{% endif %}">
+                <i class="fa-solid fa-chart-line text-lg"></i> Overview / Alerts
+            </a>
+            <a href="/admin/products" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold hover:bg-slate-800 hover:text-white transition duration-200 {% if request.path == '/admin/products' %}bg-indigo-600 text-white hover:bg-indigo-600{% endif %}">
+                <i class="fa-solid fa-shirt text-lg"></i> Products Catalog
+            </a>
+            <a href="/admin/orders" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold hover:bg-slate-800 hover:text-white transition duration-200 {% if request.path == '/admin/orders' %}bg-indigo-600 text-white hover:bg-indigo-600{% endif %}">
+                <i class="fa-solid fa-receipt text-lg"></i> Orders Manager
+            </a>
+            <a href="/admin/customers" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold hover:bg-slate-800 hover:text-white transition duration-200 {% if request.path == '/admin/customers' %}bg-indigo-600 text-white hover:bg-indigo-600{% endif %}">
+                <i class="fa-solid fa-users text-lg"></i> Customers & Points
+            </a>
+            <a href="/admin/reviews" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold hover:bg-slate-800 hover:text-white transition duration-200 {% if request.path == '/admin/reviews' %}bg-indigo-600 text-white hover:bg-indigo-600{% endif %}">
+                <i class="fa-solid fa-star-half-stroke text-lg"></i> Reviews Mod
+            </a>
+            <a href="/admin/analytics" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold hover:bg-slate-800 hover:text-white transition duration-200 {% if request.path == '/admin/analytics' %}bg-indigo-600 text-white hover:bg-indigo-600{% endif %}">
+                <i class="fa-solid fa-chart-pie text-lg"></i> Financial Charts
+            </a>
+        </nav>
+        
+        <!-- Sidebar Footer Options -->
+        <div class="p-4 border-t border-slate-800 space-y-2">
+            <a href="/" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-800 text-slate-400 hover:text-white transition">
+                <i class="fa-solid fa-arrow-left"></i> View Live Shop
+            </a>
+            <button id="adminLogoutBtn" class="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-rose-950 text-rose-400 hover:text-rose-200 transition">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout console
+            </button>
+        </div>
+    </aside>
+
+    <!-- Content Panel Wrapper -->
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <!-- Top header bar -->
+        <header class="h-20 bg-white border-b border-slate-200 flex-shrink-0 flex items-center justify-between px-6 sm:px-8">
+            <div class="flex items-center gap-4">
+                <!-- Mobile menu toggle -->
+                <button class="md:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-lg" id="adminMobileMenuToggle">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+                <h1 class="text-xl sm:text-2xl font-black text-slate-800">
+                    {% block page_title %}Dashboard{% endblock %}
+                </h1>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <div id="adminDBStatusAlert" class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600 border border-emerald-100">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span> MySQL Active
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="w-9 h-9 rounded-full bg-indigo-600 text-white font-extrabold flex items-center justify-center text-sm shadow">
+                        AD
+                    </span>
+                    <span class="hidden sm:inline text-sm font-bold text-slate-700">Shibani Administrator</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Admin Mobile Navigation (Hidden by default) -->
+        <div id="adminMobileNavMenu" class="hidden md:hidden border-b border-slate-200 bg-slate-900 text-slate-300 py-4 px-6 space-y-2 flex flex-col font-semibold">
+            <a href="/admin" class="hover:text-white py-1.5 transition">Overview / Alerts</a>
+            <a href="/admin/products" class="hover:text-white py-1.5 transition">Products Catalog</a>
+            <a href="/admin/orders" class="hover:text-white py-1.5 transition">Orders Manager</a>
+            <a href="/admin/customers" class="hover:text-white py-1.5 transition">Customers & Points</a>
+            <a href="/admin/reviews" class="hover:text-white py-1.5 transition">Reviews Mod</a>
+            <a href="/admin/analytics" class="hover:text-white py-1.5 transition">Financial Charts</a>
+            <div class="border-t border-slate-800 my-2"></div>
+            <a href="/" class="text-slate-400 hover:text-white py-1 transition">View Live Shop</a>
+            <button id="adminMobileLogoutBtn" class="text-rose-400 hover:text-rose-200 py-1 text-left transition">Logout Console</button>
+        </div>
+
+        <!-- Dashboard Content Body -->
+        <main class="flex-1 overflow-y-auto p-6 sm:p-8">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Toast Alert notifications -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-[9999] flex flex-col gap-3 max-w-sm w-full pointer-events-none"></div>
+
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

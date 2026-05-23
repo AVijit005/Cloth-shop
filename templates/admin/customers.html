@@ -1,0 +1,41 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Customers | Admin Console{% endblock %}
+{% block page_title %}Customers Directory{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Controls Header -->
+    <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div class="relative w-full sm:max-w-xs">
+            <input type="text" id="adminCustomerSearch" placeholder="Search customers by name or ID..." 
+                   class="w-full bg-slate-100 border-none rounded-xl px-4 py-2.5 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
+            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </span>
+        </div>
+    </div>
+    
+    <!-- Customers Table Card -->
+    <div class="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        <th class="py-4 px-6">Customer ID</th>
+                        <th class="py-4 px-6">Account Profile</th>
+                        <th class="py-4 px-6">Membership Points</th>
+                        <th class="py-4 px-6 text-right">Points Management</th>
+                    </tr>
+                </thead>
+                <tbody id="adminCustomersTableBody" class="divide-y divide-slate-100 text-sm font-semibold text-slate-600">
+                    <!-- Loaded dynamically via JS -->
+                    <tr>
+                        <td colspan="4" class="py-12 text-center text-slate-400">Loading customer profiles...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
