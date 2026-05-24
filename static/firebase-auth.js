@@ -22,7 +22,10 @@ document
 
       console.log(user);
 
-      alert("Google Login Successful");
+      alert("Login Successful");
+
+      // redirect after login
+      window.location.href = "/";
 
     } catch (error) {
 
