@@ -19,7 +19,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install ruff
       - name: Lint with Ruff
-        run: ruff check app.py --ignore=E501,F403,E402
+        run: ruff check run.py app/ --ignore=E501,F403,E402
 
   test:
     runs-on: ubuntu-latest

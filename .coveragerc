@@ -1,5 +1,5 @@
 [run]
-source = app.py
+source = run.py
 omit = */venv/*,*/env/*,*/__pycache__/*,*test*
 relative_files = True
 

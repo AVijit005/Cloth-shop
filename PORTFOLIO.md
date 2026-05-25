@@ -65,7 +65,7 @@ The app had `app.permanent_session_lifetime = timedelta(minutes=30)` at startup,
 1. **Tests first**: Every API endpoint has at least happy-path + error-case tests. Auth tests cover registration validation, strength rules, duplicate detection, authorization boundaries.
 2. **Security review**: Before any merge, I check: CSRF protection on all POST/PUT/DELETE, XSS in user-controlled output, rate limiting on auth endpoints, input validation, authorization decorators.
 3. **CI pipeline**: GitHub Actions runs Ruff lint + pytest on every push. Coverage report generated but not gated (yet).
-4. **Progressive refactoring**: The monolithic `app.py` coexists with a modular `app/` package. Routes are extracted one at a time into Blueprints — zero risk, continuous delivery.
+4. **Progressive refactoring**: The monolithic `run.py` coexists with a modular `app/` package. Routes are extracted one at a time into Blueprints — zero risk, continuous delivery.
 
 ---
 

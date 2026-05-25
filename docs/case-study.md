@@ -117,7 +117,7 @@ Tests use the app's in-memory fallback mode for determinism.
 3. **Testing investment**: The 113-test suite catches regressions immediately and serves as living documentation.
 
 ### What I'd improve
-1. **Start modular**: The monolithic `app.py` grew organically. Starting with Blueprints from day one would have saved refactoring effort.
+1. **Start modular**: The monolithic `run.py` grew organically. Starting with Blueprints from day one would have saved refactoring effort.
 2. **Type hints**: Python type hints on all functions would catch interface mismatches earlier.
 3. **CI with MySQL**: Currently tests only exercise the memory path. A Docker-based CI job that tests against a real MySQL would catch storage-specific bugs.
 

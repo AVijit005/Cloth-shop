@@ -21,9 +21,9 @@ os.environ["SECRET_KEY"] = "test-secret-key-for-pytest-only-2024"
 if "SHIBANI_SECRET_KEY" not in os.environ:
     os.environ["SHIBANI_SECRET_KEY"] = "test-secret-key-for-pytest-only-2024"
 
-# Import app.py as a module (not the app/ package) using importlib
+# Import run.py as a module (not the app/ package) using importlib
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-app_path = os.path.join(BASE_DIR, "app.py")
+app_path = os.path.join(BASE_DIR, "run.py")
 spec = importlib.util.spec_from_file_location("app_main", app_path)
 app_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(app_module)

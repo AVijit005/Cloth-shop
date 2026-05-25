@@ -111,7 +111,7 @@ Built as a monolithic single-file Flask backend with a declarative vanilla JavaS
 ## Architecture Overview
 
 ```
-Browser ──HTTP──> Flask (app.py) ──┬── MySQL (primary)
+Browser ──HTTP──> Flask (run.py) ──┬── MySQL (primary)
                                     │     connection_pool_size=10
                                     │     indexes on orders, products, reviews
                                     │
@@ -148,7 +148,7 @@ Templates (Jinja2):
   16 page templates + 6 admin templates
 ```
 
-The app uses a **single-file Flask backend** with a declarative JavaScript frontend. The JS file contains a path-based router (`/shop → initShop()`, `/product/... → initProductDetail()`, etc.) and all page-specific controllers, keeping the architecture simple without a frontend framework. A modular `app/` package coexists alongside `app.py` for progressive migration to Blueprints and the service layer pattern.
+The app uses **`run.py` as the primary Flask entry point** with a declarative JavaScript frontend. The JS file contains a path-based router (`/shop → initShop()`, `/product/... → initProductDetail()`, etc.) and all page-specific controllers, keeping the architecture simple without a frontend framework. A modular `app/` package coexists alongside `app.py` for progressive migration to Blueprints and the service layer pattern.
 
 ---
 
@@ -157,7 +157,7 @@ The app uses a **single-file Flask backend** with a declarative JavaScript front
 This project supports Google Sign-In via Firebase:
 
 1. **Client**: `firebase-auth.js` opens a Google popup via Firebase SDK v10, retrieves an ID token
-2. **Server**: `app.py:57-65` initializes Firebase Admin from `FIREBASE_SERVICE_ACCOUNT` env variable (JSON string). The `/api/login/google` endpoint verifies the ID token and creates/authenticates the user
+2. **Server**: `run.py` initializes Firebase Admin from `FIREBASE_SERVICE_ACCOUNT` env variable (JSON string). The `/api/login/google` endpoint verifies the ID token and creates/authenticates the user
 3. **Fallback**: If Firebase is not configured, Google sign-in returns a 503 — password login continues to work
 
 To enable: set `FIREBASE_SERVICE_ACCOUNT` in your environment to your Firebase service account JSON string.
@@ -219,7 +219,7 @@ cp .env.example .env
 # Edit .env with your MySQL credentials and a secret key
 
 # Run
-python app.py
+python run.py
 # → http://127.0.0.1:5000
 ```
 
@@ -253,7 +253,7 @@ This project includes a `render.yaml` blueprint for one-click deployment:
 3. Connect your GitHub repository
 4. Render auto-detects `render.yaml`, installs dependencies, and starts with:
    ```
-   waitress-serve --host=0.0.0.0 --port=$PORT app:app
+    waitress-serve --host=0.0.0.0 --port=$PORT run:app
    ```
 5. Add environment variables (especially `MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DATABASE`, `SECRET_KEY`) in the Render service dashboard
 6. For a production MySQL database, use Render's MySQL add-on, Railway, Aiven, or AWS RDS

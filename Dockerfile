@@ -26,4 +26,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/health')"
 
 # Production start
-CMD ["waitress-serve", "--host=0.0.0.0", "--port=5000", "app:app"]
+CMD ["waitress-serve", "--host=0.0.0.0", "--port=5000", "run:app"]
