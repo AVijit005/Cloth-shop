@@ -59,6 +59,48 @@
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
         }
+        /* Toast animations */
+        @keyframes toastSlideIn {
+            from { transform: translateX(120%); opacity: 0; }
+            to   { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes toastSlideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to   { transform: translateX(120%); opacity: 0; }
+        }
+        .toast-enter { animation: toastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .toast-exit  { animation: toastSlideOut 0.25s ease-in forwards; }
+        /* Skeleton pulse */
+        .skeleton-pulse {
+            background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+            background-size: 200% 100%;
+            animation: skeletonShimmer 1.4s ease-in-out infinite;
+        }
+        @keyframes skeletonShimmer {
+            0%   { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        /* Image zoom lens */
+        .zoom-lens {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            border: 2px solid #171717;
+            background-repeat: no-repeat;
+            pointer-events: none;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+        .zoom-container:hover .zoom-lens { opacity: 1; }
+        /* Mini cart slide */
+        @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        @keyframes slideOutRight { from { transform: translateX(0); } to { transform: translateX(100%); } }
+        .mini-cart-enter { animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .mini-cart-exit  { animation: slideOutRight 0.25s ease-in forwards; }
+        /* Search dropdown */
+        .search-suggestion { cursor: pointer; transition: background 0.15s; }
+        .search-suggestion:hover, .search-suggestion.active { background: #f1f5f9; }
     </style>
     {% block head %}{% endblock %}
 </head>
@@ -79,14 +121,15 @@
                 </div>
                 
                 <!-- Search bar (Desktop) -->
-                <div class="hidden md:flex flex-1 max-w-xs mx-8">
+                <div class="hidden md:flex flex-1 max-w-xs mx-8 relative">
                     <form id="globalSearchForm" class="w-full relative">
-                        <input type="text" id="globalSearchInput" placeholder="SEARCH COLLECTIONS..." 
+                        <input type="text" id="globalSearchInput" placeholder="SEARCH COLLECTIONS..." autocomplete="off" aria-label="Search collections"
                                class="w-full bg-transparent border-b border-neutral-200 py-1.5 pl-6 pr-2 text-xs tracking-wider uppercase focus:outline-none focus:border-neutral-900 transition-all duration-300" />
                         <span class="absolute left-0 top-1/2 -translate-y-1/2 text-neutral-400 text-xs">
                             <i class="fa-solid fa-magnifying-glass"></i>
                         </span>
                     </form>
+                    <div id="searchSuggestions" class="absolute top-full left-0 right-0 bg-white border border-neutral-200 shadow-xl z-50 max-h-80 overflow-y-auto hidden" role="listbox" aria-label="Search suggestions"></div>
                 </div>
                 
                 <!-- Navigation menu (Desktop) -->
@@ -100,26 +143,26 @@
                 <!-- Utility Icons & User Menu -->
                 <div class="flex items-center gap-1 sm:gap-2">
                     <!-- Search toggle for mobile -->
-                    <button class="md:hidden p-2 text-neutral-500 hover:text-neutral-900 rounded-full transition" id="mobileSearchToggle">
+                    <button class="md:hidden p-2 text-neutral-500 hover:text-neutral-900 rounded-full transition" id="mobileSearchToggle" aria-label="Toggle search">
                         <i class="fa-solid fa-magnifying-glass text-base"></i>
                     </button>
                     
                     <!-- Wishlist icon -->
-                    <a href="/wishlist" class="p-2 text-neutral-500 hover:text-neutral-900 relative transition">
+                    <a href="/wishlist" class="p-2 text-neutral-500 hover:text-neutral-900 relative transition" aria-label="Wishlist">
                         <i class="fa-regular fa-heart text-lg"></i>
                         <span id="wishlistBadge" class="absolute top-0 right-0 bg-neutral-900 text-white text-[9px] font-bold rounded-full w-4.5 h-4.5 flex items-center justify-center border border-white scale-0 transition-transform duration-300">0</span>
                     </a>
                     
-                    <!-- Cart icon -->
-                    <a href="/cart" class="p-2 text-neutral-500 hover:text-neutral-900 relative transition">
+                    <!-- Cart icon with mini-cart trigger -->
+                    <button type="button" id="cartIconBtn" class="p-2 text-neutral-500 hover:text-neutral-900 relative transition" aria-label="Shopping cart">
                         <i class="fa-solid fa-cart-shopping text-lg"></i>
                         <span id="cartBadge" class="absolute top-0 right-0 bg-neutral-900 text-white text-[9px] font-bold rounded-full w-4.5 h-4.5 flex items-center justify-center border border-white scale-0 transition-transform duration-300">0</span>
-                    </a>
+                    </button>
                     
                     <!-- User profile dropdown / Login button -->
                     <div class="relative ml-2" id="userMenuDropdownContainer">
                         {% if session.get('user') %}
-                            <button id="userDropdownTrigger" class="flex items-center gap-2 p-1 bg-white hover:bg-neutral-50 border border-neutral-200 rounded-full transition pr-3 focus:outline-none">
+                            <button id="userDropdownTrigger" class="flex items-center gap-2 p-1 bg-white hover:bg-neutral-50 border border-neutral-200 rounded-full transition pr-3 focus:outline-none" aria-haspopup="true" aria-expanded="false">
                                 <span class="w-7 h-7 rounded-full bg-neutral-900 text-white font-bold flex items-center justify-center text-[10px] uppercase">
                                     {{ session['user']['full_name'][:2] | upper }}
                                 </span>
@@ -159,26 +202,27 @@
                     </div>
                     
                     <!-- Mobile Hamburger menu -->
-                    <button class="lg:hidden p-2 text-neutral-600 hover:text-neutral-900 rounded-full transition focus:outline-none" id="mobileMenuToggle">
+                    <button class="lg:hidden p-2 text-neutral-600 hover:text-neutral-900 rounded-full transition focus:outline-none" id="mobileMenuToggle" aria-label="Toggle menu" aria-expanded="false">
                         <i class="fa-solid fa-bars text-lg"></i>
                     </button>
                 </div>
             </div>
             
             <!-- Mobile Search Bar (Collapsible) -->
-            <div id="mobileSearchContainer" class="hidden pb-4 md:hidden">
+            <div id="mobileSearchContainer" class="hidden pb-4 md:hidden relative">
                 <form id="mobileSearchForm" class="relative">
-                    <input type="text" id="mobileSearchInput" placeholder="SEARCH COLLECTIONS..." 
+                    <input type="text" id="mobileSearchInput" placeholder="SEARCH COLLECTIONS..." autocomplete="off"
                            class="w-full bg-neutral-50 border border-neutral-200 rounded-none px-4 py-2 pl-10 text-xs tracking-wider uppercase focus:outline-none focus:border-neutral-900" />
                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 text-xs">
                         <i class="fa-solid fa-magnifying-glass"></i>
                     </span>
                 </form>
+                <div id="mobileSearchSuggestions" class="absolute top-full left-0 right-0 bg-white border border-neutral-200 shadow-xl z-50 max-h-64 overflow-y-auto hidden"></div>
             </div>
         </div>
         
         <!-- Mobile Dropdown Nav Menu -->
-        <div id="mobileNavMenu" class="hidden lg:hidden border-t border-neutral-100 bg-white shadow-lg py-4 px-6 space-y-3 flex flex-col font-bold text-xs uppercase tracking-widest text-neutral-600 transition-all duration-300">
+        <div id="mobileNavMenu" class="hidden lg:hidden border-t border-neutral-100 bg-white shadow-lg py-4 px-6 space-y-3 flex flex-col font-bold text-xs uppercase tracking-widest text-neutral-600 transition-all duration-300" aria-label="Mobile navigation">
             <a href="/" class="hover:text-neutral-900 py-1.5 transition">Home</a>
             <a href="/shop" class="hover:text-neutral-900 py-1.5 transition">Shop Catalog</a>
             <a href="/about" class="hover:text-neutral-900 py-1.5 transition">About Us</a>
@@ -200,7 +244,103 @@
     </main>
 
     <!-- Global Toast Alert Message Container -->
-    <div id="toastContainer" class="fixed bottom-5 right-5 z-[9999] flex flex-col gap-3 max-w-sm w-full pointer-events-none"></div>
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-[9999] flex flex-col gap-3 max-w-sm w-full pointer-events-none" aria-live="polite" aria-label="Notifications"></div>
+
+    <!-- Global Loading Overlay -->
+    <div id="globalLoadingOverlay" class="fixed inset-0 z-[99999] bg-black/30 flex items-center justify-center hidden transition-all duration-300" role="alert" aria-label="Loading">
+        <div class="bg-white rounded-2xl shadow-2xl px-8 py-10 flex flex-col items-center gap-4 max-w-xs w-full mx-4">
+            <div class="w-10 h-10 border-[3px] border-neutral-200 border-t-neutral-900 rounded-full animate-spin"></div>
+            <p id="loadingOverlayMessage" class="text-sm font-semibold text-neutral-600 text-center">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Product Quick View Modal -->
+    <div id="quickViewModal" class="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 hidden" role="dialog" aria-modal="true" aria-label="Product quick view">
+        <div class="bg-white max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-neutral-200 transform scale-95 transition-all duration-300">
+            <div class="relative p-4 sm:p-8">
+                <button type="button" id="closeQuickViewBtn" class="absolute top-4 right-4 z-20 p-2 text-neutral-400 hover:text-neutral-900 transition" aria-label="Close quick view">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+                <div id="quickViewBody" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Left: Images -->
+                    <div class="space-y-3">
+                        <div class="relative bg-neutral-50 border border-neutral-100 overflow-hidden aspect-[3/4]">
+                            <img id="qvMainImage" src="" alt="" class="w-full h-full object-cover object-top" />
+                            <span id="qvBadge" class="absolute top-3 left-3 bg-neutral-900 text-white font-bold text-[9px] tracking-widest px-3 py-1.5 uppercase hidden"></span>
+                        </div>
+                        <div id="qvThumbnails" class="flex gap-2 overflow-x-auto pb-1">
+                            <!-- thumbnails loaded by JS -->
+                        </div>
+                    </div>
+                    <!-- Right: Info -->
+                    <div class="space-y-5">
+                        <div>
+                            <p id="qvCategory" class="text-[10px] tracking-widest text-neutral-500 uppercase font-bold mb-1"></p>
+                            <h2 id="qvName" class="text-xl sm:text-2xl font-light tracking-widest text-neutral-900 uppercase"></h2>
+                        </div>
+                        <div class="flex items-baseline gap-4">
+                            <span id="qvPrice" class="text-2xl font-semibold text-neutral-900"></span>
+                            <span id="qvOldPrice" class="text-sm text-neutral-400 line-through hidden"></span>
+                            <span id="qvSaveBadge" class="text-[10px] font-bold text-neutral-900 border border-neutral-900 px-2 py-0.5 uppercase tracking-wider hidden"></span>
+                        </div>
+                        <p id="qvDescription" class="text-neutral-500 text-xs uppercase tracking-wider font-light leading-relaxed"></p>
+                        <div>
+                            <span id="qvStock" class="inline-block px-3 py-1 text-[10px] font-bold uppercase tracking-widest"></span>
+                        </div>
+                        <div class="space-y-2">
+                            <span class="text-[10px] font-bold uppercase tracking-widest text-neutral-500">Select Size:</span>
+                            <div id="qvSizes" class="flex flex-wrap gap-2">
+                                <!-- sizes loaded by JS -->
+                            </div>
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-3 pt-2 border-t border-neutral-100">
+                            <button type="button" id="qvAddToCartBtn" class="flex-grow py-4 px-6 bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-xs uppercase tracking-widest transition duration-300 flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-cart-shopping"></i> Add to Bag
+                            </button>
+                            <button type="button" id="qvWishlistBtn" class="py-4 px-6 border border-neutral-200 hover:border-neutral-900 text-neutral-800 font-bold text-xs uppercase tracking-widest transition duration-300 flex items-center justify-center gap-2">
+                                <i class="fa-regular fa-heart"></i> Wishlist
+                            </button>
+                        </div>
+                        <a id="qvFullDetails" href="#" class="block text-center text-[10px] font-bold text-neutral-500 hover:text-neutral-900 uppercase tracking-widest underline transition">
+                            View Full Details
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mini Cart Drawer -->
+    <div id="miniCartDrawer" class="fixed inset-0 z-[99999] hidden" role="dialog" aria-modal="true" aria-label="Shopping cart">
+        <div id="miniCartBackdrop" class="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
+        <div id="miniCartPanel" class="absolute top-0 right-0 h-full w-full max-w-sm bg-white border-l border-neutral-200 shadow-2xl flex flex-col">
+            <div class="flex items-center justify-between px-6 py-5 border-b border-neutral-100">
+                <h3 class="font-bold text-xs tracking-widest uppercase text-neutral-900">Shopping Bag (<span id="miniCartCount">0</span>)</h3>
+                <button type="button" id="miniCartCloseBtn" class="p-2 text-neutral-400 hover:text-neutral-900 transition" aria-label="Close cart">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <div id="miniCartItems" class="flex-grow overflow-y-auto px-6 py-4 space-y-4">
+                <!-- Rendered by JS -->
+            </div>
+            <div id="miniCartEmpty" class="flex-grow flex flex-col items-center justify-center px-6 text-center space-y-3 hidden">
+                <span class="text-3xl text-neutral-300"><i class="fa-solid fa-basket-shopping"></i></span>
+                <p class="text-xs font-bold uppercase tracking-wider text-neutral-600">Your bag is empty</p>
+                <button type="button" id="miniCartShopBtn" class="px-5 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white text-[10px] font-bold uppercase tracking-widest transition">
+                    Shop Now
+                </button>
+            </div>
+            <div id="miniCartFooter" class="border-t border-neutral-100 px-6 py-5 space-y-4 hidden">
+                <div class="flex justify-between text-xs font-bold text-neutral-900 uppercase tracking-wider">
+                    <span>Subtotal</span>
+                    <span id="miniCartSubtotal">Rs. 0</span>
+                </div>
+                <a href="/cart" class="block w-full py-3.5 bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-xs uppercase tracking-widest text-center transition">
+                    View Cart & Checkout
+                </a>
+            </div>
+        </div>
+    </div>
 
     <!-- Footer Section -->
     <footer class="bg-neutral-950 text-neutral-400 border-t border-neutral-900">

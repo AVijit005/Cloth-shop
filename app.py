@@ -1,5 +1,6 @@
 import base64
 import json
+import logging
 import os
 import re
 import secrets
@@ -7,6 +8,13 @@ import time
 from datetime import datetime, UTC, timedelta
 from functools import wraps
 import threading
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger(__name__)
 
 import mysql.connector
 from mysql.connector.pooling import MySQLConnectionPool
@@ -24,6 +32,8 @@ except ImportError:
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+LOGS_FOLDER = os.path.join(BASE_DIR, "logs")
+os.makedirs(LOGS_FOLDER, exist_ok=True)
 
 load_dotenv()
 
@@ -150,11 +160,11 @@ def send_email(subject, recipient, body_html):
     # Dev/test logging
     log_line = f"To: {recipient} | Subject: {subject}\nHTML Body:\n{body_html}\n{'='*80}\n"
     try:
-        log_file = os.path.join(UPLOAD_FOLDER, "email_log.txt")
+        log_file = os.path.join(LOGS_FOLDER, "email_log.txt")
         with open(log_file, "a", encoding="utf-8") as f:
             f.write(log_line)
     except Exception as e:
-        print(f"Failed to log email: {e}")
+        logger.error("Failed to log email: %s", e)
         
     if smtp_host and smtp_port and smtp_user and smtp_pass:
         import smtplib
@@ -179,7 +189,7 @@ def send_email(subject, recipient, body_html):
                 server.sendmail(sender, [recipient], msg.as_string())
                 server.quit()
             except Exception as ex:
-                print(f"SMTP email fail to {recipient}: {ex}")
+                logger.error("SMTP email fail to %s: %s", recipient, ex)
                 
         threading.Thread(target=_send, daemon=True).start()
 
@@ -212,6 +222,62 @@ def send_reset_password_email(username, email, token):
     </div>
     """
     send_email("Reset Your Shibani Fashion Password", email, body)
+
+
+def send_order_confirmation_email(user, customer_name, order_id, order_items, total, subtotal, discount, delivery, tax, other_charges, payment_mode, address, phone, coupon_code):
+    user_email = None
+    if check_db_health():
+        try:
+            with db_connection() as connection:
+                with connection.cursor(dictionary=True) as cursor:
+                    cursor.execute("SELECT email FROM users WHERE id = %s", (user["id"],))
+                    row = cursor.fetchone()
+                    if row:
+                        user_email = row["email"]
+        except Exception as exc:
+            logger.error("Failed to fetch email for order %s: %s", order_id, exc)
+    else:
+        mu = memory_users.get(user["username"])
+        if mu:
+            user_email = mu.get("email")
+    if not user_email:
+        logger.warning("Cannot send order confirmation: no email found for user %s", user.get("username"))
+        return
+    items_html = "".join(
+        f'<tr><td style="padding:8px 12px;border-bottom:1px solid #eee;">{item["product_name"]}</td>'
+        f'<td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:center;">{item["quantity"]}</td>'
+        f'<td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">Rs. {item["price"]:,.2f}</td></tr>'
+        for item in order_items
+    )
+    coupon_line = f"<tr><td style='padding:8px 12px;border-bottom:1px solid #eee;'>Coupon ({coupon_code})</td><td></td><td style='padding:8px 12px;border-bottom:1px solid #eee;text-align:right;'>-Rs. {discount:,.2f}</td></tr>" if coupon_code else ""
+    body = f"""
+    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;border:1px solid #e5e7eb;border-radius:12px;padding:32px;">
+        <h2 style="color:#4f46e5;margin:0 0 16px;">Order Confirmed &#9989;</h2>
+        <p style="color:#475569;font-size:14px;margin:0 0 4px;">Hi {customer_name},</p>
+        <p style="color:#475569;font-size:14px;margin:0 0 20px;">Thank you for your order! Here is your receipt:</p>
+        <div style="background:#f9fafb;border-radius:8px;padding:16px;margin-bottom:20px;">
+            <p style="margin:0 0 4px;font-size:12px;color:#6b7280;">Order #<strong>{order_id}</strong></p>
+            <p style="margin:0 0 4px;font-size:12px;color:#6b7280;">Payment: {payment_mode}</p>
+            <p style="margin:0;font-size:12px;color:#6b7280;">Deliver to: {address} &mdash; {phone}</p>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead><tr style="background:#f3f4f6;"><th style="padding:8px 12px;text-align:left;">Item</th><th style="padding:8px 12px;text-align:center;">Qty</th><th style="padding:8px 12px;text-align:right;">Price</th></tr></thead>
+            <tbody>{items_html}</tbody>
+            <tfoot>
+                <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;">Subtotal</td><td></td><td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">Rs. {subtotal:,.2f}</td></tr>
+                {coupon_line}
+                <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;">Delivery</td><td></td><td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">{'Free' if delivery == 0 else f'Rs. {delivery:,.2f}'}</td></tr>
+                <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;">Tax</td><td></td><td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">Rs. {tax:,.2f}</td></tr>
+                <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;">Other Charges</td><td></td><td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">Rs. {other_charges:,.2f}</td></tr>
+                <tr><td style="padding:10px 12px;font-weight:bold;">Total</td><td></td><td style="padding:10px 12px;text-align:right;font-weight:bold;font-size:16px;">Rs. {total:,.2f}</td></tr>
+            </tfoot>
+        </table>
+        <div style="border-top:1px solid #e5e7eb;margin-top:24px;padding-top:16px;font-size:11px;color:#9ca3af;">
+            If you have any questions, reply to this email or contact our support team.
+        </div>
+    </div>
+    """
+    send_email(f"Order Confirmed - #{order_id}", user_email, body)
 
 
 
@@ -2104,7 +2170,7 @@ def get_profile():
                     cursor.execute("SELECT username, full_name, role, saved_name, saved_phone, saved_address FROM users WHERE id = %s", (user["id"],))
                     profile = cursor.fetchone()
             if profile:
-                return jsonify({
+                    return jsonify({
                     "username": profile["username"],
                     "full_name": profile["full_name"],
                     "role": profile["role"],
@@ -2866,6 +2932,12 @@ def create_order():
                 "created_at": datetime.now(UTC).isoformat(),
             },
         )
+
+    threading.Thread(target=send_order_confirmation_email, args=(
+        user, customer_name, order_id, order_items, total, subtotal,
+        discount, delivery, tax, other_charges, payment_mode, address,
+        phone, coupon_code
+    ), daemon=True).start()
 
     return jsonify({
         "order_id": order_id, 

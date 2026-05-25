@@ -24,9 +24,7 @@
     <!-- Products Table Card -->
     <div class="bg-white border border-neutral-200 overflow-hidden shadow-sm">
         <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-neutral-50 border-b border-neutral-200 text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
+            <table class="w-full min-w-[700px] text-left border-collapse">
                         <th class="py-4 px-6">ID</th>
                         <th class="py-4 px-6">Outfit</th>
                         <th class="py-4 px-6">Category</th>
@@ -36,10 +34,10 @@
                     </tr>
                 </thead>
                 <tbody id="adminProductsTableBody" class="divide-y divide-neutral-200 text-xs uppercase tracking-wider font-semibold text-neutral-600">
-                    <!-- Loaded dynamically via JS -->
-                    <tr>
-                        <td colspan="6" class="py-12 text-center text-neutral-400">Loading catalog items...</td>
-                    </tr>
+                    <!-- Skeleton rows -->
+                    <tr class="animate-pulse"><td class="py-4 px-6"><div class="h-3 skeleton-pulse w-12 rounded"></div></td><td class="py-4 px-6 flex items-center gap-3"><div class="w-12 h-12 rounded-xl skeleton-pulse"></div><div class="h-3 skeleton-pulse w-32 rounded"></div></td><td class="py-4 px-6"><div class="h-3 skeleton-pulse w-16 rounded"></div></td><td class="py-4 px-6"><div class="h-3 skeleton-pulse w-14 rounded"></div></td><td class="py-4 px-6"><div class="h-5 skeleton-pulse w-20 rounded"></div></td><td class="py-4 px-6 text-right"><div class="h-4 skeleton-pulse w-12 rounded inline-block"></div></td></tr>
+                    <tr class="animate-pulse"><td class="py-4 px-6"><div class="h-3 skeleton-pulse w-12 rounded"></div></td><td class="py-4 px-6 flex items-center gap-3"><div class="w-12 h-12 rounded-xl skeleton-pulse"></div><div class="h-3 skeleton-pulse w-28 rounded"></div></td><td class="py-4 px-6"><div class="h-3 skeleton-pulse w-14 rounded"></div></td><td class="py-4 px-6"><div class="h-3 skeleton-pulse w-14 rounded"></div></td><td class="py-4 px-6"><div class="h-5 skeleton-pulse w-24 rounded"></div></td><td class="py-4 px-6 text-right"><div class="h-4 skeleton-pulse w-12 rounded inline-block"></div></td></tr>
+                    <tr class="animate-pulse"><td class="py-4 px-6"><div class="h-3 skeleton-pulse w-12 rounded"></div></td><td class="py-4 px-6 flex items-center gap-3"><div class="w-12 h-12 rounded-xl skeleton-pulse"></div><div class="h-3 skeleton-pulse w-36 rounded"></div></td><td class="py-4 px-6"><div class="h-3 skeleton-pulse w-12 rounded"></div></td><td class="py-4 px-6"><div class="h-3 skeleton-pulse w-14 rounded"></div></td><td class="py-4 px-6"><div class="h-5 skeleton-pulse w-16 rounded"></div></td><td class="py-4 px-6 text-right"><div class="h-4 skeleton-pulse w-12 rounded inline-block"></div></td></tr>
                 </tbody>
             </table>
         </div>

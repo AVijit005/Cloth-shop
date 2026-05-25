@@ -1,135 +1,274 @@
-# Cloth-Shop: Modern Fashion E-Commerce Platform
+# SHIBANI — Premium Fashion E-Commerce Platform
 
-Welcome to **Cloth-Shop**, a feature-rich, production-ready Flask web application designed for seamless online clothes shopping. The application features elegant HSL-based styling, clean glassmorphism aesthetics, a responsive multi-category layout, customer loyalty programs, gamified quests, custom outfit planning, product comparison modules, and role-based administration panels.
+<p align="center">
+  <img src="https://img.shields.io/badge/Flask-3.0-000?style=flat-square&logo=flask" alt="Flask 3.0"/>
+  <img src="https://img.shields.io/badge/MySQL-9.7-4479A1?style=flat-square&logo=mysql" alt="MySQL 9.7"/>
+  <img src="https://img.shields.io/badge/Tailwind_CSS-CDN-06B6D4?style=flat-square&logo=tailwindcss" alt="Tailwind CSS CDN"/>
+  <img src="https://img.shields.io/badge/Firebase_Auth-FFCA28?style=flat-square&logo=firebase" alt="Firebase Auth"/>
+  <img src="https://img.shields.io/badge/Render_Ready-46E3B7?style=flat-square&logo=render" alt="Render Ready"/>
+  <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT License"/>
+</p>
 
-This project is fully restructured, optimized, and ready for deployment on **Render** (via waitress-serve).
+A **production-ready Flask e-commerce application** featuring a luxury frontend with glassmorphism aesthetics, dual-storage architecture (MySQL primary + in-memory fallback), Firebase Google OAuth, role-based admin panels, and full e-commerce UX with checkout, coupons, wishlists, and order management.
 
----
-
-## Developer Details
-
-- **Developed By**: Avijit (AVijit005)
-- **GitHub**: [AVijit005](https://github.com/AVijit005)
-- **Role**: Full-Stack Web Developer
-
----
-
-## Features
-
-1. **Elegant Design**: Responsive layout with modern glassmorphism, HSL tailormade colors, and aurora background micro-animations.
-2. **User Authentication**: Secure signup and login with role-based segregation (`admin` and `customer`).
-3. **Category Browsing**: Seamless category sorting (Men, Women, Kids) and search filters.
-4. **Interactive Shopping Cart**: Live quantity adjustments, dynamic price calculations, and coupon application support.
-5. **Tiered Loyalty Program**: Loyalty point accrual, level status tracker, and discounts on checkout.
-6. **Gamified Customer Quests**: Active board of daily quests (first signup, first order, add review) to earn points.
-7. **Size Finder & Comparison**: AI-assisted clothing size selector and multi-item side-by-side spec comparison table.
-8. **Admin Panel**: Real-time product inventory creation, order status fulfillment logs, loyalty system configurations, and statistics dashboard.
+Built as a monolithic single-file Flask backend with a declarative vanilla JavaScript frontend — no React, no heavy frameworks. Focused on **engineering quality**, **resilience**, and **UX polish**.
 
 ---
 
-## Local Setup Instructions
+## Screenshots
 
-Follow these steps to run the application locally on your Windows machine:
+> **Note:** Add screenshots to a `screenshots/` folder in the repository root.
+>
+> Suggested captures:
+>
+> | Area | File |
+> |---|---|
+> | Homepage hero + featured products | `screenshots/homepage.png` |
+> | Shop catalog with filters | `screenshots/shop.png` |
+> | Product detail page | `screenshots/product-detail.png` |
+> | Shopping cart with coupon | `screenshots/cart.png` |
+> | Checkout form | `screenshots/checkout.png` |
+> | Admin dashboard | `screenshots/admin-overview.png` |
+> | Admin product management | `screenshots/admin-products.png` |
+> | Order management | `screenshots/admin-orders.png` |
+> | Analytics charts | `screenshots/admin-analytics.png` |
+> | Quick view modal | `screenshots/quick-view.png` |
+> | Mini cart drawer | `screenshots/mini-cart.png` |
+> | Mobile responsive view | `screenshots/mobile.png` |
 
-### 1. Prerequisites
-- **Python**: Python 3.12+ installed.
-- **MySQL**: MySQL Server installed and running locally.
+---
 
-### 2. Clone the Project
+## Feature Highlights
+
+### Storefront
+- **Product Catalog** — Category/sort/price/size/color/rating filters with live search
+- **Product Quick View** — Hover-activated modal with image thumbnails, size selector, add-to-cart/wishlist
+- **Smart Search** — Debounced suggestions with keyboard navigation and product thumbnails
+- **Advanced Filters** — Color swatch picker, star rating filter, in-stock toggle, price range
+- **Recently Viewed** — Persistent across sessions via localStorage (up to 6 items)
+- **Personalized Recommendations** — Category-based suggestions sorted by rating
+- **Image Zoom** — Magnifier lens on product detail (2x, auto-disabled on touch devices)
+- **Size Recommendation** — BMI-based fit calculator with stock-aware suggestions
+
+### Cart & Checkout
+- **Sticky Mini Cart Drawer** — Slide-out panel with quantity controls, remove, subtotal
+- **Full Cart Page** — Quantity adjust, save-for-later, coupon codes (percentage/free-delivery)
+- **Checkout Flow** — Address form, saved address selector, COD / UPI QR payment modes
+- **Order Confirmation** — Email notification with order summary (dev log or SMTP)
+- **Order History** — Status tracking, view invoice, cancel within "New" status
+
+### User Experience
+- **Toast Notification System** — Animated slide-in/out, deduplication, success/error variants, dismiss button
+- **Loading States** — Skeleton placeholders on cart and admin tables; fullscreen loading overlay
+- **Focus Trapping** — Accessible modal/drawer keyboard navigation (Tab/Shift+Tab)
+- **Responsive Design** — Mobile-first with collapsible nav, touch-friendly targets, scrollable admin tables
+- **Accessibility** — ARIA labels, live regions, roles, and expanded states on all interactive elements
+
+### Admin Dashboard
+- **Overview** — Revenue/orders/customers/reviews stats cards; GST/delivery fee settings; low stock warnings
+- **Product Management** — Full CRUD table with search, image upload, modal form
+- **Order Management** — Status filter tabs (New/Processing/Shipped/Delivered/Cancelled), inline status update
+- **Customer Directory** — Read-only searchable user list
+- **Review Moderation** — Approve/reject pending reviews
+- **Analytics** — Canvas-drawn sales trend line chart + category pie chart (no Chart.js dependency)
+
+### Authentication & Security
+- **Password Login** — bcrypt hashing, brute-force lockout (5 failed → 5 min block), strength validation
+- **Google OAuth** — Firebase Admin SDK token verification, auto-account creation
+- **Email Verification** — Token-based verification required before checkout
+- **Password Reset** — Secure token with 1-hour expiry, email delivery
+- **CSRF Protection** — Per-session token validated on all POST/PUT/DELETE
+- **Session Security** — HttpOnly, SameSite=Lax, 30-min lifetime (30-day with "remember me")
+- **Role-Based Access** — Admin decorators with 403 on unauthorized endpoints
+
+### Resilience
+- **Dual Storage** — MySQL primary with automatic in-memory fallback on connection failure
+- **Graceful Degradation** — Frontend remains fully browseable even without a database
+- **Connection Pooling** — MySQL connection pool (size 10) for production throughput
+- **Default Seed Data** — 25 products, 3 coupon codes, admin + customer demo accounts
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| **Backend** | Python 3.12+, Flask 3.0, Werkzeug |
+| **Database** | MySQL (mysql-connector-python 9.7) |
+| **Auth** | Firebase Admin SDK (Google OAuth) + session-based password auth |
+| **Frontend** | Vanilla JavaScript (ES6+), Tailwind CSS (Play CDN), custom 4000+ line CSS |
+| **Fonts** | Google Fonts (Outfit + Inter) |
+| **Icons** | Font Awesome 6 (Free) |
+| **Server** | Waitress (production), Flask dev (local) |
+| **Deploy** | Render (blueprint via `render.yaml`) |
+| **Templating** | Jinja2 server-side rendering |
+
+---
+
+## Architecture Overview
+
+```
+Browser ──HTTP──> Flask (app.py) ──┬── MySQL (primary)
+                                    │     connection_pool_size=10
+                                    │
+                                    └── Memory Store (fallback)
+                                         in-memory lists/dicts
+                                         auto-seeded on boot
+
+Static Assets:
+  /static/main.js         3220 lines — SPA-style controller with page router
+  /static/styles.css       4022 lines — Custom CSS (glassmorphism, animations)
+  /static/firebase-config.js   — Firebase SDK client init
+  /static/firebase-auth.js     — Google sign-in popup handler
+
+Templates (Jinja2):
+  base.html / admin_base.html  — layouts
+  16 page templates + 6 admin templates
+```
+
+The app uses a **single-file Flask backend** with a declarative JavaScript frontend. The JS file contains a path-based router (`/shop → initShop()`, `/product/... → initProductDetail()`, etc.) and all page-specific controllers, keeping the architecture simple without a frontend framework.
+
+---
+
+## Firebase Authentication
+
+This project supports Google Sign-In via Firebase:
+
+1. **Client**: `firebase-auth.js` opens a Google popup via Firebase SDK v10, retrieves an ID token
+2. **Server**: `app.py:57-65` initializes Firebase Admin from `FIREBASE_SERVICE_ACCOUNT` env variable (JSON string). The `/api/login/google` endpoint verifies the ID token and creates/authenticates the user
+3. **Fallback**: If Firebase is not configured, Google sign-in returns a 503 — password login continues to work
+
+To enable: set `FIREBASE_SERVICE_ACCOUNT` in your environment to your Firebase service account JSON string.
+
+---
+
+## Responsive Design
+
+- **Mobile**: Collapsible hamburger menu, slide-out search bar, scrollable admin tables (`min-w-[700px]`), touch-friendly button targets
+- **Tablet**: Adaptive grid layouts (2-3 columns), preserved desktop nav
+- **Desktop**: Full glassmorphism navbar, sidebar admin panel, multi-column product grids
+- **CSS**: Tailwind responsive prefixes (`sm:`, `md:`, `lg:`, `xl:`) throughout templates
+- **Images**: `object-cover object-top` for consistent product aspect ratios
+
+---
+
+## Security Features
+
+| Feature | Implementation |
+|---|---|
+| Password hashing | `werkzeug.security.generate_password_hash` (scrypt) |
+| Brute-force protection | Per-username + per-IP lockout with configurable thresholds |
+| CSRF tokens | Per-session random token, validated on all state-changing requests |
+| Session security | HttpOnly, SameSite=Lax, configurable Secure flag in production |
+| Input validation | Server-side length/pattern checks on all auth endpoints |
+| XSS mitigation | Jinja2 autoescaping + `escapeHTML()` utility for dynamic JS content |
+| Role enforcement | `@require_admin` decorator gates all admin endpoints |
+| Email verification | Required before checkout; token-based with expiry |
+
+---
+
+## Installation
+
+### Prerequisites
+- Python 3.12+
+- MySQL 8+ (or compatible)
+
+### Local Setup
+
 ```bash
+# Clone
 git clone https://github.com/AVijit005/Cloth-shop.git
 cd Cloth-shop
-```
 
-### 3. Create a Virtual Environment
-Initialize a clean Python virtual environment to manage dependencies:
-```powershell
+# Virtual environment
 python -m venv venv
-venv\Scripts\activate
-```
+venv\Scripts\activate    # Windows
+# source venv/bin/activate  # Linux/macOS
 
-### 4. Install Dependencies
-```bash
+# Install dependencies
 pip install -r requirements.txt
-```
 
-### 5. Setup MySQL Database
-1. Open your MySQL Command Line Client or preferred GUI tool (like MySQL Workbench, phpMyAdmin, or DBeaver).
-2. Execute the schema queries defined in `database.sql` to initialize the database:
-```sql
-SOURCE database.sql;
-```
-This command creates the database `shibani_store` and all its constituent tables.
+# Setup MySQL
+# Run database.sql in your MySQL client to create the 'shibani_store' database
+mysql -u root -p < database.sql
 
-### 6. Environment Variables Setup
-Create a `.env` file in the root directory (based on `.env.example`):
-```env
-MYSQL_HOST=127.0.0.1
-MYSQL_PORT=3306
-MYSQL_USER=root
-MYSQL_PASSWORD=your_mysql_password
-MYSQL_DATABASE=shibani_store
-SECRET_KEY=generate_your_secret_key_hex
-```
+# Configure environment
+cp .env.example .env
+# Edit .env with your MySQL credentials and a secret key
 
-### 7. Run the Application
-Start the Flask application locally:
-```bash
+# Run
 python app.py
+# → http://127.0.0.1:5000
 ```
-Open your browser and navigate to `http://127.0.0.1:5000` to interact with the web app.
+
+---
+
+## Environment Variables
+
+| Variable | Required | Description |
+|---|---|---|
+| `MYSQL_HOST` | Yes | MySQL server hostname |
+| `MYSQL_USER` | Yes | MySQL username |
+| `MYSQL_PASSWORD` | Yes | MySQL password |
+| `MYSQL_DATABASE` | Yes | Database name (default: `shibani_store`) |
+| `MYSQL_PORT` | No | MySQL port (default: `3306`) |
+| `SECRET_KEY` | Yes | Flask session signing key (generate: `python -c "import secrets; print(secrets.token_hex(32))"`) |
+| `FIREBASE_SERVICE_ACCOUNT` | No | Firebase Admin SDK service account JSON string |
+| `SMTP_HOST` | No | SMTP server for email sending |
+| `SMTP_PORT` | No | SMTP port |
+| `SMTP_USER` | No | SMTP username |
+| `SMTP_PASSWORD` | No | SMTP password |
+| `FLASK_ENV` | No | Set to `production` for secure cookies |
 
 ---
 
 ## Deployment on Render
 
-This project is configured with a `render.yaml` file to facilitate direct, one-click hosting on Render.
+This project includes a `render.yaml` blueprint for one-click deployment:
 
-### Render Service Setup
-1. Push your repository to your GitHub account: `https://github.com/AVijit005/Cloth-shop.git`.
-2. Log in to your [Render Dashboard](https://dashboard.render.com).
-3. Click **New +** and select **Blueprint**.
-4. Connect your GitHub repository.
-5. Render will automatically parse the `render.yaml` file, spin up a Python web service using the Waitress WSGI server (`waitress-serve --host=0.0.0.0 --port=$PORT app:app`), and install all dependencies.
-
-### Database Hosting on Render / Cloud
-To connect a cloud MySQL database:
-1. Spin up a MySQL instance on Render, Railway, Aiven, or AWS RDS.
-2. Set the following environment variables in your Render Web Service settings:
-   - `MYSQL_HOST`
-   - `MYSQL_USER`
-   - `MYSQL_PASSWORD`
-   - `MYSQL_DATABASE`
-   - `MYSQL_PORT`
-   - `SECRET_KEY`
+1. Push the repository to GitHub
+2. In [Render Dashboard](https://dashboard.render.com), click **New + → Blueprint**
+3. Connect your GitHub repository
+4. Render auto-detects `render.yaml`, installs dependencies, and starts with:
+   ```
+   waitress-serve --host=0.0.0.0 --port=$PORT app:app
+   ```
+5. Add environment variables (especially `MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DATABASE`, `SECRET_KEY`) in the Render service dashboard
+6. For a production MySQL database, use Render's MySQL add-on, Railway, Aiven, or AWS RDS
 
 ---
 
-## Troubleshooting
+## Demo Credentials
 
-- **Database Connection Failure**: If the app fails to connect to MySQL on boot, it will gracefully fall back to a temporary memory store (`memory_store`) so the frontend remains browseable. Check your `.env` credentials and verify your MySQL service status if database operations do not persist.
-- **Waitress Server Port Issues**: By default, Render binds web services to the `$PORT` environment variable. Waitress is configured to dynamically resolve and host on this port automatically.
+| Role | Username | Password |
+|---|---|---|
+| Admin | `admin` | `admin123` |
+| Customer | `customer` | `customer123` |
+
+The app also exposes a `/api/status` endpoint that returns all valid demo credentials at runtime.
+
+---
+
+## Roadmap
+
+- [ ] **Stripe / Razorpay Payment Gateway** — Real payment processing beyond COD/UPI QR
+- [ ] **Product Variants** — Color + size matrix with per-variant stock and images
+- [ ] **Wishlist Notifications** — Email alerts when wishlist items go on sale
+- [ ] **Progressive Web App** — Service worker for offline product browsing
+- [ ] **Unit / Integration Tests** — pytest suite for API endpoints and critical flows
+- [ ] **Docker Compose** — Single-command local setup with MySQL container
+- [ ] **i18n Support** — Multi-language product descriptions and checkout
 
 ---
 
 ## License
 
-This project is licensed under the **MIT License**.
+MIT License — see [LICENSE](LICENSE) for details.
 
-Anyone is free to copy, modify, distribute, and contribute to this repository. Pull requests are highly encouraged.
+---
 
-```text
-MIT License
-
-Copyright (c) 2026 Avijit
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-```
+<p align="center">
+  <sub>Built with ❤️ by <a href="https://github.com/AVijit005">Avijit</a></sub>
+  <br>
+  <sub>Full-Stack Web Developer</sub>
+</p>

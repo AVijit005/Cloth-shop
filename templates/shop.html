@@ -4,6 +4,13 @@
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 bg-white">
+    <!-- Breadcrumb -->
+    <nav class="flex text-[10px] tracking-widest text-neutral-400 font-semibold mb-8 gap-2 uppercase">
+        <a href="/" class="hover:text-neutral-900 transition">Home</a>
+        <span>/</span>
+        <span class="text-neutral-600">Shop</span>
+    </nav>
+    
     <div class="flex flex-col lg:flex-row gap-12 items-start">
         
         <!-- Sidebar Filters -->
@@ -57,6 +64,32 @@
                     <button class="size-filter-btn border border-neutral-200 text-neutral-800 text-[10px] tracking-widest px-3.5 py-2 uppercase hover:border-neutral-900 transition duration-200" data-size="XL">XL</button>
                     <button class="size-filter-btn border border-neutral-200 text-neutral-800 text-[10px] tracking-widest px-3.5 py-2 uppercase hover:border-neutral-900 transition duration-200" data-size="XXL">XXL</button>
                 </div>
+            </div>
+            
+            <!-- Color Filter -->
+            <div class="space-y-4">
+                <h4 class="font-bold text-[10px] tracking-widest uppercase text-neutral-900">Color</h4>
+                <div class="flex flex-wrap gap-2" id="shopColorFiltersContainer">
+                    <!-- populated dynamically by JS -->
+                </div>
+            </div>
+            
+            <!-- Rating Filter -->
+            <div class="space-y-4">
+                <h4 class="font-bold text-[10px] tracking-widest uppercase text-neutral-900">Min Rating</h4>
+                <div class="flex flex-wrap gap-2" id="shopRatingFiltersContainer">
+                    <button class="rating-filter-btn border border-neutral-200 text-neutral-800 text-[10px] tracking-widest px-3 py-1.5 uppercase hover:border-neutral-900 transition duration-200" data-rating="4">4+ <i class="fa-solid fa-star text-[9px] ml-0.5"></i></button>
+                    <button class="rating-filter-btn border border-neutral-200 text-neutral-800 text-[10px] tracking-widest px-3 py-1.5 uppercase hover:border-neutral-900 transition duration-200" data-rating="3">3+ <i class="fa-solid fa-star text-[9px] ml-0.5"></i></button>
+                    <button class="rating-filter-btn border border-neutral-200 text-neutral-800 text-[10px] tracking-widest px-3 py-1.5 uppercase hover:border-neutral-900 transition duration-200" data-rating="2">2+ <i class="fa-solid fa-star text-[9px] ml-0.5"></i></button>
+                </div>
+            </div>
+            
+            <!-- Stock Availability Toggle -->
+            <div class="space-y-4">
+                <label class="flex items-center gap-3 text-xs tracking-wider uppercase text-neutral-600 cursor-pointer hover:text-neutral-900">
+                    <input type="checkbox" id="inStockOnlyFilter" class="w-3.5 h-3.5 border-neutral-300 rounded-none text-neutral-900 focus:ring-0 focus:ring-offset-0" />
+                    <span class="font-bold text-[10px] tracking-widest">In Stock Only</span>
+                </label>
             </div>
             
             <!-- Clear Filters -->

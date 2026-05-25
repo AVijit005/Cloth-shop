@@ -29,9 +29,7 @@
     <!-- Orders Table Card -->
     <div class="bg-white border border-neutral-200 overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-neutral-50 border-b border-neutral-200 text-[10px] font-medium text-neutral-400 uppercase tracking-widest">
+            <table class="w-full min-w-[700px] text-left border-collapse">
                         <th class="py-4 px-6">Order ID</th>
                         <th class="py-4 px-6">Customer Details</th>
                         <th class="py-4 px-6">Items Purchased</th>
@@ -40,10 +38,10 @@
                     </tr>
                 </thead>
                 <tbody id="adminOrdersTableBody" class="divide-y divide-neutral-100 text-xs font-light text-neutral-600 tracking-wide">
-                    <!-- Loaded dynamically via JS -->
-                    <tr>
-                        <td colspan="5" class="py-12 text-center text-neutral-400 uppercase tracking-widest text-[10px]">Loading customer orders...</td>
-                    </tr>
+                    <!-- Skeleton rows -->
+                    <tr class="animate-pulse"><td class="py-4 px-6"><div class="h-3 skeleton-pulse w-14 rounded"></div></td><td class="py-4 px-6 space-y-1"><div class="h-3 skeleton-pulse w-28 rounded"></div><div class="h-2 skeleton-pulse w-20 rounded"></div></td><td class="py-4 px-6"><div class="h-3 skeleton-pulse w-36 rounded"></div></td><td class="py-4 px-6"><div class="h-4 skeleton-pulse w-16 rounded"></div></td><td class="py-4 px-6"><div class="h-6 skeleton-pulse w-24 rounded"></div></td></tr>
+                    <tr class="animate-pulse"><td class="py-4 px-6"><div class="h-3 skeleton-pulse w-14 rounded"></div></td><td class="py-4 px-6 space-y-1"><div class="h-3 skeleton-pulse w-32 rounded"></div><div class="h-2 skeleton-pulse w-22 rounded"></div></td><td class="py-4 px-6"><div class="h-3 skeleton-pulse w-40 rounded"></div></td><td class="py-4 px-6"><div class="h-4 skeleton-pulse w-16 rounded"></div></td><td class="py-4 px-6"><div class="h-6 skeleton-pulse w-24 rounded"></div></td></tr>
+                    <tr class="animate-pulse"><td class="py-4 px-6"><div class="h-3 skeleton-pulse w-14 rounded"></div></td><td class="py-4 px-6 space-y-1"><div class="h-3 skeleton-pulse w-24 rounded"></div><div class="h-2 skeleton-pulse w-18 rounded"></div></td><td class="py-4 px-6"><div class="h-3 skeleton-pulse w-32 rounded"></div></td><td class="py-4 px-6"><div class="h-4 skeleton-pulse w-16 rounded"></div></td><td class="py-4 px-6"><div class="h-6 skeleton-pulse w-24 rounded"></div></td></tr>
                 </tbody>
             </table>
         </div>

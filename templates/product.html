@@ -20,12 +20,13 @@
         
         <!-- Left Column: Image Gallery -->
         <div class="space-y-4 animate-fade-in">
-            <!-- Main Preview Box -->
-            <div class="relative bg-neutral-50 border border-neutral-100 overflow-hidden aspect-[3/4] group">
+            <!-- Main Preview Box with Zoom -->
+            <div class="relative bg-neutral-50 border border-neutral-100 overflow-hidden aspect-[3/4] group zoom-container">
                 <img id="detailMainImage" 
                      src="{{ product.images_list[0] if product.images_list else 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600' }}" 
                      alt="{{ product.name }}" 
                      class="w-full h-full object-cover object-top transition duration-500 hover:scale-105 cursor-zoom-in" />
+                <div id="imageZoomLens" class="zoom-lens hidden"></div>
                 
                 {% if product.badge %}
                 <span class="absolute top-4 left-4 bg-neutral-900 text-white font-bold text-[9px] tracking-widest px-3 py-1.5 uppercase">
@@ -225,7 +226,7 @@
                 <p class="text-neutral-400 text-xs mt-1 uppercase tracking-wider">Recommended premium items from the same collection.</p>
             </div>
         </div>
-        <div id="relatedProductsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div id="relatedProductsGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6">
             <!-- Loaded dynamically by JS -->
         </div>
     </section>
@@ -234,9 +235,20 @@
     <section id="recentlyViewedSection" class="mt-20 border-t border-neutral-200 pt-16 hidden">
         <div class="mb-10">
             <h3 class="text-xs tracking-[0.2em] font-bold text-neutral-900 uppercase">Recently Viewed</h3>
-            <p class="text-neutral-400 text-xs mt-1 uppercase tracking-wider">Items you viewed during this session.</p>
+            <p class="text-neutral-400 text-xs mt-1 uppercase tracking-wider">Items you've browsed recently.</p>
         </div>
-        <div id="recentlyViewedGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div id="recentlyViewedGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6">
+            <!-- Loaded dynamically by JS -->
+        </div>
+    </section>
+
+    <!-- Personalized Recommendations -->
+    <section id="recommendationsSection" class="mt-20 border-t border-neutral-200 pt-16 hidden">
+        <div class="mb-10">
+            <h3 id="recommendationsHeading" class="text-xs tracking-[0.2em] font-bold text-neutral-900 uppercase">Recommended For You</h3>
+            <p class="text-neutral-400 text-xs mt-1 uppercase tracking-wider">Based on your browsing preferences.</p>
+        </div>
+        <div id="recommendationsGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6">
             <!-- Loaded dynamically by JS -->
         </div>
     </section>

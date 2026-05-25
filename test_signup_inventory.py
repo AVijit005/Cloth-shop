@@ -8,7 +8,7 @@ BASE_URL = "http://127.0.0.1:5000"
 
 def verify_latest_user():
     import re, os
-    log_path = "uploads/email_log.txt"
+    log_path = "logs/email_log.txt"
     if not os.path.exists(log_path):
         print("Warning: email_log.txt not found!")
         return False

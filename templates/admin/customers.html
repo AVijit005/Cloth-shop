@@ -19,7 +19,7 @@
     <!-- Customers Table Card -->
     <div class="bg-white border border-neutral-200 overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
+            <table class="w-full min-w-[700px] text-left border-collapse">
                 <thead>
                     <tr class="bg-neutral-50 border-b border-neutral-200 text-[10px] font-medium text-neutral-400 uppercase tracking-widest">
                         <th class="py-4 px-6">Customer ID</th>
@@ -27,10 +27,10 @@
                     </tr>
                 </thead>
                 <tbody id="adminCustomersTableBody" class="divide-y divide-neutral-100 text-xs font-light text-neutral-600 tracking-wide">
-                    <!-- Loaded dynamically via JS -->
-                    <tr>
-                        <td colspan="2" class="py-12 text-center text-neutral-400 uppercase tracking-widest text-[10px]">Loading customer profiles...</td>
-                    </tr>
+                    <!-- Skeleton rows -->
+                    <tr class="animate-pulse"><td class="py-4 px-6"><div class="h-3 skeleton-pulse w-14 rounded"></div></td><td class="py-4 px-6 space-y-1"><div class="h-3 skeleton-pulse w-36 rounded"></div><div class="h-2 skeleton-pulse w-28 rounded"></div></td></tr>
+                    <tr class="animate-pulse"><td class="py-4 px-6"><div class="h-3 skeleton-pulse w-14 rounded"></div></td><td class="py-4 px-6 space-y-1"><div class="h-3 skeleton-pulse w-40 rounded"></div><div class="h-2 skeleton-pulse w-24 rounded"></div></td></tr>
+                    <tr class="animate-pulse"><td class="py-4 px-6"><div class="h-3 skeleton-pulse w-14 rounded"></div></td><td class="py-4 px-6 space-y-1"><div class="h-3 skeleton-pulse w-32 rounded"></div><div class="h-2 skeleton-pulse w-32 rounded"></div></td></tr>
                 </tbody>
             </table>
         </div>

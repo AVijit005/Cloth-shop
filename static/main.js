@@ -1,21 +1,95 @@
 // Shibani Fashion Unified App Controller
 
 // Global App State
+function safeParseJSON(val, fallback = null) {
+    try { return JSON.parse(val); } catch { return fallback; }
+}
 const appState = {
     user: null,
     products: [],
-    cart: JSON.parse(localStorage.getItem("shibani_cart") || "[]"),
-    wishlist: JSON.parse(localStorage.getItem("shibani_wishlist") || "[]"),
+    cart: safeParseJSON(localStorage.getItem("shibani_cart"), []),
+    wishlist: safeParseJSON(localStorage.getItem("shibani_wishlist"), []),
     settings: {
         gst_rate: 5.0,
         delivery_fee_standard: 99.0,
         delivery_fee_threshold: 999.0,
         other_charges: 0.0
     },
-    compareList: JSON.parse(localStorage.getItem("shibani_compare") || "[]")
+    compareList: safeParseJSON(localStorage.getItem("shibani_compare"), [])
 };
 
 // Global API Helper
+function escapeHTML(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+// Focus trap helpers for modals/drawers
+let activeFocusTrap = null;
+function trapFocus(container) {
+    activeFocusTrap = container;
+    const focusable = container.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    const firstFocusable = focusable[0];
+    if (firstFocusable) setTimeout(() => firstFocusable.focus(), 50);
+    const handleKey = (e) => {
+        if (e.key !== "Tab" || !activeFocusTrap) return;
+        const els = Array.from(activeFocusTrap.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'));
+        if (!els.length) return;
+        const first = els[0], last = els[els.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
+    document.addEventListener("keydown", handleKey);
+    container._focusTrapHandler = handleKey;
+}
+function releaseFocus(container) {
+    if (container && container._focusTrapHandler) {
+        document.removeEventListener("keydown", container._focusTrapHandler);
+        delete container._focusTrapHandler;
+    }
+    activeFocusTrap = null;
+}
+
+// Toast notification system
+const activeToasts = new Set();
+function removeToast(el) {
+    if (!el || el._removing) return;
+    el._removing = true;
+    el.classList.remove("toast-enter");
+    el.classList.add("toast-exit");
+    setTimeout(() => { el.remove(); activeToasts.delete(el); }, 300);
+}
+function showToast(message, type = "success") {
+    const container = document.getElementById("toastContainer");
+    if (!container) return;
+    // deduplicate identical active toasts
+    for (const t of activeToasts) {
+        if (t.textContent.trim() === message) {
+            removeToast(t); break;
+        }
+    }
+    const el = document.createElement("div");
+    el.className = "pointer-events-auto flex items-start gap-3 px-5 py-4 bg-white border border-neutral-200 shadow-xl text-xs font-semibold text-neutral-900 uppercase tracking-wider toast-enter";
+    const icon = type === "error" ? "fa-circle-exclamation text-red-500" : "fa-circle-check text-green-600";
+    el.innerHTML = `<i class="fa-solid ${icon} text-sm mt-0.5 flex-shrink-0"></i><span class="flex-grow">${escapeHTML(message)}</span><button class="text-neutral-400 hover:text-neutral-900 transition flex-shrink-0" onclick="removeToast(this.parentElement)" aria-label="Dismiss">&times;</button>`;
+    container.appendChild(el);
+    activeToasts.add(el);
+    setTimeout(() => removeToast(el), 4000);
+}
+
+// Loading overlay helpers
+function showLoading(msg = "Loading...") {
+    const overlay = document.getElementById("globalLoadingOverlay");
+    const msgEl = document.getElementById("loadingOverlayMessage");
+    if (overlay) overlay.classList.remove("hidden");
+    if (msgEl) msgEl.textContent = msg;
+}
+function hideLoading() {
+    const overlay = document.getElementById("globalLoadingOverlay");
+    if (overlay) overlay.classList.add("hidden");
+}
+
 async function api(path, options = {}) {
     const method = (options.method || "GET").toUpperCase();
     const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
@@ -39,50 +113,6 @@ async function api(path, options = {}) {
     return body;
 }
 
-// Global Toast Alerts
-function showToast(message, type = "success") {
-    const container = document.getElementById("toastContainer");
-    if (!container) return;
-    
-    const toast = document.createElement("div");
-    toast.className = `p-4 rounded-2xl shadow-xl text-sm font-bold text-white transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto flex items-center gap-2.5 max-w-sm ${
-        type === "success" ? "bg-emerald-600 shadow-emerald-100" : "bg-rose-500 shadow-rose-100"
-    }`;
-    
-    const icon = document.createElement("i");
-    icon.className = type === "success" ? "fa-solid fa-circle-check" : "fa-solid fa-triangle-exclamation";
-    toast.appendChild(icon);
-    
-    const text = document.createElement("span");
-    text.textContent = message;
-    toast.appendChild(text);
-    
-    container.appendChild(toast);
-    
-    // Animate in
-    setTimeout(() => {
-        toast.classList.remove("translate-y-2", "opacity-0");
-    }, 10);
-    
-    // Remove after 3.5s
-    setTimeout(() => {
-        toast.classList.add("translate-y-2", "opacity-0");
-        setTimeout(() => toast.remove(), 300);
-    }, 3500);
-}
-
-// Global Currency Formatter
-function formatPrice(value) {
-    return `Rs. ${Number(value || 0).toLocaleString("en-IN")}`;
-}
-
-// Escape HTML utility
-function escapeHTML(str) {
-    if (typeof str !== "string") return str;
-    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
-
-// Global Initialization
 async function initGlobal() {
     // 1. Fetch current logged in user details
     try {
@@ -111,10 +141,12 @@ async function initGlobal() {
     if (userTrigger && userMenu) {
         userTrigger.addEventListener("click", (e) => {
             e.stopPropagation();
-            userMenu.classList.toggle("hidden");
+            const expanded = userMenu.classList.toggle("hidden");
+            userTrigger.setAttribute("aria-expanded", !expanded);
         });
         document.addEventListener("click", () => {
             userMenu.classList.add("hidden");
+            userTrigger.setAttribute("aria-expanded", "false");
         });
     }
     
@@ -123,7 +155,8 @@ async function initGlobal() {
     const mobNav = document.getElementById("mobileNavMenu");
     if (mobMenuBtn && mobNav) {
         mobMenuBtn.addEventListener("click", () => {
-            mobNav.classList.toggle("hidden");
+            const expanded = mobNav.classList.toggle("hidden");
+            mobMenuBtn.setAttribute("aria-expanded", !expanded);
         });
     }
     
@@ -183,7 +216,306 @@ async function initGlobal() {
     
     // 7. Update Cart & Wishlist badges
     updateBadges();
+    
+    // 8. Initialize mini cart
+    initMiniCart();
+    
+    // 9. Initialize search suggestions
+    initSearchSuggestions();
 }
+
+// --- SEARCH SUGGESTIONS ---
+function initSearchSuggestions() {
+    const input = document.getElementById("globalSearchInput");
+    const mobileInput = document.getElementById("mobileSearchInput");
+    const desktopDrop = document.getElementById("searchSuggestions");
+    const mobileDrop = document.getElementById("mobileSearchSuggestions");
+    if (!input && !mobileInput) return;
+    
+    let debounceTimer;
+    const handler = (value) => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            const dropdown = input === document.activeElement ? desktopDrop : mobileDrop;
+            renderSuggestions(value, dropdown || desktopDrop);
+        }, 250);
+    };
+    
+    if (input && desktopDrop) {
+        input.addEventListener("input", () => handler(input.value));
+        input.addEventListener("keydown", (e) => handleSearchKeydown(e, desktopDrop, input));
+        input.addEventListener("blur", () => setTimeout(() => desktopDrop.classList.add("hidden"), 200));
+        input.addEventListener("focus", () => { if (input.value.trim()) desktopDrop.classList.remove("hidden"); });
+    }
+    if (mobileInput && mobileDrop) {
+        mobileInput.addEventListener("input", () => handler(mobileInput.value));
+        mobileInput.addEventListener("keydown", (e) => handleSearchKeydown(e, mobileDrop, mobileInput));
+        mobileInput.addEventListener("blur", () => setTimeout(() => mobileDrop.classList.add("hidden"), 200));
+        mobileInput.addEventListener("focus", () => { if (mobileInput.value.trim()) mobileDrop.classList.remove("hidden"); });
+    }
+}
+
+function renderSuggestions(query, dropdown) {
+    if (!query || !query.trim()) { dropdown.classList.add("hidden"); return; }
+    const q = query.trim().toLowerCase();
+    const products = appState.products || [];
+    const matches = products.filter(p =>
+        (p.name || "").toLowerCase().includes(q) ||
+        (p.category || "").toLowerCase().includes(q)
+    ).slice(0, 8);
+    
+    if (matches.length === 0) {
+        dropdown.innerHTML = `<div class="px-4 py-3 text-xs text-neutral-400 uppercase tracking-wider">No results found</div>`;
+    } else {
+        dropdown.innerHTML = matches.map((p, i) => `
+            <div class="search-suggestion flex items-center gap-3 px-4 py-2.5 border-b border-neutral-50 last:border-0" data-index="${i}" data-href="/product/${p.id}">
+                <img src="${(parseProductImages(p.image, p.images)[0]) || ''}" class="w-9 h-11 object-cover rounded flex-shrink-0" onerror="this.style.display='none'" />
+                <div class="flex-grow min-w-0">
+                    <p class="text-xs font-semibold text-neutral-800 truncate uppercase tracking-wider">${escapeHTML(p.name)}</p>
+                    <p class="text-[10px] text-neutral-400 uppercase tracking-wider">${p.category} — ${formatPrice(p.price)}</p>
+                </div>
+            </div>
+        `).join("");
+        dropdown.querySelectorAll(".search-suggestion").forEach(el => {
+            el.addEventListener("click", () => {
+                window.location.href = el.dataset.href;
+                dropdown.classList.add("hidden");
+            });
+            el.addEventListener("mouseenter", () => {
+                dropdown.querySelectorAll(".search-suggestion").forEach(e => e.classList.remove("active"));
+                el.classList.add("active");
+            });
+        });
+    }
+    dropdown.classList.remove("hidden");
+}
+
+function handleSearchKeydown(e, dropdown, input) {
+    const items = dropdown.querySelectorAll(".search-suggestion");
+    if (items.length === 0) return;
+    let idx = Array.from(items).findIndex(el => el.classList.contains("active"));
+    if (e.key === "ArrowDown") {
+        e.preventDefault();
+        idx = Math.min(idx + 1, items.length - 1);
+    } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        idx = Math.max(idx - 1, 0);
+    } else if (e.key === "Enter" && idx >= 0) {
+        e.preventDefault();
+        window.location.href = items[idx].dataset.href;
+        dropdown.classList.add("hidden");
+        return;
+    } else if (e.key === "Escape") {
+        dropdown.classList.add("hidden");
+        return;
+    } else return;
+    items.forEach(el => el.classList.remove("active"));
+    items[idx].classList.add("active");
+}
+
+
+// --- MINI CART DRAWER ---
+function initMiniCart() {
+    const cartBtn = document.getElementById("cartIconBtn");
+    const closeBtn = document.getElementById("miniCartCloseBtn");
+    const backdrop = document.getElementById("miniCartBackdrop");
+    const shopBtn = document.getElementById("miniCartShopBtn");
+    
+    if (cartBtn) cartBtn.addEventListener("click", openMiniCart);
+    if (closeBtn) closeBtn.addEventListener("click", closeMiniCart);
+    if (backdrop) backdrop.addEventListener("click", closeMiniCart);
+    if (shopBtn) shopBtn.addEventListener("click", () => { closeMiniCart(); window.location.href = "/shop"; });
+    
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            const drawer = document.getElementById("miniCartDrawer");
+            if (drawer && !drawer.classList.contains("hidden")) closeMiniCart();
+        }
+    });
+}
+
+function openMiniCart() {
+    const drawer = document.getElementById("miniCartDrawer");
+    if (!drawer) return;
+    drawer.classList.remove("hidden");
+    const panel = document.getElementById("miniCartPanel");
+    if (panel) {
+        panel.classList.remove("mini-cart-exit");
+        panel.classList.add("mini-cart-enter");
+    }
+    renderMiniCart();
+    document.body.style.overflow = "hidden";
+    trapFocus(drawer);
+}
+
+function closeMiniCart() {
+    const panel = document.getElementById("miniCartPanel");
+    if (panel) {
+        panel.classList.remove("mini-cart-enter");
+        panel.classList.add("mini-cart-exit");
+    }
+    setTimeout(() => {
+        const drawer = document.getElementById("miniCartDrawer");
+        if (drawer) drawer.classList.add("hidden");
+        document.body.style.overflow = "";
+        releaseFocus(drawer);
+    }, 250);
+}
+
+function renderMiniCart() {
+    const container = document.getElementById("miniCartItems");
+    const empty = document.getElementById("miniCartEmpty");
+    const footer = document.getElementById("miniCartFooter");
+    const count = document.getElementById("miniCartCount");
+    const subtotal = document.getElementById("miniCartSubtotal");
+    if (!container) return;
+    
+    if (appState.cart.length === 0) {
+        container.innerHTML = "";
+        if (empty) empty.classList.remove("hidden");
+        if (footer) footer.classList.add("hidden");
+        if (count) count.textContent = "0";
+        return;
+    }
+    
+    if (empty) empty.classList.add("hidden");
+    if (footer) footer.classList.remove("hidden");
+    if (count) count.textContent = appState.cart.reduce((s, i) => s + i.quantity, 0);
+    
+    let total = 0;
+    container.innerHTML = appState.cart.map((item, idx) => {
+        const product = appState.products.find(p => p.id === item.product_id);
+        if (!product) return "";
+        const parsedImages = parseProductImages(product.image, product.images);
+        const lineTotal = product.price * item.quantity;
+        total += lineTotal;
+        return `
+        <div class="flex gap-3 items-center border-b border-neutral-50 pb-4 last:border-0 last:pb-0">
+            <img src="${parsedImages[0] || ''}" class="w-14 h-18 object-cover rounded flex-shrink-0" onerror="this.style.display='none'" />
+            <div class="flex-grow min-w-0 space-y-0.5">
+                <p class="text-xs font-bold text-neutral-800 truncate uppercase">${escapeHTML(product.name)}</p>
+                <p class="text-[10px] text-neutral-400">Size: ${escapeHTML(item.size)}</p>
+                <p class="text-xs font-semibold text-neutral-900">${formatPrice(lineTotal)}</p>
+            </div>
+            <div class="flex flex-col items-center gap-1">
+                <div class="flex items-center border border-neutral-200 text-[10px] font-bold">
+                    <button type="button" onclick="adjustMiniCartQty(${idx}, -1)" class="w-6 h-6 flex items-center justify-center hover:bg-neutral-100">−</button>
+                    <span class="w-6 text-center">${item.quantity}</span>
+                    <button type="button" onclick="adjustMiniCartQty(${idx}, 1)" class="w-6 h-6 flex items-center justify-center hover:bg-neutral-100">+</button>
+                </div>
+                <button type="button" onclick="adjustMiniCartQty(${idx}, -999)" class="text-[9px] text-rose-500 font-bold uppercase tracking-wider hover:text-rose-600">Remove</button>
+            </div>
+        </div>`;
+    }).join("");
+    
+    if (subtotal) subtotal.textContent = formatPrice(total);
+}
+
+function adjustMiniCartQty(index, amount) {
+    const item = appState.cart[index];
+    if (!item) return;
+    item.quantity += amount;
+    if (item.quantity <= 0) {
+        appState.cart.splice(index, 1);
+    }
+    localStorage.setItem("shibani_cart", JSON.stringify(appState.cart));
+    renderCart();
+    renderMiniCart();
+    updateBadges();
+}
+window.adjustMiniCartQty = adjustMiniCartQty;
+
+
+// --- IMAGE ZOOM (product detail page) ---
+function initImageZoom() {
+    const container = document.querySelector(".zoom-container");
+    const img = document.getElementById("detailMainImage");
+    const lens = document.getElementById("imageZoomLens");
+    if (!container || !img || !lens) return;
+    const lensSize = 120;
+    
+    container.addEventListener("mouseenter", () => {
+        if (window.innerWidth < 768) return;
+        lens.classList.remove("hidden");
+        lens.style.backgroundImage = `url(${img.src})`;
+        const bgW = img.naturalWidth * 2;
+        const bgH = img.naturalHeight * 2;
+        lens.style.backgroundSize = `${bgW}px ${bgH}px`;
+    });
+    
+    container.addEventListener("mousemove", (e) => {
+        if (window.innerWidth < 768) return;
+        const rect = container.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+        const lx = Math.max(0, Math.min(e.clientX - rect.left - lensSize / 2, rect.width - lensSize));
+        const ly = Math.max(0, Math.min(e.clientY - rect.top - lensSize / 2, rect.height - lensSize));
+        lens.style.left = lx + "px";
+        lens.style.top = ly + "px";
+        const bgW = img.naturalWidth * 2;
+        const bgH = img.naturalHeight * 2;
+        const posX = (x / 100) * bgW;
+        const posY = (y / 100) * bgH;
+        lens.style.backgroundPosition = `-${posX - lensSize / 2}px -${posY - lensSize / 2}px`;
+    });
+    
+    container.addEventListener("mouseleave", () => {
+        lens.classList.add("hidden");
+    });
+}
+
+
+// --- PERSONALIZED RECOMMENDATIONS ---
+function loadRecommendations(currentProductId) {
+    const section = document.getElementById("recommendationsSection");
+    const grid = document.getElementById("recommendationsGrid");
+    const heading = document.getElementById("recommendationsHeading");
+    if (!section || !grid) return;
+    
+    const recentIds = safeParseJSON(localStorage.getItem("shibani_recent_viewed"), []);
+    const products = appState.products || [];
+    
+    // Gather categories from recently viewed items (excluding current product)
+    const recentCategories = new Set();
+    recentIds.filter(id => id !== currentProductId).forEach(id => {
+        const p = products.find(pr => pr.id === id);
+        if (p && p.category) recentCategories.add(p.category);
+    });
+    
+    // Also add the current product's category
+    const currentProduct = products.find(p => p.id === currentProductId);
+    if (currentProduct && currentProduct.category) {
+        recentCategories.add(currentProduct.category);
+    }
+    
+    if (recentCategories.size === 0) { section.classList.add("hidden"); return; }
+    
+    // Find products in those categories, excluding already viewed and current
+    const excludeIds = new Set(recentIds);
+    excludeIds.add(currentProductId);
+    
+    let recs = products.filter(p =>
+        recentCategories.has(p.category) && !excludeIds.has(p.id)
+    );
+    
+    // Sort by rating for quality
+    recs.sort((a, b) => b.rating - a.rating);
+    recs = recs.slice(0, 6);
+    
+    if (recs.length === 0) { section.classList.add("hidden"); return; }
+    
+    const catArr = Array.from(recentCategories);
+    if (heading) {
+        heading.textContent = catArr.length === 1
+            ? `More from ${catArr[0].charAt(0).toUpperCase() + catArr[0].slice(1)} Collection`
+            : "Recommended For You";
+    }
+    
+    section.classList.remove("hidden");
+    grid.innerHTML = recs.map(p => renderProductCard(p)).join("");
+    attachCardEvents(grid);
+}
+
 
 function updateBadges() {
     const cartBadge = document.getElementById("cartBadge");
@@ -300,11 +632,17 @@ function renderProductCard(product) {
         </button>
         
         <!-- Aspect 3/4 Image Container with Double-Image Hover Swap -->
-        <div class="relative aspect-[3/4] overflow-hidden bg-neutral-50 cursor-pointer" onclick="window.location.href='/product/${product.id}'">
+        <div class="relative aspect-[3/4] overflow-hidden bg-neutral-50 cursor-pointer group/image" onclick="window.location.href='/product/${product.id}'">
             <img src="${mainImg}" alt="${escapeHTML(product.name)}" loading="lazy" class="w-full h-full object-cover object-top transition duration-700 ease-in-out group-hover:scale-102" />
             ${secondaryImg ? `
             <img src="${secondaryImg}" alt="${escapeHTML(product.name)}" loading="lazy" class="absolute inset-0 w-full h-full object-cover object-top opacity-0 transition-opacity duration-700 ease-in-out group-hover:opacity-100 group-hover:scale-102" />
             ` : ''}
+            <!-- Quick View overlay -->
+            <div class="absolute inset-0 bg-black/0 group-hover/image:bg-black/20 transition-all duration-500 flex items-center justify-center opacity-0 group-hover/image:opacity-100 z-10" onclick="event.stopPropagation()">
+                <button type="button" class="quick-view-btn px-5 py-2.5 bg-white text-neutral-900 font-bold text-[10px] uppercase tracking-widest shadow-lg hover:bg-neutral-100 transition" data-quick-view-id="${product.id}" onclick="event.stopPropagation(); openQuickView(${product.id})">
+                    <i class="fa-regular fa-eye mr-1.5"></i> Quick View
+                </button>
+            </div>
             
             ${product.badge ? `
             <span class="absolute top-4 left-4 bg-neutral-900 text-white font-light text-[9px] px-2.5 py-1 uppercase tracking-widest z-10">
@@ -359,6 +697,22 @@ function parseProductImages(fallbackImg, imagesJson) {
         list.unshift(fallbackImg);
     }
     return list.filter(Boolean);
+}
+
+function populateColorFilters(products) {
+    const container = document.getElementById("shopColorFiltersContainer");
+    if (!container) return;
+    const colorSet = new Set();
+    products.forEach(p => {
+        const c = (p.color || "").trim();
+        if (c) colorSet.add(c);
+    });
+    const colors = Array.from(colorSet).sort();
+    if (colors.length === 0) { container.parentElement.classList.add("hidden"); return; }
+    container.parentElement.classList.remove("hidden");
+    container.innerHTML = colors.map(c => `
+        <button type="button" class="color-filter-btn border border-neutral-200 text-neutral-800 text-[10px] tracking-widest px-3 py-1.5 uppercase hover:border-neutral-900 transition duration-200" data-color="${escapeHTML(c)}">${escapeHTML(c)}</button>
+    `).join("");
 }
 
 function attachCardEvents(container) {
@@ -422,6 +776,7 @@ async function initShop() {
         const data = await api("/api/products");
         if (data && data.products) {
             appState.products = data.products;
+            populateColorFilters(data.products);
             filterAndRenderShop(searchVal);
         }
     } catch (err) {
@@ -452,6 +807,36 @@ async function initShop() {
         });
     });
     
+    // Color filter toggles
+    document.querySelectorAll(".color-filter-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            btn.classList.toggle("bg-neutral-900");
+            btn.classList.toggle("text-white");
+            btn.classList.toggle("border-neutral-900");
+            filterAndRenderShop("");
+        });
+    });
+    
+    // Rating filter toggles (single select)
+    document.querySelectorAll(".rating-filter-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const wasActive = btn.classList.contains("bg-neutral-900");
+            document.querySelectorAll(".rating-filter-btn").forEach(b => {
+                b.classList.remove("bg-neutral-900", "text-white", "border-neutral-900");
+                b.classList.add("border-neutral-200", "text-neutral-800");
+            });
+            if (!wasActive) {
+                btn.classList.add("bg-neutral-900", "text-white", "border-neutral-900");
+                btn.classList.remove("border-neutral-200", "text-neutral-800");
+            }
+            filterAndRenderShop("");
+        });
+    });
+    
+    // Stock toggle
+    const stockToggle = document.getElementById("inStockOnlyFilter");
+    if (stockToggle) stockToggle.addEventListener("change", () => filterAndRenderShop(""));
+    
     const sortSelect = document.getElementById("shopSortSelect");
     if (sortSelect) {
         sortSelect.addEventListener("change", () => filterAndRenderShop(""));
@@ -468,6 +853,16 @@ async function initShop() {
             document.querySelectorAll(".size-filter-btn").forEach(btn => {
                 btn.classList.remove("bg-neutral-900", "text-white", "border-neutral-900");
             });
+            document.querySelectorAll(".color-filter-btn").forEach(btn => {
+                btn.classList.remove("bg-neutral-900", "text-white", "border-neutral-900");
+                btn.classList.add("border-neutral-200", "text-neutral-800");
+            });
+            document.querySelectorAll(".rating-filter-btn").forEach(btn => {
+                btn.classList.remove("bg-neutral-900", "text-white", "border-neutral-900");
+                btn.classList.add("border-neutral-200", "text-neutral-800");
+            });
+            const stockToggle = document.getElementById("inStockOnlyFilter");
+            if (stockToggle) stockToggle.checked = false;
             if (sortSelect) sortSelect.value = "default";
             filterAndRenderShop("");
         });
@@ -488,6 +883,9 @@ function filterAndRenderShop(searchQuery = "") {
     const maxPrice = Number(document.getElementById("priceRangeFilter")?.value || 15000);
     const selectedSizes = Array.from(document.querySelectorAll(".size-filter-btn.bg-neutral-900")).map(btn => btn.dataset.size);
     const sortMode = document.getElementById("shopSortSelect")?.value || "default";
+    const selectedColors = Array.from(document.querySelectorAll(".color-filter-btn.bg-neutral-900")).map(btn => btn.dataset.color);
+    const minRating = Number(document.querySelector(".rating-filter-btn.bg-neutral-900")?.dataset.rating || 0);
+    const inStockOnly = document.getElementById("inStockOnlyFilter")?.checked || false;
     
     // 2. Filter products list
     let filtered = [...appState.products];
@@ -512,6 +910,24 @@ function filterAndRenderShop(searchQuery = "") {
             const sizesList = (p.size || "").split(",").map(s => s.trim().toUpperCase());
             return selectedSizes.some(sz => sizesList.includes(sz));
         });
+    }
+    
+    // Filter by color
+    if (selectedColors.length > 0) {
+        filtered = filtered.filter(p => {
+            const pColor = (p.color || "").trim().toLowerCase();
+            return selectedColors.some(c => pColor.includes(c.toLowerCase()));
+        });
+    }
+    
+    // Filter by min rating
+    if (minRating > 0) {
+        filtered = filtered.filter(p => Number(p.rating) >= minRating);
+    }
+    
+    // Filter by stock availability
+    if (inStockOnly) {
+        filtered = filtered.filter(p => (p.stock || "").toLowerCase() !== "out of stock");
     }
     
     // 3. Sort list
@@ -628,12 +1044,200 @@ function removeCompareItem(productId) {
 window.removeCompareItem = removeCompareItem;
 
 
+// --- QUICK VIEW MODAL CONTROLLER ---
+function openQuickView(productId) {
+    const modal = document.getElementById("quickViewModal");
+    if (!modal) return;
+    const product = appState.products.find(p => p.id === productId);
+    if (!product) return;
+    
+    const parsedImages = parseProductImages(product.image, product.images);
+    
+    // Set images
+    const mainImg = document.getElementById("qvMainImage");
+    if (mainImg) {
+        mainImg.src = parsedImages[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600';
+        mainImg.alt = product.name || '';
+    }
+    
+    // Badge
+    const badge = document.getElementById("qvBadge");
+    if (badge) {
+        if (product.badge) {
+            badge.textContent = product.badge;
+            badge.classList.remove("hidden");
+        } else {
+            badge.classList.add("hidden");
+        }
+    }
+    
+    // Thumbnails
+    const thumbContainer = document.getElementById("qvThumbnails");
+    if (thumbContainer) {
+        if (parsedImages.length > 1) {
+            thumbContainer.innerHTML = parsedImages.map((img, i) => `
+                <button type="button" class="qv-thumb w-14 h-16 overflow-hidden border ${i === 0 ? 'border-neutral-900' : 'border-neutral-200'} bg-white flex-shrink-0" data-img="${img}">
+                    <img src="${img}" alt="" class="w-full h-full object-cover object-top" />
+                </button>
+            `).join("");
+            // Thumbnail click
+            thumbContainer.querySelectorAll(".qv-thumb").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    thumbContainer.querySelectorAll(".qv-thumb").forEach(b => b.classList.replace("border-neutral-900", "border-neutral-200"));
+                    btn.classList.replace("border-neutral-200", "border-neutral-900");
+                    if (mainImg) mainImg.src = btn.dataset.img;
+                });
+            });
+        } else {
+            thumbContainer.innerHTML = "";
+        }
+    }
+    
+    // Category
+    const cat = document.getElementById("qvCategory");
+    if (cat) cat.textContent = `COLLECTION / ${product.category || ''}`;
+    
+    // Name
+    const name = document.getElementById("qvName");
+    if (name) name.textContent = product.name || '';
+    
+    // Price
+    const price = document.getElementById("qvPrice");
+    if (price) price.textContent = formatPrice(product.price);
+    
+    // Old price / save badge
+    const oldPrice = document.getElementById("qvOldPrice");
+    const saveBadge = document.getElementById("qvSaveBadge");
+    if (oldPrice && saveBadge) {
+        if (product.old_price && Number(product.old_price) > Number(product.price)) {
+            oldPrice.textContent = formatPrice(product.old_price);
+            oldPrice.classList.remove("hidden");
+            const pct = Math.round((1 - Number(product.price) / Number(product.old_price)) * 100);
+            saveBadge.textContent = `Save ${pct}%`;
+            saveBadge.classList.remove("hidden");
+        } else {
+            oldPrice.classList.add("hidden");
+            saveBadge.classList.add("hidden");
+        }
+    }
+    
+    // Description
+    const desc = document.getElementById("qvDescription");
+    if (desc) desc.textContent = product.description || 'Premium quality apparel. Carefully chosen fabric tailored with style and care.';
+    
+    // Stock
+    const stock = document.getElementById("qvStock");
+    if (stock) {
+        const isOut = (product.stock || '').toLowerCase() === 'out of stock';
+        const isLimited = (product.stock || '').toLowerCase() === 'limited stock';
+        stock.textContent = product.stock || 'In stock';
+        stock.className = `inline-block px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${
+            isOut ? 'bg-rose-50 text-rose-600' : isLimited ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'
+        }`;
+    }
+    
+    // Sizes
+    const sizesContainer = document.getElementById("qvSizes");
+    if (sizesContainer) {
+        const sizes = (product.size || "").split(",").map(s => s.trim()).filter(Boolean);
+        sizesContainer.innerHTML = sizes.map((sz, i) => `
+            <button type="button" class="qv-size-btn px-4 py-2 border text-[10px] tracking-widest uppercase transition duration-200 ${
+                i === 0 ? 'border-neutral-900 bg-neutral-900 text-white font-bold' : 'border-neutral-200 text-neutral-800 hover:border-neutral-900'
+            }" data-size="${sz}">${sz}</button>
+        `).join("");
+        sizesContainer.querySelectorAll(".qv-size-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                sizesContainer.querySelectorAll(".qv-size-btn").forEach(b => {
+                    b.classList.remove("border-neutral-900", "bg-neutral-900", "text-white", "font-bold");
+                    b.classList.add("border-neutral-200", "text-neutral-800");
+                });
+                btn.classList.add("border-neutral-900", "bg-neutral-900", "text-white", "font-bold");
+                btn.classList.remove("border-neutral-200", "text-neutral-800");
+            });
+        });
+    }
+    
+    // Store product data on modal for add to cart/wishlist
+    modal.dataset.productId = productId;
+    
+    // Set full details link
+    const fullLink = document.getElementById("qvFullDetails");
+    if (fullLink) fullLink.href = `/product/${productId}`;
+    
+    // Show modal
+    modal.classList.remove("hidden");
+}
+
+function closeQuickView() {
+    const modal = document.getElementById("quickViewModal");
+    if (modal) {
+        modal.classList.add("hidden");
+        releaseFocus(modal);
+    }
+}
+
+// Wire quick view modal events (called once on DOM ready)
+function initQuickViewModal() {
+    const modal = document.getElementById("quickViewModal");
+    if (!modal) return;
+    
+    // Close button
+    const closeBtn = document.getElementById("closeQuickViewBtn");
+    if (closeBtn) closeBtn.addEventListener("click", closeQuickView);
+    
+    // Backdrop click
+    modal.addEventListener("click", (e) => {
+        if (e.target === modal) closeQuickView();
+    });
+    
+    // Escape key
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && !modal.classList.contains("hidden")) closeQuickView();
+    });
+    
+    // Add to Cart
+    const addBtn = document.getElementById("qvAddToCartBtn");
+    if (addBtn) {
+        addBtn.addEventListener("click", () => {
+            const pid = Number(modal.dataset.productId);
+            const selectedSizeEl = document.querySelector("#qvSizes .qv-size-btn.border-neutral-900") || document.querySelector("#qvSizes .qv-size-btn");
+            const size = selectedSizeEl ? selectedSizeEl.dataset.size : "M";
+            addToCart(pid, 1, size, "Default");
+            showToast("Added to shopping bag!", "success");
+        });
+    }
+    
+    // Wishlist
+    const wishBtn = document.getElementById("qvWishlistBtn");
+    if (wishBtn) {
+        wishBtn.addEventListener("click", () => {
+            const pid = Number(modal.dataset.productId);
+            toggleWishlistItem(pid);
+        });
+    }
+    
+    // Close quick view on full details link
+    const fullLink = document.getElementById("qvFullDetails");
+    if (fullLink) {
+        fullLink.addEventListener("click", () => {
+            closeQuickView();
+        });
+    }
+}
+
+
 // --- 3. PRODUCT DETAIL CONTROLLER ---
 async function initProductDetail() {
     const pIdEl = document.getElementById("currentProductId");
     if (!pIdEl) return;
     
     const productId = Number(pIdEl.dataset.id);
+    
+    // Track recently viewed
+    trackRecentlyViewed(productId);
+    
+    // Image zoom
+    initImageZoom();
     
     // 1. Thumbnail click logic
     document.querySelectorAll(".thumbnail-btn").forEach(btn => {
@@ -837,11 +1441,11 @@ async function loadProductReviews(productId) {
 
 
 function trackRecentlyViewed(productId) {
-    let recent = JSON.parse(localStorage.getItem("shibani_recent_viewed") || "[]");
+    let recent = safeParseJSON(localStorage.getItem("shibani_recent_viewed"), []);
     recent = recent.filter(id => id !== productId);
     recent.unshift(productId);
-    if (recent.length > 5) {
-        recent = recent.slice(0, 5);
+    if (recent.length > 6) {
+        recent = recent.slice(0, 6);
     }
     localStorage.setItem("shibani_recent_viewed", JSON.stringify(recent));
 }
@@ -863,7 +1467,7 @@ async function loadRelatedAndRecentlyViewed(currentProductId) {
         if (relatedGrid) {
             const related = products
                 .filter(p => p.category === currentProduct.category && p.id !== currentProduct.id)
-                .slice(0, 4);
+                .slice(0, 6);
 
             if (related.length === 0) {
                 relatedGrid.innerHTML = `<p class="col-span-full text-slate-400 font-semibold py-8 text-center text-sm">No related products found.</p>`;
@@ -877,13 +1481,13 @@ async function loadRelatedAndRecentlyViewed(currentProductId) {
         const recentSection = document.getElementById("recentlyViewedSection");
         const recentGrid = document.getElementById("recentlyViewedGrid");
         if (recentSection && recentGrid) {
-            const recentIds = JSON.parse(localStorage.getItem("shibani_recent_viewed") || "[]")
+            const recentIds = safeParseJSON(localStorage.getItem("shibani_recent_viewed"), [])
                 .filter(id => id !== currentProductId);
 
             const recentProducts = recentIds
                 .map(id => products.find(p => p.id === id))
                 .filter(Boolean)
-                .slice(0, 4);
+                .slice(0, 6);
 
             if (recentProducts.length > 0) {
                 recentSection.classList.remove("hidden");
@@ -1045,6 +1649,9 @@ function renderCart() {
     
     // Calculate final bill
     calculateBillingTotals();
+    
+    // Sync mini cart
+    renderMiniCart();
 }
 
 function adjustCartQty(index, amount) {
@@ -1069,7 +1676,7 @@ function saveForLater(index) {
     const item = appState.cart[index];
     if (!item) return;
 
-    let saved = JSON.parse(localStorage.getItem("shibani_saved_later") || "[]");
+    let saved = safeParseJSON(localStorage.getItem("shibani_saved_later"), []);
     const existing = saved.find(s => s.product_id === item.product_id && s.size === item.size && s.color === item.color);
     if (!existing) {
         saved.push(item);
@@ -1085,7 +1692,7 @@ function saveForLater(index) {
 }
 
 function moveToCart(index) {
-    let saved = JSON.parse(localStorage.getItem("shibani_saved_later") || "[]");
+    let saved = safeParseJSON(localStorage.getItem("shibani_saved_later"), []);
     const item = saved[index];
     if (!item) return;
 
@@ -1106,7 +1713,7 @@ function moveToCart(index) {
 }
 
 function removeSavedLater(index) {
-    let saved = JSON.parse(localStorage.getItem("shibani_saved_later") || "[]");
+    let saved = safeParseJSON(localStorage.getItem("shibani_saved_later"), []);
     saved.splice(index, 1);
     localStorage.setItem("shibani_saved_later", JSON.stringify(saved));
     
@@ -1119,7 +1726,7 @@ function renderSaveForLater() {
     const list = document.getElementById("saveForLaterList");
     if (!section || !list) return;
 
-    const saved = JSON.parse(localStorage.getItem("shibani_saved_later") || "[]");
+    const saved = safeParseJSON(localStorage.getItem("shibani_saved_later"), []);
     if (saved.length === 0) {
         section.classList.add("hidden");
         list.innerHTML = "";
@@ -1280,14 +1887,17 @@ async function handleCheckoutSubmit(e) {
     if (paymentMode === "COD") {
         // Place COD order directly
         try {
+            showLoading("Placing your order...");
             const data = await api("/api/orders", {
                 method: "POST",
                 body: JSON.stringify(orderData)
             });
+            hideLoading();
             showToast(`🎉 Order #${data.order_id} placed successfully!`);
             localStorage.removeItem("shibani_cart");
             setTimeout(() => window.location.href = "/order-confirmation?order_id=" + data.order_id, 1500);
         } catch (err) {
+            hideLoading();
             showToast(err.message || "Failed to place order.", "error");
         }
     } else {
@@ -1329,25 +1939,22 @@ async function handleCheckoutSubmit(e) {
             
             confirmBtn.onclick = async () => {
                 clearInterval(upiInterval);
-                // Animate overlay status check
-                const overlay = document.getElementById("upiStatusOverlay");
-                overlay.classList.remove("hidden");
-                
-                setTimeout(async () => {
-                    try {
-                        const data = await api("/api/orders", {
-                            method: "POST",
-                            body: JSON.stringify(orderData)
-                        });
-                        showToast(`🎉 Order #${data.order_id} placed successfully!`);
-                        localStorage.removeItem("shibani_cart");
-                        setTimeout(() => window.location.href = "/order-confirmation?order_id=" + data.order_id, 1500);
-                    } catch (err) {
-                        showToast(err.message || "Failed to place order.", "error");
-                        overlay.classList.add("hidden");
-                        upiModal.classList.add("hidden");
-                    }
-                }, 1500);
+                upiModal.classList.add("hidden");
+                showLoading("Processing your payment...");
+
+                try {
+                    const data = await api("/api/orders", {
+                        method: "POST",
+                        body: JSON.stringify(orderData)
+                    });
+                    hideLoading();
+                    showToast(`🎉 Order #${data.order_id} placed successfully!`);
+                    localStorage.removeItem("shibani_cart");
+                    setTimeout(() => window.location.href = "/order-confirmation?order_id=" + data.order_id, 1500);
+                } catch (err) {
+                    hideLoading();
+                    showToast(err.message || "Failed to place order.", "error");
+                }
             };
             
             cancelBtn.onclick = () => {
@@ -1875,14 +2482,14 @@ async function loadAdminCatalog(filterQuery = "") {
             const parsedImages = parseProductImages(p.image, p.images);
             return `
             <tr class="hover:bg-slate-50 transition border-b border-slate-100">
-                <td class="py-4 px-6 text-xs text-slate-400">#${p.id}</td>
+                <td class="py-4 px-6 text-xs text-slate-400 whitespace-nowrap">#${p.id}</td>
                 <td class="py-4 px-6 flex items-center gap-3">
-                    <img src="${parsedImages[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=100'}" class="w-12 h-12 rounded-xl object-cover" />
-                    <span class="text-slate-800 font-bold line-clamp-1">${escapeHTML(p.name)}</span>
+                    <img src="${parsedImages[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=100'}" class="w-12 h-12 rounded-xl object-cover shrink-0" />
+                    <span class="text-slate-800 font-bold line-clamp-1 whitespace-nowrap">${escapeHTML(p.name)}</span>
                 </td>
-                <td class="py-4 px-6 uppercase text-xs">${p.category}</td>
-                <td class="py-4 px-6 text-indigo-600 font-extrabold">${formatPrice(p.price)}</td>
-                <td class="py-4 px-6">
+                <td class="py-4 px-6 uppercase text-xs whitespace-nowrap">${p.category}</td>
+                <td class="py-4 px-6 text-indigo-600 font-extrabold whitespace-nowrap">${formatPrice(p.price)}</td>
+                <td class="py-4 px-6 whitespace-nowrap">
                     <span class="px-2 py-0.5 rounded text-xs font-bold uppercase ${
                         p.stock === 'Out of stock' ? 'bg-rose-50 text-rose-500 border border-rose-100' :
                         p.stock === 'Limited stock' ? 'bg-amber-50 text-amber-500 border border-amber-100' :
@@ -2084,7 +2691,7 @@ async function loadAdminOrders(statusFilter = "all", searchQuery = "") {
             
             return `
             <tr class="hover:bg-slate-50 border-b border-slate-100 transition align-top">
-                <td class="py-4 px-6 text-xs text-slate-400">#${o.id}</td>
+                <td class="py-4 px-6 text-xs text-slate-400 whitespace-nowrap">#${o.id}</td>
                 <td class="py-4 px-6 space-y-0.5">
                     <p class="font-bold text-slate-800">${escapeHTML(o.customer_name)}</p>
                     <p class="text-[10px] text-slate-400">${escapeHTML(o.phone)}</p>
@@ -2164,7 +2771,7 @@ async function loadAdminCustomers(filterQuery = "") {
         
         tableBody.innerHTML = filtered.map(c => `
         <tr class="hover:bg-slate-50 border-b border-slate-100 transition align-middle">
-            <td class="py-4 px-6 text-xs text-slate-400">#${c.id}</td>
+            <td class="py-4 px-6 text-xs text-slate-400 whitespace-nowrap">#${c.id}</td>
             <td class="py-4 px-6 space-y-0.5">
                 <p class="font-bold text-slate-800">${escapeHTML(c.full_name)}</p>
                 <p class="text-xs text-slate-400">${escapeHTML(c.username)}</p>
@@ -2467,6 +3074,7 @@ async function initLogin() {
         }
         
         try {
+            showLoading("Signing in...");
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Signing In...';
             loginMessage.classList.add("hidden");
@@ -2476,6 +3084,7 @@ async function initLogin() {
                 body: JSON.stringify({ username, password })
             });
             
+            hideLoading();
             showToast("Successfully signed in!");
             
             // Redirect based on role
@@ -2487,6 +3096,7 @@ async function initLogin() {
                 }
             }, 500);
         } catch (err) {
+            hideLoading();
             loginMessage.textContent = err.message || "Invalid credentials.";
             loginMessage.classList.remove("hidden");
             submitBtn.disabled = false;
@@ -2541,6 +3151,7 @@ async function initSignup() {
         }
         
         try {
+            showLoading("Creating your account...");
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> CREATING ACCOUNT...';
             signupMessage.classList.add("hidden");
@@ -2550,11 +3161,13 @@ async function initSignup() {
                 body: JSON.stringify({ full_name, email, username, password })
             });
             
+            hideLoading();
             showToast("Welcome to Shibani! Your account has been created.");
             setTimeout(() => {
                 window.location.href = "/";
             }, 1000);
         } catch (err) {
+            hideLoading();
             signupMessage.textContent = err.message || "Failed to create account.";
             signupMessage.classList.remove("hidden");
             submitBtn.disabled = false;
@@ -2568,6 +3181,7 @@ async function initSignup() {
 document.addEventListener("DOMContentLoaded", () => {
     // Initialize global headers, buttons, logout handlers
     initGlobal();
+    initQuickViewModal();
     
     // Page router matching
     const path = window.location.pathname;
