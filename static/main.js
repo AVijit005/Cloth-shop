@@ -135,92 +135,19 @@ async function initGlobal() {
         console.warn("Session check failed, running as guest.");
     }
     
-    // 2. User Dropdown trigger
-    const userTrigger = document.getElementById("userDropdownTrigger");
-    const userMenu = document.getElementById("userDropdownMenu");
-    if (userTrigger && userMenu) {
-        userTrigger.addEventListener("click", (e) => {
-            e.stopPropagation();
-            const expanded = userMenu.classList.toggle("hidden");
-            userTrigger.setAttribute("aria-expanded", !expanded);
-        });
-        document.addEventListener("click", () => {
-            userMenu.classList.add("hidden");
-            userTrigger.setAttribute("aria-expanded", "false");
-        });
-    }
-    
-    // 3. Hamburger Mobile menu toggle
-    const mobMenuBtn = document.getElementById("mobileMenuToggle");
-    const mobNav = document.getElementById("mobileNavMenu");
-    if (mobMenuBtn && mobNav) {
-        mobMenuBtn.addEventListener("click", () => {
-            const expanded = mobNav.classList.toggle("hidden");
-            mobMenuBtn.setAttribute("aria-expanded", !expanded);
-        });
-    }
-    
-    // 4. Mobile search toggle
-    const mobSearchBtn = document.getElementById("mobileSearchToggle");
-    const mobSearch = document.getElementById("mobileSearchContainer");
-    if (mobSearchBtn && mobSearch) {
-        mobSearchBtn.addEventListener("click", () => {
-            mobSearch.classList.toggle("hidden");
-        });
-    }
-    
-    // 5. Global Logout handlers
-    const logoutBtn = document.getElementById("globalLogoutBtn");
-    const adminLogoutBtn = document.getElementById("adminLogoutBtn");
-    const mobAdminLogoutBtn = document.getElementById("adminMobileLogoutBtn");
-    
-    const handleLogout = async () => {
-        try {
-            await api("/api/logout", { method: "POST" });
-            localStorage.removeItem("shibani_cart");
-            showToast("Successfully logged out!");
-            setTimeout(() => window.location.href = "/", 1000);
-        } catch (err) {
-            showToast(err.message || "Logout failed.", "error");
-        }
-    };
-    
-    if (logoutBtn) logoutBtn.addEventListener("click", handleLogout);
-    if (adminLogoutBtn) adminLogoutBtn.addEventListener("click", handleLogout);
-    if (mobAdminLogoutBtn) mobAdminLogoutBtn.addEventListener("click", handleLogout);
-    
-    // 6. Global Search form submit
-    const handleSearchSubmit = (inputEl) => {
-        if (inputEl && inputEl.value.trim()) {
-            window.location.href = `/shop?q=${encodeURIComponent(inputEl.value.trim())}`;
-        }
-    };
-    
-    const searchForm = document.getElementById("globalSearchForm");
-    const searchInput = document.getElementById("globalSearchInput");
-    if (searchForm && searchInput) {
-        searchForm.addEventListener("submit", (e) => {
-            e.preventDefault();
-            handleSearchSubmit(searchInput);
-        });
-    }
-    
-    const mobSearchForm = document.getElementById("mobileSearchForm");
-    const mobSearchInput = document.getElementById("mobileSearchInput");
-    if (mobSearchForm && mobSearchInput) {
-        mobSearchForm.addEventListener("submit", (e) => {
-            e.preventDefault();
-            handleSearchSubmit(mobSearchInput);
-        });
-    }
+    // NOTE: User dropdown, mobile menu, search toggle, logout handlers, search form,
+    // cart drawer, and dark mode toggle are initialized by global-init.js (modular system).
+    // Keeping them here would create duplicate event listeners with conflicting toggle
+    // classes (hidden vs open). The modular initGlobal() in static/js/utils/global-init.js
+    // handles these with the .open class that matches the CSS design system.
     
     // 7. Update Cart & Wishlist badges
     updateBadges();
     
-    // 8. Initialize mini cart
+    // 8. Initialize mini cart (complementary to cart drawer in global-init.js)
     initMiniCart();
     
-    // 9. Initialize search suggestions
+    // 9. Initialize search suggestions (not yet migrated to modular system)
     initSearchSuggestions();
 }
 

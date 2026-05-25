@@ -16,6 +16,7 @@ import { showToast } from "./components/toast.js";
 import { cartStore } from "./state/cart-store.js";
 import { wishlistStore } from "./state/wishlist-store.js";
 import { initGlobal } from "./utils/global-init.js";
+import { formatPrice } from "./utils/formatters.js";
 
 // Page controllers — lazy-loaded per route
 const pageControllers = {
@@ -51,9 +52,11 @@ async function boot() {
 }
 
 // Expose key APIs globally for inline onclick handlers in templates
+// and for the legacy monolithic main.js which depends on formatPrice as a global
 window.showToast = showToast;
 window.cartStore = cartStore;
 window.wishlistStore = wishlistStore;
+window.formatPrice = formatPrice;
 
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", boot);
