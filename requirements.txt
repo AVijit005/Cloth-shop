@@ -3,3 +3,4 @@ mysql-connector-python==9.7.0
 waitress==3.0.0
 python-dotenv
 gunicorn
+firebase-admin

@@ -13,6 +13,13 @@ from mysql.connector.pooling import MySQLConnectionPool
 from flask import Flask, jsonify, request, send_from_directory, session, render_template, redirect, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 from dotenv import load_dotenv
+try:
+    import firebase_admin
+    from firebase_admin import credentials as firebase_creds
+    import firebase_admin.auth as firebase_auth
+    firebase_admin_available = True
+except ImportError:
+    firebase_admin_available = False
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
@@ -36,6 +43,16 @@ app.config.update(
     SESSION_COOKIE_SAMESITE="Lax",
     PERMANENT_SESSION_LIFETIME=timedelta(minutes=30)
 )
+
+# Firebase Admin initialization
+firebase_app = None
+firebase_service_account = os.getenv("FIREBASE_SERVICE_ACCOUNT")
+if firebase_admin_available and firebase_service_account:
+    try:
+        cred = firebase_creds.Certificate(json.loads(firebase_service_account))
+        firebase_app = firebase_admin.initialize_app(cred)
+    except Exception:
+        pass
 
 # --- SECURITY UTILITIES & MIDDLEWARE ---
 
@@ -1210,6 +1227,100 @@ def login():
         session["saved_address"] = user.get("saved_address") or ""
 
     return jsonify({"user": session["user"]})
+
+
+@app.post("/api/login/google")
+def google_login():
+    data = json_payload()
+    id_token = data.get("id_token", "")
+
+    if not id_token:
+        return jsonify({"error": "ID token is required"}), 400
+
+    if not firebase_admin_available or not firebase_app:
+        return jsonify({"error": "Google sign-in is not configured on this server"}), 503
+
+    try:
+        decoded_token = firebase_auth.verify_id_token(id_token)
+        email = decoded_token.get("email", "")
+        name = decoded_token.get("name", email.split("@")[0] if email else "Google User")
+
+        if not email:
+            return jsonify({"error": "Email is required from Google account"}), 400
+
+        user = None
+
+        if check_db_health():
+            with db_connection() as connection:
+                with connection.cursor(dictionary=True) as cursor:
+                    cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+                    user = cursor.fetchone()
+
+                    if not user:
+                        base_username = email.split("@")[0]
+                        cursor.execute("SELECT id FROM users WHERE username = %s", (base_username,))
+                        if cursor.fetchone():
+                            base_username = f"{base_username}_{secrets.token_hex(2)}"
+
+                        cursor.execute(
+                            """INSERT INTO users (username, password_hash, role, full_name, email, email_verified)
+                               VALUES (%s, %s, 'customer', %s, %s, 1)""",
+                            (base_username, generate_password_hash(secrets.token_hex(32)), name, email)
+                        )
+                        connection.commit()
+                        user = {
+                            "id": cursor.lastrowid,
+                            "username": base_username,
+                            "role": "customer",
+                            "full_name": name,
+                            "email_verified": 1
+                        }
+        else:
+            existing = next((u for u in memory_users.values() if u.get("email") == email), None)
+            if existing:
+                user = existing
+                user["email_verified"] = 1
+            else:
+                base_username = email.split("@")[0]
+                if base_username in memory_users or base_username in {"admin", "customer"}:
+                    base_username = f"{base_username}_{secrets.token_hex(2)}"
+                user_id = len(memory_users) + 100
+                memory_users[base_username] = {
+                    "id": user_id,
+                    "password_hash": generate_password_hash(secrets.token_hex(32)),
+                    "role": "customer",
+                    "full_name": name,
+                    "email": email,
+                    "email_verified": 1
+                }
+                user = {
+                    "id": user_id,
+                    "username": base_username,
+                    "role": "customer",
+                    "full_name": name,
+                    "email_verified": 1
+                }
+
+        session.permanent = True
+        app.permanent_session_lifetime = timedelta(minutes=30)
+        session["user"] = {
+            "id": user["id"],
+            "username": user["username"],
+            "role": user["role"],
+            "full_name": user.get("full_name", name),
+            "email_verified": 1
+        }
+
+        # Sync saved profile fields if present
+        if isinstance(user, dict):
+            session["saved_name"] = user.get("saved_name") or ""
+            session["saved_phone"] = user.get("saved_phone") or ""
+            session["saved_address"] = user.get("saved_address") or ""
+
+        return jsonify({"user": session["user"]})
+
+    except Exception as exc:
+        return jsonify({"error": f"Google authentication failed: {str(exc)}"}), 401
 
 
 @app.post("/api/register")
