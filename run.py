@@ -11,6 +11,12 @@ from functools import wraps
 from html import escape
 import threading
 
+import mysql.connector
+from mysql.connector.pooling import MySQLConnectionPool
+from flask import Flask, jsonify, request, send_from_directory, session, render_template, redirect, url_for, g
+from werkzeug.security import check_password_hash, generate_password_hash
+from dotenv import load_dotenv
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -34,12 +40,6 @@ if sentry_dsn:
         logger.info("Sentry initialized")
     except Exception as exc:
         logger.warning("Sentry init failed: %s", exc)
-
-import mysql.connector
-from mysql.connector.pooling import MySQLConnectionPool
-from flask import Flask, jsonify, request, send_from_directory, session, render_template, redirect, url_for, g
-from werkzeug.security import check_password_hash, generate_password_hash
-from dotenv import load_dotenv
 try:
     import firebase_admin
     from firebase_admin import credentials as firebase_creds
@@ -2008,7 +2008,7 @@ def create_coupon():
     discount_type = data.get("discount_type")
     discount_value = float(data.get("discount_value", 0.0))
     min_subtotal = float(data.get("min_subtotal", 0.0))
-    active = 1 if data.get("active") != False else 0
+    active = 1 if data.get("active") else 0
     
     expires_at = data.get("expires_at")
     if not expires_at or expires_at == "":
@@ -2088,7 +2088,7 @@ def update_coupon(coupon_id):
     discount_type = data.get("discount_type")
     discount_value = float(data.get("discount_value", 0.0))
     min_subtotal = float(data.get("min_subtotal", 0.0))
-    active = 1 if data.get("active") != False else 0
+    active = 1 if data.get("active") else 0
     
     expires_at = data.get("expires_at")
     if not expires_at or expires_at == "":
@@ -2952,9 +2952,7 @@ def create_order():
         other_charges = 0
 
     # Loyalty points processing (purged)
-    applied_redeemed_points = 0
     points_discount = 0.0
-    earned_points = 0
 
     tax = (subtotal - discount - points_discount) * gst_rate
     if tax < 0:
@@ -2963,7 +2961,7 @@ def create_order():
     if total < 0:
         total = 0.0
 
-    save_profile = data.get("save_profile") == True
+    save_profile = data.get("save_profile")
 
     if check_db_health():
         try:

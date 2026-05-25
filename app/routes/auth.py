@@ -6,21 +6,17 @@ Usage (in app.py):
     app.register_blueprint(auth_bp)
 """
 
-from flask import Blueprint, jsonify, request, session, render_template, redirect, url_for
+from flask import Blueprint, jsonify, request, session
 from werkzeug.security import check_password_hash, generate_password_hash
 import secrets
-from datetime import timedelta
+import re
 
 from app.middleware.security import (
     is_blocked, track_failed_login, clear_failed_logins,
     validate_password_strength, create_user_session
 )
 from app.utils.helpers import json_payload
-from app.services.email_service import send_verification_email, send_reset_password_email
-
-# Import these from app.py globals (during migration)
-# Eventually these will come from a proper service/db layer
-from app import db_check, db_conn, mem_users, mem_products  # noqa: placeholder
+from app.services.email_service import send_verification_email
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api")
 

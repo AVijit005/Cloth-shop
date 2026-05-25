@@ -5,8 +5,6 @@ import base64
 import os
 import logging
 
-from html import escape as html_escape
-
 logger = logging.getLogger(__name__)
 
 ALLOWED_IMAGE_TYPES = {"png", "jpg", "jpeg", "gif", "webp"}
