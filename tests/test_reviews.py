@@ -31,12 +31,11 @@ class TestReviewCreation:
         assert resp.status_code == 400
 
     def test_create_review_invalid_rating(self, customer_session):
-        """App accepts out-of-range ratings without validation."""
+        """App now rejects out-of-range ratings."""
         resp = customer_session.post("/api/reviews", json={
             "product_id": 1, "rating": 10, "sizing_fit": "fit",
         })
-        # App stores whatever value is sent
-        assert resp.status_code == 200
+        assert resp.status_code == 400
 
 
 class TestReviewListing:

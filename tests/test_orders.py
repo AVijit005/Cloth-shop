@@ -17,7 +17,7 @@ class TestOrderCreation:
 
     def test_create_order_as_logged_in_user(self, customer_session):
         resp = customer_session.post("/api/orders", json=self.ORDER_PAYLOAD)
-        assert resp.status_code == 200
+        assert resp.status_code == 201
         data = resp.get_json()
         assert "order_id" in data
         assert data["order_id"] > 0
@@ -41,10 +41,10 @@ class TestOrderCreation:
         """Buy all stock of a product, then attempt to order it again."""
         payload = {**self.ORDER_PAYLOAD, "items": [{"product_id": 1, "quantity": 1, "size": "M"}]}
         resp1 = customer_session.post("/api/orders", json=payload)
-        assert resp1.status_code == 200
+        assert resp1.status_code == 201
 
         resp2 = customer_session.post("/api/orders", json=payload)
-        assert resp2.status_code == 200
+        assert resp2.status_code == 201
 
         # Product 1 should now be "Out of stock" — third order fails
         resp3 = customer_session.post("/api/orders", json=payload)
@@ -82,9 +82,9 @@ class TestCouponValidation:
             "coupon_code": "SHIBANI10",
             "items": [{"product_id": 1, "quantity": 1, "size": "M"}],
         })
+        assert resp.status_code == 201, f"Coupon order failed: {resp.get_json()}"
         data = resp.get_json()
-        if resp.status_code == 200:
-            assert data["discount"] > 0
+        assert data["discount"] > 0
 
     def test_invalid_coupon(self, customer_session):
         resp = customer_session.post("/api/orders", json={
@@ -151,7 +151,7 @@ class TestOrderCancellation:
             "payment_mode": "Cash on delivery",
             "items": [{"product_id": 3, "quantity": 1, "size": "M"}],
         })
-        assert create_resp.status_code == 200
+        assert create_resp.status_code == 201
         order_id = create_resp.get_json()["order_id"]
 
         resp = customer_session.put(f"/api/orders/{order_id}/cancel")
@@ -173,5 +173,4 @@ class TestOrderCancellation:
         order_id = create_resp.get_json()["order_id"]
 
         resp = admin_session.put(f"/api/orders/{order_id}/cancel")
-        # Note: memory fallback doesn't enforce user ownership check on cancel
-        assert resp.status_code == 200
+        assert resp.status_code == 404

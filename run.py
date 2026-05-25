@@ -215,6 +215,9 @@ def validate_password_strength(password):
 login_attempts = {}
 login_attempts_lock = threading.Lock()
 
+# Thread safety for in-memory product stock (prevents overselling)
+memory_products_lock = threading.Lock()
+
 def is_blocked(username, ip):
     now = datetime.now()
     with login_attempts_lock:
@@ -1869,10 +1872,14 @@ def update_product(product_id):
         except Exception as exc:
             return jsonify({"error": f"Database error: {str(exc)}"}), 500
     else:
+        found = False
         for index, existing in enumerate(memory_products):
             if existing["id"] == product_id:
                 memory_products[index] = {**existing, **product, "id": product_id}
+                found = True
                 break
+        if not found:
+            return jsonify({"error": "Product not found"}), 404
     return jsonify({"product": {**product, "id": product_id}})
 
 
@@ -2226,10 +2233,14 @@ def update_order_status(order_id):
         except Exception as exc:
             return jsonify({"error": f"Database error: {str(exc)}"}), 500
     else:
+        found = False
         for order in memory_orders:
             if order["id"] == order_id:
                 order["status"] = status
+                found = True
                 break
+        if not found:
+            return jsonify({"error": "Order not found"}), 404
     return jsonify({"ok": True, "status": status})
 
 
@@ -2378,7 +2389,8 @@ def my_orders():
             return jsonify({"error": f"Database error: {str(exc)}"}), 500
             
     # For transient fallback, match orders based on logged in user's username
-    user_orders = [o for o in memory_orders]
+    username = user["username"]
+    user_orders = [o for o in memory_orders if o.get("username") == username or o.get("customer_name") == user["full_name"]]
     return jsonify({"orders": user_orders})
 
 
@@ -2424,6 +2436,8 @@ def cancel_order(order_id):
                 found_order = order
                 break
         if not found_order:
+            return jsonify({"error": "Order not found"}), 404
+        if str(found_order.get("user_id")) != str(user["id"]) and found_order.get("username") != user["username"]:
             return jsonify({"error": "Order not found"}), 404
         if found_order.get("status") != "New":
             return jsonify({"error": "Only orders with 'New' status can be cancelled"}), 400
@@ -2535,11 +2549,24 @@ def create_review():
     
     if not product_id or not rating:
         return jsonify({"error": "product_id and rating are required"}), 400
-        
+    
+    try:
+        rating = int(rating)
+    except (ValueError, TypeError):
+        return jsonify({"error": "rating must be an integer"}), 400
+    if rating < 1 or rating > 5:
+        return jsonify({"error": "rating must be between 1 and 5"}), 400
+
     if check_db_health():
         try:
             with db_connection() as connection:
-                with connection.cursor() as cursor:
+                with connection.cursor(dictionary=True) as cursor:
+                    cursor.execute(
+                        "SELECT id FROM reviews WHERE user_id = %s AND product_id = %s",
+                        (user["id"], product_id)
+                    )
+                    if cursor.fetchone():
+                        return jsonify({"error": "You have already reviewed this product"}), 400
                     cursor.execute(
                         "INSERT INTO reviews (user_id, username, product_id, rating, comment, sizing_fit, status) VALUES (%s, %s, %s, %s, %s, %s, 'approved')",
                         (user["id"], user["username"], product_id, rating, comment, sizing_fit)
@@ -2552,6 +2579,9 @@ def create_review():
             return jsonify({"error": f"Database error: {str(exc)}"}), 500
             
     # In-memory fallback
+    existing_review = next((r for r in memory_reviews if r["user_id"] == user["id"] and r["product_id"] == product_id), None)
+    if existing_review:
+        return jsonify({"error": "You have already reviewed this product"}), 400
     new_id = max([r["id"] for r in memory_reviews], default=0) + 1
     new_review = {
         "id": new_id,
@@ -3025,11 +3055,15 @@ def create_order():
             else:
                 session["saved_address"] = address
                 
-        for item in order_items:
-            for p in memory_products:
-                if p["id"] == item["product_id"]:
-                    p["stock"] = decrement_stock_string(p.get("stock", ""))
-                    break
+        with memory_products_lock:
+            for item in order_items:
+                for p in memory_products:
+                    if p["id"] == item["product_id"]:
+                        p_stock = (p.get("stock") or "").strip().lower()
+                        if p_stock == "out of stock":
+                            return jsonify({"error": f"Product '{item.get('product_name', 'Unknown')}' is out of stock"}), 400
+                        p["stock"] = decrement_stock_string(p.get("stock", ""))
+                        break
                     
         order_id = len(memory_orders) + 1
         if coupon_code:
@@ -3042,6 +3076,8 @@ def create_order():
             0,
             {
                 "id": order_id,
+                "user_id": user["id"],
+                "username": user["username"],
                 "customer_name": customer_name,
                 "phone": phone,
                 "address": address,
@@ -3068,7 +3104,7 @@ def create_order():
         "tax": tax,
         "other": other_charges,
         "coupon_code": coupon_code
-    })
+    }), 201
 
 
 def normalize_product(data):

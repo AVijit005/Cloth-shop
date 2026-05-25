@@ -21,12 +21,12 @@ export function showToast(message, type = "success") {
     <span>${escapeHTML(message)}</span>
     <button class="ml-2 text-white/80 hover:text-white" onclick="this.parentElement.remove()" aria-label="Dismiss">&times;</button>
   `;
-  toast.addEventListener("animationend", () => {
-    setTimeout(() => {
-      toast.classList.add("opacity-0", "translate-x-4");
-      setTimeout(() => { toast.remove(); activeToasts.delete(message); }, 300);
-    }, 3000);
-  });
+  setTimeout(() => {
+    toast.classList.add("opacity-0", "translate-x-4");
+    const remove = () => { toast.remove(); activeToasts.delete(message); };
+    toast.addEventListener("transitionend", remove, { once: true });
+    setTimeout(remove, 500);
+  }, 3000);
   container.appendChild(toast);
 }
 

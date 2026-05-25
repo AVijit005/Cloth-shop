@@ -132,7 +132,7 @@ class TestAdminProductCRUD:
         assert data["product"]["name"] == "Updated Product"
 
     def test_update_nonexistent_product(self, admin_session):
-        """App returns 200 even for non-existent product IDs (no guard)."""
+        """App now correctly rejects non-existent product IDs."""
         resp = admin_session.put("/api/products/99999", json={
             "name": "Ghost",
             "category": "men",
@@ -141,8 +141,7 @@ class TestAdminProductCRUD:
             "color": "N/A",
             "stock": "In stock",
         })
-        # App doesn't validate existence — returns 200
-        assert resp.status_code == 200
+        assert resp.status_code == 404
 
     def test_delete_product(self, admin_session):
         resp = admin_session.delete("/api/products/1")

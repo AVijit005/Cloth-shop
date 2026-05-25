@@ -24,6 +24,7 @@ class WishlistStore {
   }
 
   toggle(productId) {
+    this._items = this._items || [];
     const idx = this._items.indexOf(productId);
     if (idx >= 0) {
       this._items.splice(idx, 1);

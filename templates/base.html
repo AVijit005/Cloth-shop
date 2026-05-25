@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ session.get('csrf_token') }}">
-    <meta name="theme-color" content="#ffffff">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0c0c0c" media="(prefers-color-scheme: dark)">
     <title>{% block title %}SHIBANI | Premium Fashion{% endblock %}</title>
 
     <!-- Preconnect -->
@@ -59,7 +60,7 @@
     </style>
     {% block head %}{% endblock %}
 </head>
-<body class="bg-white text-[var(--neutral-800)] flex flex-col min-h-screen"
+<body class="bg-[var(--neutral-50)] text-[var(--neutral-800)] flex flex-col min-h-screen"
       data-page="{{ page_id or '' }}"
       data-theme="{{ session.get('theme', 'light') }}">
 
@@ -465,8 +466,6 @@
 
     <!-- Legacy JS -->
     <script src="{{ url_for('static', filename='main.js') }}"></script>
-    <!-- Modular JS -->
-    <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

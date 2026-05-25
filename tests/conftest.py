@@ -88,6 +88,12 @@ def reset_global_state():
         "full_name": "Shibani Customer",
         "email_verified": 1,
     }
+    app_module.memory_coupons.clear()
+    app_module.memory_coupons.extend([
+        {"id": 1, "code": "SHIBANI10", "discount_type": "percentage", "discount_value": 10.0, "min_subtotal": 0.0, "active": 1, "expires_at": None, "usage_limit": None, "usage_count": 0},
+        {"id": 2, "code": "WELCOME200", "discount_type": "fixed", "discount_value": 200.0, "min_subtotal": 1000.0, "active": 1, "expires_at": None, "usage_limit": None, "usage_count": 0},
+        {"id": 3, "code": "FREEDELIVERY", "discount_type": "fixed", "discount_value": 0.0, "min_subtotal": 0.0, "active": 1, "expires_at": None, "usage_limit": None, "usage_count": 0},
+    ])
     app_module.mysql_ready = False
 
 

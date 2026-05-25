@@ -9,7 +9,7 @@ export async function init() {
   const grid = document.getElementById("productGrid");
   if (!grid) return;
   const { data } = await api("/api/products");
-  if (data?.products) {
+  if (data?.products && Array.isArray(data.products)) {
     grid.innerHTML = data.products.map(renderProductCard).join("");
     _attachCardEvents(grid);
   }
