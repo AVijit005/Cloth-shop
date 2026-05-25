@@ -5,8 +5,10 @@ import os
 import re
 import secrets
 import time
+import uuid
 from datetime import datetime, UTC, timedelta
 from functools import wraps
+from html import escape
 import threading
 
 logging.basicConfig(
@@ -16,9 +18,26 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Sentry integration (optional — enable via SENTRY_DSN env var)
+# ---------------------------------------------------------------------------
+sentry_dsn = os.getenv("SENTRY_DSN")
+if sentry_dsn:
+    try:
+        import sentry_sdk
+        sentry_sdk.init(
+            dsn=sentry_dsn,
+            traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+            environment=os.getenv("FLASK_ENV", "development"),
+            send_default_pii=False,
+        )
+        logger.info("Sentry initialized")
+    except Exception as exc:
+        logger.warning("Sentry init failed: %s", exc)
+
 import mysql.connector
 from mysql.connector.pooling import MySQLConnectionPool
-from flask import Flask, jsonify, request, send_from_directory, session, render_template, redirect, url_for
+from flask import Flask, jsonify, request, send_from_directory, session, render_template, redirect, url_for, g
 from werkzeug.security import check_password_hash, generate_password_hash
 from dotenv import load_dotenv
 try:
@@ -51,7 +70,7 @@ app.config.update(
     SESSION_COOKIE_SECURE=IS_PROD,
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
-    PERMANENT_SESSION_LIFETIME=timedelta(minutes=30)
+    PERMANENT_SESSION_LIFETIME=timedelta(days=30)  # max lifetime; session.permanent controls actual expiry
 )
 
 # Firebase Admin initialization
@@ -61,10 +80,72 @@ if firebase_admin_available and firebase_service_account:
     try:
         cred = firebase_creds.Certificate(json.loads(firebase_service_account))
         firebase_app = firebase_admin.initialize_app(cred)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Firebase init failed: %s", exc)
 
 # --- SECURITY UTILITIES & MIDDLEWARE ---
+
+# Page ID context — maps endpoints to data-page attribute for JS controllers
+_PAGE_ID_MAP = {
+    "index": "home",
+    "shop_page": "shop",
+    "product_page": "product",
+    "cart_page": "cart",
+    "wishlist_page": "wishlist",
+    "orders_page": "orders",
+    "profile_page": "profile",
+    "login_page": "login",
+    "signup_page": "signup",
+    "forgot_password_page": "forgot-password",
+    "reset_password_page": "reset-password",
+    "about_page": "about",
+    "contact_page": "contact",
+    "admin_dashboard": "admin",
+    "admin_products_page": "admin-products",
+    "admin_orders_page": "admin-orders",
+    "admin_customers_page": "admin-customers",
+    "admin_reviews_page": "admin-reviews",
+    "admin_analytics_page": "admin-analytics",
+}
+
+@app.context_processor
+def inject_page_id():
+    return {"page_id": _PAGE_ID_MAP.get(request.endpoint or "", "")}
+
+# Request ID middleware — tags every request with a traceable ID
+@app.before_request
+def assign_request_id():
+    g.request_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:16]
+
+
+@app.after_request
+def add_security_and_caching_headers(response):
+    # Request ID for traceability
+    if hasattr(g, "request_id"):
+        response.headers["X-Request-ID"] = g.request_id
+    # Security headers
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "0"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    if IS_PROD:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    # Content-Security-Policy (relaxed for Tailwind CDN + Font Awesome)
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://kit.fontawesome.com https://www.googletagmanager.com https://*.firebaseio.com https://apis.google.com; "
+        "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com https://kit-free.fontawesome.com; "
+        "img-src 'self' data: blob: https:; "
+        "font-src 'self' https://fonts.gstatic.com https://ka-f.fontawesome.com; "
+        "connect-src 'self' https://*.firebaseio.com https://identitytoolkit.googleapis.com; "
+        "frame-src https://*.firebaseapp.com https://accounts.google.com; "
+    )
+    # Browser caching for static assets
+    if request.path.startswith("/static/") and response.content_type and "text/html" not in response.content_type:
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    return response
+
 
 # CSRF Protection
 @app.before_request
@@ -82,16 +163,26 @@ def validate_csrf():
         # Bypass for local testing environment if configured
         if os.getenv("FLASK_ENV") == "testing":
             return
-            
-        exempt_paths = ["/api/login", "/api/register", "/api/forgot-password", "/api/reset-password"]
-        if request.path in exempt_paths:
-            return
-            
+
         csrf_token = request.headers.get("X-CSRF-Token")
         session_csrf = session.get("csrf_token")
         
         if not session_csrf or csrf_token != session_csrf:
             return jsonify({"error": "Invalid or missing CSRF token"}), 400
+
+# Quest/gamification handler (placeholder for future feature)
+def update_quest_progress(user_id, quest_type):
+    if quest_type == "write_review":
+        try:
+            if check_db_health():
+                with db_connection() as connection:
+                    with connection.cursor() as cursor:
+                        cursor.execute("SELECT quest_data FROM users WHERE id = %s", (user_id,))
+                        row = cursor.fetchone()
+                        if row:
+                            pass  # Placeholder for quest tracking
+        except Exception:
+            pass
 
 # Password Strength Rules
 def validate_password_strength(password):
@@ -195,10 +286,11 @@ def send_email(subject, recipient, body_html):
 
 def send_verification_email(username, email, token):
     url = f"{request.url_root.rstrip('/')}/verify-email?token={token}"
+    safe_name = escape(username)
     body = f"""
     <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #f0f0f0; border-radius: 12px; padding: 24px;">
         <h2 style="color: #4f46e5; margin-bottom: 8px;">Welcome to Shibani Fashion!</h2>
-        <p style="color: #475569; font-size: 14px;">Hello {username}, thank you for registering with us.</p>
+        <p style="color: #475569; font-size: 14px;">Hello {safe_name}, thank you for registering with us.</p>
         <p style="color: #475569; font-size: 14px; margin-bottom: 24px;">To verify your email and activate your account, please click the button below:</p>
         <a href="{url}" style="display: inline-block; background-color: #4f46e5; color: white; text-decoration: none; font-weight: bold; font-size: 14px; padding: 12px 24px; border-radius: 8px;">Verify My Email</a>
         <div style="border-t: 1px solid #f0f0f0; margin-top: 24px; padding-top: 16px; font-size: 11px; color: #94a3b8;">
@@ -210,10 +302,11 @@ def send_verification_email(username, email, token):
 
 def send_reset_password_email(username, email, token):
     url = f"{request.url_root.rstrip('/')}/reset-password?token={token}"
+    safe_name = escape(username)
     body = f"""
     <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #f0f0f0; border-radius: 12px; padding: 24px;">
         <h2 style="color: #4f46e5; margin-bottom: 8px;">Password Reset Request</h2>
-        <p style="color: #475569; font-size: 14px;">Hello {username}, we received a request to reset your password.</p>
+        <p style="color: #475569; font-size: 14px;">Hello {safe_name}, we received a request to reset your password.</p>
         <p style="color: #475569; font-size: 14px; margin-bottom: 24px;">To reset your password, please click the button below (valid for 1 hour):</p>
         <a href="{url}" style="display: inline-block; background-color: #4f46e5; color: white; text-decoration: none; font-weight: bold; font-size: 14px; padding: 12px 24px; border-radius: 8px;">Reset Password</a>
         <div style="border-t: 1px solid #f0f0f0; margin-top: 24px; padding-top: 16px; font-size: 11px; color: #94a3b8;">
@@ -243,22 +336,27 @@ def send_order_confirmation_email(user, customer_name, order_id, order_items, to
     if not user_email:
         logger.warning("Cannot send order confirmation: no email found for user %s", user.get("username"))
         return
+    safe_name = escape(customer_name)
+    safe_address = escape(address)
+    safe_phone = escape(phone)
+    safe_payment = escape(payment_mode)
     items_html = "".join(
-        f'<tr><td style="padding:8px 12px;border-bottom:1px solid #eee;">{item["product_name"]}</td>'
+        f'<tr><td style="padding:8px 12px;border-bottom:1px solid #eee;">{escape(item["product_name"])}</td>'
         f'<td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:center;">{item["quantity"]}</td>'
         f'<td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">Rs. {item["price"]:,.2f}</td></tr>'
         for item in order_items
     )
-    coupon_line = f"<tr><td style='padding:8px 12px;border-bottom:1px solid #eee;'>Coupon ({coupon_code})</td><td></td><td style='padding:8px 12px;border-bottom:1px solid #eee;text-align:right;'>-Rs. {discount:,.2f}</td></tr>" if coupon_code else ""
+    safe_coupon = escape(coupon_code) if coupon_code else ""
+    coupon_line = f"<tr><td style='padding:8px 12px;border-bottom:1px solid #eee;'>Coupon ({safe_coupon})</td><td></td><td style='padding:8px 12px;border-bottom:1px solid #eee;text-align:right;'>-Rs. {discount:,.2f}</td></tr>" if coupon_code else ""
     body = f"""
     <div style="font-family:sans-serif;max-width:560px;margin:0 auto;border:1px solid #e5e7eb;border-radius:12px;padding:32px;">
         <h2 style="color:#4f46e5;margin:0 0 16px;">Order Confirmed &#9989;</h2>
-        <p style="color:#475569;font-size:14px;margin:0 0 4px;">Hi {customer_name},</p>
+        <p style="color:#475569;font-size:14px;margin:0 0 4px;">Hi {safe_name},</p>
         <p style="color:#475569;font-size:14px;margin:0 0 20px;">Thank you for your order! Here is your receipt:</p>
         <div style="background:#f9fafb;border-radius:8px;padding:16px;margin-bottom:20px;">
             <p style="margin:0 0 4px;font-size:12px;color:#6b7280;">Order #<strong>{order_id}</strong></p>
-            <p style="margin:0 0 4px;font-size:12px;color:#6b7280;">Payment: {payment_mode}</p>
-            <p style="margin:0;font-size:12px;color:#6b7280;">Deliver to: {address} &mdash; {phone}</p>
+            <p style="margin:0 0 4px;font-size:12px;color:#6b7280;">Payment: {safe_payment}</p>
+            <p style="margin:0;font-size:12px;color:#6b7280;">Deliver to: {safe_address} &mdash; {safe_phone}</p>
         </div>
         <table style="width:100%;border-collapse:collapse;font-size:13px;">
             <thead><tr style="background:#f3f4f6;"><th style="padding:8px 12px;text-align:left;">Item</th><th style="padding:8px 12px;text-align:center;">Qty</th><th style="padding:8px 12px;text-align:right;">Price</th></tr></thead>
@@ -295,6 +393,10 @@ def safe_int(value, default=0):
         return default
 
 
+# Allowed image MIME types for upload
+ALLOWED_IMAGE_TYPES = {"png", "jpg", "jpeg", "gif", "webp"}
+MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB
+
 def save_base64_image(base64_str):
     if not base64_str or not isinstance(base64_str, str):
         return base64_str
@@ -302,17 +404,28 @@ def save_base64_image(base64_str):
         try:
             header, encoded = base64_str.split(",", 1)
             match = re.search(r"data:image/(\w+);base64", header)
-            ext = match.group(1) if match else "png"
+            ext = match.group(1).lower() if match else "png"
+            if ext not in ALLOWED_IMAGE_TYPES:
+                logger.warning("Rejected image upload with type: %s", ext)
+                return base64_str
             if ext == "jpeg":
                 ext = "jpg"
             data = base64.b64decode(encoded)
+            if len(data) > MAX_IMAGE_SIZE:
+                logger.warning("Rejected image upload exceeding %d bytes", MAX_IMAGE_SIZE)
+                return base64_str
+            # Validate decoded data starts with a valid image magic bytes
+            if not any(data.startswith(sig) for sig in [b"\xff\xd8\xff", b"\x89PNG", b"GIF87a", b"GIF89a", b"RIFF"]):
+                if ext != "webp":
+                    logger.warning("Rejected upload: invalid image magic bytes")
+                    return base64_str
             filename = f"{secrets.token_hex(16)}.{ext}"
             filepath = os.path.join(UPLOAD_FOLDER, filename)
             with open(filepath, "wb") as f:
                 f.write(data)
             return f"/uploads/{filename}"
-        except Exception:
-            pass
+        except (ValueError, TypeError, base64.binascii.Error) as exc:
+            logger.error("Failed to save base64 image: %s", exc)
     return base64_str
 
 
@@ -1038,6 +1151,22 @@ def parse_images(images_value, fallback_image=""):
     return [image for image in images if image]
 
 
+def create_user_session(user, remember=False, username=None):
+    """Create a Flask session for the given user dict. Mutates session in place."""
+    session.permanent = bool(remember)
+    session["user"] = {
+        "id": user["id"],
+        "username": username or user.get("username"),
+        "role": user["role"],
+        "full_name": user["full_name"],
+        "email_verified": int(user.get("email_verified", 0))
+    }
+    if user.get("saved_name") is not None:
+        session["saved_name"] = user["saved_name"]
+        session["saved_phone"] = user.get("saved_phone") or ""
+        session["saved_address"] = user.get("saved_address") or ""
+
+
 def html_login_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
@@ -1185,15 +1314,19 @@ def admin_analytics_page():
 
 @app.route("/uploads/<path:filename>")
 def serve_upload(filename):
-    return send_from_directory(UPLOAD_FOLDER, filename)
+    response = send_from_directory(UPLOAD_FOLDER, filename)
+    response.headers["Cache-Control"] = "public, max-age=604800, immutable"
+    return response
 
 
 
 @app.get("/api/status")
 def status():
+    db_ok = check_db_health()
     return jsonify(
         {
-            "mysql_ready": check_db_health(),
+            "status": "healthy" if db_ok else "degraded",
+            "mysql_ready": db_ok,
             "database": DB_NAME,
             "mysql_error": mysql_error,
             "demo_accounts": {
@@ -1202,6 +1335,12 @@ def status():
             },
         }
     )
+
+
+@app.get("/api/health")
+def health():
+    """Minimal health check for load balancers — always returns 200."""
+    return jsonify({"status": "ok"}), 200
 
 
 @app.post("/api/login")
@@ -1230,22 +1369,10 @@ def login():
                 return jsonify({"error": "Wrong ID or password"}), 401
                 
             clear_failed_logins(username, ip)
-            
-            # Configure Session Lifetime
-            if remember:
-                session.permanent = True
-                app.permanent_session_lifetime = timedelta(days=30)
-            else:
-                session.permanent = True
-                app.permanent_session_lifetime = timedelta(minutes=30)
 
-            session["user"] = {
-                "id": user["id"],
-                "username": user["username"],
-                "role": user["role"],
-                "full_name": user["full_name"],
-                "email_verified": int(user.get("email_verified") or 0)
-            }
+            create_user_session(user, remember)
+
+            return jsonify({"user": session["user"]})
         except Exception as exc:
             return jsonify({"error": f"Database error: {str(exc)}"}), 500
     else:
@@ -1272,27 +1399,14 @@ def login():
             return jsonify({"error": "Wrong ID or password"}), 401
             
         clear_failed_logins(username, ip)
-        
-        # Configure Session Lifetime
-        if remember:
-            session.permanent = True
-            app.permanent_session_lifetime = timedelta(days=30)
-        else:
-            session.permanent = True
-            app.permanent_session_lifetime = timedelta(minutes=30)
 
-        session["user"] = {
-            "id": user["id"],
-            "username": username,
-            "role": user["role"],
-            "full_name": user["full_name"],
-            "email_verified": int(user.get("email_verified", 1))
-        }
+        create_user_session(user, remember, username=username)
+
         session["saved_name"] = user.get("saved_name") or ""
         session["saved_phone"] = user.get("saved_phone") or ""
         session["saved_address"] = user.get("saved_address") or ""
 
-    return jsonify({"user": session["user"]})
+        return jsonify({"user": session["user"]})
 
 
 @app.post("/api/login/google")
@@ -1367,21 +1481,7 @@ def google_login():
                     "email_verified": 1
                 }
 
-        session.permanent = True
-        app.permanent_session_lifetime = timedelta(minutes=30)
-        session["user"] = {
-            "id": user["id"],
-            "username": user["username"],
-            "role": user["role"],
-            "full_name": user.get("full_name", name),
-            "email_verified": 1
-        }
-
-        # Sync saved profile fields if present
-        if isinstance(user, dict):
-            session["saved_name"] = user.get("saved_name") or ""
-            session["saved_phone"] = user.get("saved_phone") or ""
-            session["saved_address"] = user.get("saved_address") or ""
+        create_user_session(user, remember=False)
 
         return jsonify({"user": session["user"]})
 
@@ -1439,16 +1539,8 @@ def register():
             # Send activation email asynchronously
             send_verification_email(full_name, email, verification_token)
 
-            session.permanent = True
-            app.permanent_session_lifetime = timedelta(minutes=30)
-            
-            session["user"] = {
-                "id": user_id,
-                "username": username,
-                "role": "customer",
-                "full_name": full_name,
-                "email_verified": 0
-            }
+            new_user = {"id": user_id, "username": username, "role": "customer", "full_name": full_name, "email_verified": 0}
+            create_user_session(new_user)
             return jsonify({"user": session["user"]})
         except Exception as exc:
             return jsonify({"error": f"Database error: {str(exc)}"}), 500
@@ -1474,16 +1566,8 @@ def register():
         
         send_verification_email(full_name, email, verification_token)
 
-        session.permanent = True
-        app.permanent_session_lifetime = timedelta(minutes=30)
-
-        session["user"] = {
-            "id": user_id,
-            "username": username,
-            "role": "customer",
-            "full_name": full_name,
-            "email_verified": 0
-        }
+        new_user = {"id": user_id, "username": username, "role": "customer", "full_name": full_name, "email_verified": 0}
+        create_user_session(new_user)
         return jsonify({"user": session["user"]})
 
 
@@ -1655,17 +1739,42 @@ def me():
 
 @app.get("/api/products")
 def products():
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 50, type=int)
+    per_page = min(max(per_page, 1), 200)  # clamp 1-200
+    offset = (page - 1) * per_page
+
     if check_db_health():
         try:
             with db_connection() as connection:
                 with connection.cursor(dictionary=True) as cursor:
-                    cursor.execute("SELECT * FROM products ORDER BY created_at DESC, id DESC")
+                    cursor.execute("SELECT COUNT(*) AS total FROM products")
+                    total = cursor.fetchone()["total"]
+                    cursor.execute(
+                        "SELECT * FROM products ORDER BY created_at DESC, id DESC LIMIT %s OFFSET %s",
+                        (per_page, offset)
+                    )
                     rows = cursor.fetchall()
-            return jsonify({"products": [product_row_to_dict(row) for row in rows]})
+            return jsonify({
+                "products": [product_row_to_dict(row) for row in rows],
+                "page": page,
+                "per_page": per_page,
+                "total": total,
+                "pages": (total + per_page - 1) // per_page
+            })
         except Exception as exc:
             return jsonify({"error": f"Database error: {str(exc)}"}), 500
 
-    return jsonify({"products": memory_products})
+    # Memory fallback: naive pagination
+    total = len(memory_products)
+    paged = memory_products[offset:offset + per_page]
+    return jsonify({
+        "products": paged,
+        "page": page,
+        "per_page": per_page,
+        "total": total,
+        "pages": (total + per_page - 1) // per_page
+    })
 
 
 @app.post("/api/products")

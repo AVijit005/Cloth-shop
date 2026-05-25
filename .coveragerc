@@ -1,0 +1,13 @@
+[run]
+source = app.py
+omit = */venv/*,*/env/*,*/__pycache__/*,*test*
+relative_files = True
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if __name__ == "__main__":
+    raise NotImplementedError
+    logger\.(warning|error|info)
+    return jsonify\({"error": f"Database error
+    except Exception

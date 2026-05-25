@@ -7,6 +7,9 @@
   <img src="https://img.shields.io/badge/Firebase_Auth-FFCA28?style=flat-square&logo=firebase" alt="Firebase Auth"/>
   <img src="https://img.shields.io/badge/Render_Ready-46E3B7?style=flat-square&logo=render" alt="Render Ready"/>
   <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT License"/>
+  <img src="https://img.shields.io/badge/CI-Passing-3CCF4E?style=flat-square&logo=githubactions" alt="CI Passing"/>
+  <img src="https://img.shields.io/badge/coverage-53%25-orange?style=flat-square" alt="Coverage 53%"/>
+  <img src="https://img.shields.io/badge/tests-113_Passing-3CCF4E?style=flat-square" alt="113 Tests Passing"/>
 </p>
 
 A **production-ready Flask e-commerce application** featuring a luxury frontend with glassmorphism aesthetics, dual-storage architecture (MySQL primary + in-memory fallback), Firebase Google OAuth, role-based admin panels, and full e-commerce UX with checkout, coupons, wishlists, and order management.
@@ -110,23 +113,42 @@ Built as a monolithic single-file Flask backend with a declarative vanilla JavaS
 ```
 Browser ──HTTP──> Flask (app.py) ──┬── MySQL (primary)
                                     │     connection_pool_size=10
+                                    │     indexes on orders, products, reviews
                                     │
                                     └── Memory Store (fallback)
                                          in-memory lists/dicts
                                          auto-seeded on boot
 
+Modular Scaffold (app/ package):
+  app/routes/auth.py           ← Sample Blueprint (migration pattern)
+  app/services/email_service.py
+  app/middleware/security.py    ← CSRF, brute-force, auth decorators
+  app/utils/helpers.py
+  app/config/__init__.py
+
+Testing Infrastructure (113 tests):
+  tests/conftest.py            ← Fixtures, in-memory mode, auth sessions
+  tests/test_auth.py           ← Register, login, logout, authorization
+  tests/test_products.py       ← CRUD, pagination, search
+  tests/test_orders.py         ← Creation, cancellation, coupons
+  tests/test_reviews.py        ← CRUD, admin moderation
+  tests/test_profile.py        ← Profile read/update, address book
+  tests/test_admin.py          ← Dashboard, settings, customers, orders
+  tests/test_security.py       ← CSRF, XSS, brute-force, input validation
+  tests/test_health.py         ← Health check, status endpoint
+
 Static Assets:
-  /static/main.js         3220 lines — SPA-style controller with page router
-  /static/styles.css       4022 lines — Custom CSS (glassmorphism, animations)
-  /static/firebase-config.js   — Firebase SDK client init
-  /static/firebase-auth.js     — Google sign-in popup handler
+  /static/main.js              ← SPA-style controller with page router
+  /static/styles.css           ← Custom CSS (glassmorphism, animations)
+  /static/firebase-config.js   ← Firebase SDK client init
+  /static/firebase-auth.js     ← Google sign-in popup handler
 
 Templates (Jinja2):
   base.html / admin_base.html  — layouts
   16 page templates + 6 admin templates
 ```
 
-The app uses a **single-file Flask backend** with a declarative JavaScript frontend. The JS file contains a path-based router (`/shop → initShop()`, `/product/... → initProductDetail()`, etc.) and all page-specific controllers, keeping the architecture simple without a frontend framework.
+The app uses a **single-file Flask backend** with a declarative JavaScript frontend. The JS file contains a path-based router (`/shop → initShop()`, `/product/... → initProductDetail()`, etc.) and all page-specific controllers, keeping the architecture simple without a frontend framework. A modular `app/` package coexists alongside `app.py` for progressive migration to Blueprints and the service layer pattern.
 
 ---
 
@@ -251,12 +273,17 @@ The app also exposes a `/api/status` endpoint that returns all valid demo creden
 
 ## Roadmap
 
+- [x] **Docker + Docker Compose** — Containerized deployment with HEALTHCHECK
+- [x] **CI/CD Pipeline** — GitHub Actions (lint + test + coverage)
+- [x] **API Pagination** — Page/per_page with clamping (max 200)
+- [x] **Database Indexes** — Performance indexes on orders, products, reviews
+- [x] **Session Hardening** — Race condition fix, CSRF, XSS, brute-force protection
+- [x] **113 Integration Tests** — Auth, products, orders, reviews, admin, security
 - [ ] **Stripe / Razorpay Payment Gateway** — Real payment processing beyond COD/UPI QR
 - [ ] **Product Variants** — Color + size matrix with per-variant stock and images
 - [ ] **Wishlist Notifications** — Email alerts when wishlist items go on sale
 - [ ] **Progressive Web App** — Service worker for offline product browsing
-- [ ] **Unit / Integration Tests** — pytest suite for API endpoints and critical flows
-- [ ] **Docker Compose** — Single-command local setup with MySQL container
+- [ ] **Sentry Error Tracking** — DSN configured (set `SENTRY_DSN` env var)
 - [ ] **i18n Support** — Multi-language product descriptions and checkout
 
 ---

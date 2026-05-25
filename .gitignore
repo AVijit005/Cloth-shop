@@ -5,3 +5,6 @@ __pycache__/
 *.pyc
 uploads/*
 logs/*
+.pytest_cache/
+.kilo/
+

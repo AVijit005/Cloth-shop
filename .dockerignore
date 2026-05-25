@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.pyc
+.env
+.git
+.gitignore
+README.md
+.vscode/
+.pytest_cache/
+.kilo/
+start.bat
