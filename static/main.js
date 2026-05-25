@@ -544,7 +544,7 @@ async function initHome() {
 }
 
 function renderProductCard(product) {
-    const isWishlisted = appState.wishlist.includes(product.id);
+    const isWishlisted = (appState.wishlist || []).includes(product.id);
     const parsedImages = parseProductImages(product.image, product.images);
     const mainImg = parsedImages[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400';
     const secondaryImg = parsedImages[1] || null;
@@ -621,7 +621,7 @@ function parseProductImages(fallbackImg, imagesJson) {
     try {
         list = JSON.parse(imagesJson || "[]");
     } catch (e) {}
-    if (fallbackImg && !list.includes(fallbackImg)) {
+    if (fallbackImg && Array.isArray(list) && !list.includes(fallbackImg)) {
         list.unshift(fallbackImg);
     }
     return list.filter(Boolean);
@@ -662,7 +662,7 @@ function attachCardEvents(container) {
     // 3. Compare checkbox trigger
     container.querySelectorAll(".compare-checkbox-quick").forEach(cb => {
         // Init checked state from comparison list
-        cb.checked = appState.compareList.includes(Number(cb.dataset.compareId));
+        cb.checked = (appState.compareList || []).includes(Number(cb.dataset.compareId));
         
         cb.addEventListener("change", () => {
             const pId = Number(cb.dataset.compareId);
@@ -2398,7 +2398,7 @@ async function loadAdminCatalog(filterQuery = "") {
         let filtered = [...list];
         if (filterQuery) {
             const q = filterQuery.toLowerCase();
-            filtered = filtered.filter(p => p.name.toLowerCase().includes(q) || String(p.id).includes(q));
+            filtered = filtered.filter(p => (p.name || "").toLowerCase().includes(q) || String(p.id).includes(q));
         }
         
         if (filtered.length === 0) {
@@ -2602,7 +2602,7 @@ async function loadAdminOrders(statusFilter = "all", searchQuery = "") {
         // Search filter
         if (searchQuery) {
             const q = searchQuery.toLowerCase();
-            filtered = filtered.filter(o => o.customer_name.toLowerCase().includes(q) || String(o.id).includes(q));
+            filtered = filtered.filter(o => (o.customer_name || "").toLowerCase().includes(q) || String(o.id).includes(q));
         }
         
         if (filtered.length === 0) {
@@ -2689,7 +2689,7 @@ async function loadAdminCustomers(filterQuery = "") {
         let filtered = [...list];
         if (filterQuery) {
             const q = filterQuery.toLowerCase();
-            filtered = filtered.filter(c => c.full_name.toLowerCase().includes(q) || c.username.toLowerCase().includes(q) || String(c.id).includes(q));
+            filtered = filtered.filter(c => (c.full_name || "").toLowerCase().includes(q) || (c.username || "").toLowerCase().includes(q) || String(c.id).includes(q));
         }
         
         if (filtered.length === 0) {

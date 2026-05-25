@@ -15,7 +15,7 @@ export function safeParseJSON(val, fallback = null) {
 }
 
 export function getItem(key, fallback = null) {
-  try { const v = localStorage.getItem(key); return v !== null ? safeParseJSON(v, v) : fallback; }
+  try { const v = localStorage.getItem(key); if (v === null) return fallback; const r = safeParseJSON(v, v); return r !== null ? r : fallback; }
   catch { return fallback; }
 }
 

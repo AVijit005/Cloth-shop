@@ -20,7 +20,7 @@ class WishlistStore {
   }
 
   has(productId) {
-    return this._items.includes(productId);
+    return (this._items || []).includes(productId);
   }
 
   toggle(productId) {
