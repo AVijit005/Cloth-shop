@@ -1,98 +1,117 @@
 {% extends "admin_base.html" %}
 
-{% block title %}Overview | Admin Console{% endblock %}
+{% block title %}Overview | SHIBANI Admin{% endblock %}
 {% block page_title %}Dashboard Overview{% endblock %}
 
 {% block content %}
-<div class="space-y-10 bg-slate-50">
-    <!-- Top Statistics Cards -->
-    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" id="adminStatsGrid">
-        <!-- Card 1: Revenue -->
-        <div class="bg-white border border-neutral-200 p-6 flex items-center justify-between">
-            <div class="space-y-1">
-                <span class="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">Total Revenue</span>
-                <strong class="text-xl font-bold text-neutral-800" id="adminStatRevenue">Rs. 0</strong>
+<div class="space-y-8">
+
+    <!-- KPI Cards -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5" id="adminStatsGrid">
+        <div class="stat-card">
+            <div class="flex items-center justify-between mb-3">
+                <span class="stat-label">Total Revenue</span>
+                <span class="stat-icon bg-emerald-50 text-emerald-600"><i class="fa-solid fa-indian-rupee-sign"></i></span>
             </div>
-            <span class="text-neutral-500 text-lg"><i class="fa-solid fa-indian-rupee-sign"></i></span>
+            <strong class="stat-value" id="adminStatRevenue">Rs. 0</strong>
         </div>
-        
-        <!-- Card 2: Orders -->
-        <div class="bg-white border border-neutral-200 p-6 flex items-center justify-between">
-            <div class="space-y-1">
-                <span class="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">Total Orders</span>
-                <strong class="text-xl font-bold text-neutral-800" id="adminStatOrders">0</strong>
+
+        <div class="stat-card">
+            <div class="flex items-center justify-between mb-3">
+                <span class="stat-label">Total Orders</span>
+                <span class="stat-icon bg-blue-50 text-blue-600"><i class="fa-solid fa-receipt"></i></span>
             </div>
-            <span class="text-neutral-500 text-lg"><i class="fa-solid fa-receipt"></i></span>
+            <strong class="stat-value" id="adminStatOrders">0</strong>
         </div>
-        
-        <!-- Card 3: Customers -->
-        <div class="bg-white border border-neutral-200 p-6 flex items-center justify-between">
-            <div class="space-y-1">
-                <span class="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">Active Customers</span>
-                <strong class="text-xl font-bold text-neutral-800" id="adminStatCustomers">0</strong>
+
+        <div class="stat-card">
+            <div class="flex items-center justify-between mb-3">
+                <span class="stat-label">Customers</span>
+                <span class="stat-icon bg-violet-50 text-violet-600"><i class="fa-solid fa-users"></i></span>
             </div>
-            <span class="text-neutral-500 text-lg"><i class="fa-solid fa-users"></i></span>
+            <strong class="stat-value" id="adminStatCustomers">0</strong>
         </div>
-        
-        <!-- Card 4: Reviews -->
-        <div class="bg-white border border-neutral-200 p-6 flex items-center justify-between">
-            <div class="space-y-1">
-                <span class="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">Pending Reviews</span>
-                <strong class="text-xl font-bold text-neutral-800" id="adminStatReviews">0</strong>
+
+        <div class="stat-card">
+            <div class="flex items-center justify-between mb-3">
+                <span class="stat-label">Pending Reviews</span>
+                <span class="stat-icon bg-amber-50 text-amber-600"><i class="fa-solid fa-star-half-stroke"></i></span>
             </div>
-            <span class="text-neutral-500 text-lg"><i class="fa-solid fa-star-half-stroke"></i></span>
+            <strong class="stat-value" id="adminStatReviews">0</strong>
         </div>
     </section>
-    
-    <!-- Mid Section: Settings and Stock Warnings -->
+
+    <!-- Mid Section -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        <!-- Settings Panel -->
-        <div class="lg:col-span-2 bg-white border border-neutral-200 p-6 sm:p-8 space-y-6">
-            <h3 class="font-bold text-xs tracking-widest uppercase text-neutral-900 flex items-center gap-2 pb-3 border-b border-neutral-200">
-                <i class="fa-solid fa-sliders text-neutral-500"></i> Global Store Configuration
+        <!-- Settings -->
+        <div class="lg:col-span-2 bg-white border border-[var(--neutral-100)] p-6 sm:p-8 space-y-6">
+            <h3 class="font-bold text-xs tracking-widest uppercase text-[var(--neutral-900)] flex items-center gap-2 pb-4 border-b border-[var(--neutral-100)]">
+                <i class="fa-solid fa-sliders text-[var(--neutral-400)]"></i> Store Configuration
             </h3>
-            
+
             <form id="settingsForm" class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div class="space-y-1.5">
-                    <label for="settingsGst" class="block text-[9px] font-bold text-neutral-500 uppercase tracking-wider">GST Tax Rate (%)</label>
+                    <label for="settingsGst" class="block text-[9px] font-bold text-[var(--neutral-500)] uppercase tracking-wider">GST Rate (%)</label>
                     <input type="number" id="settingsGst" step="0.1" min="0" required placeholder="5.0"
-                           class="w-full bg-neutral-50 border border-neutral-200 px-3 py-2 text-xs tracking-wider uppercase focus:outline-none focus:border-neutral-900" />
+                           class="w-full bg-[var(--neutral-50)] border border-[var(--neutral-100)] px-3 py-2.5 text-xs tracking-wider focus:outline-none focus:border-[var(--neutral-900)] transition" />
                 </div>
                 <div class="space-y-1.5">
-                    <label for="settingsDelivery" class="block text-[9px] font-bold text-neutral-500 uppercase tracking-wider">Standard Delivery Fee (Rs.)</label>
+                    <label for="settingsDelivery" class="block text-[9px] font-bold text-[var(--neutral-500)] uppercase tracking-wider">Delivery Fee (Rs.)</label>
                     <input type="number" id="settingsDelivery" min="0" required placeholder="99"
-                           class="w-full bg-neutral-50 border border-neutral-200 px-3 py-2 text-xs tracking-wider uppercase focus:outline-none focus:border-neutral-900" />
+                           class="w-full bg-[var(--neutral-50)] border border-[var(--neutral-100)] px-3 py-2.5 text-xs tracking-wider focus:outline-none focus:border-[var(--neutral-900)] transition" />
                 </div>
                 <div class="space-y-1.5">
-                    <label for="settingsThreshold" class="block text-[9px] font-bold text-neutral-500 uppercase tracking-wider">Free Delivery Threshold (Rs.)</label>
+                    <label for="settingsThreshold" class="block text-[9px] font-bold text-[var(--neutral-500)] uppercase tracking-wider">Free Delivery Threshold (Rs.)</label>
                     <input type="number" id="settingsThreshold" min="0" required placeholder="999"
-                           class="w-full bg-neutral-50 border border-neutral-200 px-3 py-2 text-xs tracking-wider uppercase focus:outline-none focus:border-neutral-900" />
+                           class="w-full bg-[var(--neutral-50)] border border-[var(--neutral-100)] px-3 py-2.5 text-xs tracking-wider focus:outline-none focus:border-[var(--neutral-900)] transition" />
                 </div>
                 <div class="space-y-1.5">
-                    <label for="settingsOtherCharges" class="block text-[9px] font-bold text-neutral-500 uppercase tracking-wider">Other Handling Charges (Rs.)</label>
+                    <label for="settingsOtherCharges" class="block text-[9px] font-bold text-[var(--neutral-500)] uppercase tracking-wider">Handling Charges (Rs.)</label>
                     <input type="number" id="settingsOtherCharges" min="0" required placeholder="0"
-                           class="w-full bg-neutral-50 border border-neutral-200 px-3 py-2 text-xs tracking-wider uppercase focus:outline-none focus:border-neutral-900" />
+                           class="w-full bg-[var(--neutral-50)] border border-[var(--neutral-100)] px-3 py-2.5 text-xs tracking-wider focus:outline-none focus:border-[var(--neutral-900)] transition" />
                 </div>
-                
-                <div class="sm:col-span-2 pt-4 border-t border-neutral-100 flex justify-end">
-                    <button type="submit" class="px-5 py-3 bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-xs uppercase tracking-widest transition duration-200">
-                        Save Configuration
+                <div class="sm:col-span-2 pt-4 border-t border-[var(--neutral-100)] flex justify-end">
+                    <button type="submit" class="btn-primary text-[10px]">
+                        <i class="fa-regular fa-floppy-disk"></i> Save Settings
                     </button>
                 </div>
             </form>
         </div>
-        
-        <!-- Stock Warnings Panel -->
-        <div class="lg:col-span-1 bg-white border border-neutral-200 p-6 space-y-6">
-            <h3 class="font-bold text-xs tracking-widest uppercase text-neutral-900 flex items-center gap-2 pb-3 border-b border-neutral-200">
-                <i class="fa-solid fa-triangle-exclamation text-neutral-400"></i> Stock Warnings
+
+        <!-- Stock Warnings -->
+        <div class="bg-white border border-[var(--neutral-100)] p-6 space-y-6">
+            <h3 class="font-bold text-xs tracking-widest uppercase text-[var(--neutral-900)] flex items-center gap-2 pb-4 border-b border-[var(--neutral-100)]">
+                <i class="fa-solid fa-triangle-exclamation text-amber-500"></i> Low Stock
             </h3>
-            
             <div id="lowStockList" class="space-y-3">
-                <div class="p-3 bg-neutral-50 border border-neutral-200 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider">
-                    <span class="text-neutral-500">Checking inventory...</span>
+                <div class="p-3 bg-[var(--neutral-50)] border border-[var(--neutral-100)] text-[10px] font-bold uppercase tracking-wider text-center text-[var(--neutral-500)]">
+                    Checking inventory...
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Recent Orders -->
+    <div class="bg-white border border-[var(--neutral-100)] p-6 sm:p-8 space-y-6">
+        <div class="flex items-center justify-between pb-4 border-b border-[var(--neutral-100)]">
+            <h3 class="font-bold text-xs tracking-widest uppercase text-[var(--neutral-900)]">Recent Orders</h3>
+            <a href="/admin/orders" class="text-[10px] font-bold uppercase tracking-widest text-[var(--neutral-500)] hover:text-[var(--neutral-900)] transition">View All</a>
+        </div>
+        <div id="recentOrdersTable" class="overflow-x-auto">
+            <table class="responsive-table">
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Customer</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody id="recentOrdersBody">
+                    <tr><td colspan="5" class="text-center text-[var(--neutral-400)] text-xs py-8">Loading...</td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>

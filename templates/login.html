@@ -1,243 +1,109 @@
 {% extends "base.html" %}
 
-{% block title %}Login | Shibani Fashion{% endblock %}
+{% block title %}Sign In | SHIBANI{% endblock %}
 
 {% block content %}
-<div class="min-h-[85vh] flex flex-col md:flex-row bg-white">
-
-    <!-- Left Editorial Section -->
-    <div class="hidden md:block md:w-1/2 relative overflow-hidden bg-neutral-900">
-
-        <img
-            src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=1400&auto=format&fit=crop"
-            alt="Luxury Fashion"
-            class="absolute inset-0 w-full h-full object-cover opacity-80 mix-blend-luminosity hover:scale-105 transition-transform duration-[2500ms]"
-        >
-
+<div class="min-h-[85vh] flex flex-col md:flex-row">
+    <!-- Left: Editorial -->
+    <div class="hidden md:flex md:w-1/2 relative overflow-hidden bg-[var(--neutral-900)] items-end">
+        <img src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=1400&auto=format&fit=crop"
+             alt="Luxury fashion editorial"
+             class="absolute inset-0 w-full h-full object-cover opacity-70 mix-blend-luminosity"
+             loading="eager" />
         <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-
-        <div class="absolute bottom-0 left-0 p-14 z-10">
-
-            <p class="text-[10px] uppercase tracking-[0.4em] text-neutral-300 mb-3">
-                Editorial Collection
+        <div class="relative z-10 p-14">
+            <p class="text-[10px] tracking-[0.4em] text-white/60 uppercase mb-3">Editorial Collection</p>
+            <h2 class="text-3xl lg:text-4xl font-display font-light tracking-[0.2em] text-white uppercase leading-tight mb-4">
+                Timeless<br>Couture
+            </h2>
+            <p class="max-w-md text-xs uppercase tracking-[0.2em] text-white/50 leading-loose">
+                Redefining modern silhouettes with premium craftsmanship and enduring style.
             </p>
-
-            <h1 class="text-4xl lg:text-5xl font-light tracking-[0.25em] uppercase text-white leading-tight mb-6">
-                Shibani <br> Couture
-            </h1>
-
-            <p class="max-w-md text-xs uppercase tracking-[0.2em] text-neutral-400 leading-loose">
-                Redefining timeless silhouettes and luxury fashion for the modern wardrobe.
-            </p>
-
         </div>
-
     </div>
 
-    <!-- Right Login Section -->
-    <div class="w-full md:w-1/2 flex items-center justify-center px-6 py-16 bg-neutral-50">
-
-        <div class="w-full max-w-md bg-white border border-neutral-200 shadow-sm p-8 sm:p-12">
-
-            <!-- Heading -->
-            <div class="mb-10 text-center md:text-left">
-
-                <p class="text-[10px] uppercase tracking-[0.4em] text-neutral-400 mb-3">
-                    Welcome Back
-                </p>
-
-                <h2 class="text-3xl font-light uppercase tracking-[0.18em] text-neutral-900">
-                    Sign In
-                </h2>
-
-                <p class="mt-4 text-xs uppercase tracking-[0.2em] text-neutral-500 leading-relaxed">
+    <!-- Right: Form -->
+    <div class="w-full md:w-1/2 flex items-center justify-center px-6 py-16 bg-[var(--neutral-50)]">
+        <div class="w-full max-w-md">
+            <div class="text-center md:text-left mb-10">
+                <p class="text-[10px] tracking-[0.4em] text-[var(--neutral-400)] uppercase mb-3">Welcome Back</p>
+                <h2 class="text-3xl font-display font-light tracking-[0.15em] text-[var(--neutral-900)] uppercase">Sign In</h2>
+                <p class="mt-4 text-xs tracking-wider text-[var(--neutral-500)] leading-relaxed">
                     Access your account and continue shopping premium collections.
                 </p>
-
             </div>
 
-            <!-- Login Form -->
-            <form id="loginForm" class="space-y-6">
-
-                <!-- Username -->
+            <form id="loginForm" class="space-y-5">
                 <div>
-
-                    <label
-                        for="usernameInput"
-                        class="block mb-2 text-[10px] font-bold uppercase tracking-[0.25em] text-neutral-500"
-                    >
-                        Username
-                    </label>
-
-                    <input
-                        id="usernameInput"
-                        type="text"
-                        autocomplete="username"
-                        required
-                        placeholder="ENTER USERNAME"
-                        class="w-full border border-neutral-300 bg-neutral-50 px-4 py-3 text-xs uppercase tracking-[0.18em] focus:outline-none focus:border-black transition-all duration-300"
-                    >
-
+                    <label for="usernameInput" class="block mb-2 text-[10px] font-bold tracking-[0.2em] text-[var(--neutral-500)] uppercase">Username</label>
+                    <input id="usernameInput" type="text" autocomplete="username" required placeholder="Enter username"
+                           class="w-full border border-[var(--neutral-200)] bg-white px-4 py-3 text-xs tracking-wider uppercase focus:outline-none focus:border-[var(--neutral-900)] transition-all duration-300" />
                 </div>
 
-                <!-- Password -->
                 <div>
-
                     <div class="flex items-center justify-between mb-2">
-
-                        <label
-                            for="passwordInput"
-                            class="text-[10px] font-bold uppercase tracking-[0.25em] text-neutral-500"
-                        >
-                            Password
-                        </label>
-
-                        <a
-                            href="/forgot-password"
-                            class="text-[10px] uppercase tracking-[0.2em] text-neutral-400 hover:text-black transition"
-                        >
-                            Forgot Password?
+                        <label for="passwordInput" class="text-[10px] font-bold tracking-[0.2em] text-[var(--neutral-500)] uppercase">Password</label>
+                        <a href="/forgot-password" class="text-[10px] uppercase tracking-[0.15em] text-[var(--neutral-400)] hover:text-[var(--neutral-900)] transition">
+                            Forgot?
                         </a>
-
                     </div>
-
-                    <input
-                        id="passwordInput"
-                        type="password"
-                        autocomplete="current-password"
-                        required
-                        placeholder="ENTER PASSWORD"
-                        class="w-full border border-neutral-300 bg-neutral-50 px-4 py-3 text-xs uppercase tracking-[0.18em] focus:outline-none focus:border-black transition-all duration-300"
-                    >
-
+                    <input id="passwordInput" type="password" autocomplete="current-password" required placeholder="Enter password"
+                           class="w-full border border-[var(--neutral-200)] bg-white px-4 py-3 text-xs tracking-wider uppercase focus:outline-none focus:border-[var(--neutral-900)] transition-all duration-300" />
                 </div>
 
-                <!-- Login Button -->
-                <button
-                    type="submit"
-                    id="loginSubmitBtn"
-                    class="w-full bg-black hover:bg-neutral-800 text-white py-3.5 text-[11px] font-bold uppercase tracking-[0.35em] transition-all duration-300"
-                >
+                <button type="submit" id="loginSubmitBtn"
+                        class="btn-primary w-full py-3.5 text-xs ripple">
                     Sign In
                 </button>
 
                 <!-- Divider -->
                 <div class="relative flex items-center py-2">
-
-                    <div class="flex-grow border-t border-neutral-200"></div>
-
-                    <span class="mx-4 text-[10px] uppercase tracking-[0.35em] text-neutral-400">
-                        OR
-                    </span>
-
-                    <div class="flex-grow border-t border-neutral-200"></div>
-
+                    <div class="flex-grow border-t border-[var(--neutral-200)]"></div>
+                    <span class="mx-4 text-[10px] tracking-[0.3em] text-[var(--neutral-400)]">OR</span>
+                    <div class="flex-grow border-t border-[var(--neutral-200)]"></div>
                 </div>
 
                 <!-- Google Login -->
-                <button
-                    id="google-login-btn"
-                    type="button"
-                    class="w-full flex items-center justify-center gap-3 border border-neutral-300 bg-white hover:bg-neutral-100 py-3.5 text-[11px] font-bold uppercase tracking-[0.25em] text-neutral-900 transition-all duration-300 group"
-                >
-
-                    <svg
-                        class="w-5 h-5 transition-transform duration-300 group-hover:scale-110"
-                        viewBox="0 0 48 48"
-                    >
-                        <path fill="#FFC107"
-                            d="M43.611 20.083H42V20H24v8h11.303C33.659 32.657 29.252 36 24 36c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.27 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/>
-                        <path fill="#FF3D00"
-                            d="M6.306 14.691l6.571 4.819C14.655 16.108 19.002 13 24 13c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.27 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/>
-                        <path fill="#4CAF50"
-                            d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.231 0-9.626-3.327-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/>
-                        <path fill="#1976D2"
-                            d="M43.611 20.083H42V20H24v8h11.303c-1.058 3.021-3.235 5.517-6.084 7.192l.003-.002 6.19 5.238C33.971 41.205 44 36 44 24c0-1.341-.138-2.65-.389-3.917z"/>
+                <button id="google-login-btn" type="button"
+                        class="w-full flex items-center justify-center gap-3 border border-[var(--neutral-200)] bg-white hover:bg-[var(--neutral-50)] py-3.5 text-[11px] font-bold uppercase tracking-widest text-[var(--neutral-900)] transition-all duration-300 group">
+                    <svg class="w-5 h-5 transition-transform duration-300 group-hover:scale-110" viewBox="0 0 48 48">
+                        <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303C33.659 32.657 29.252 36 24 36c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.27 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/>
+                        <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 16.108 19.002 13 24 13c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.27 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/>
+                        <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.231 0-9.626-3.327-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/>
+                        <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-1.058 3.021-3.235 5.517-6.084 7.192l.003-.002 6.19 5.238C33.971 41.205 44 36 44 24c0-1.341-.138-2.65-.389-3.917z"/>
                     </svg>
-
-                    <span>
-                        Continue with Google
-                    </span>
-
+                    <span>Continue with Google</span>
                 </button>
 
-                <!-- Message -->
-                <div
-                    id="loginMessage"
-                    class="hidden text-center text-xs uppercase tracking-[0.2em] text-red-500 font-semibold"
-                ></div>
-
+                <div id="loginMessage" class="hidden text-center text-xs uppercase tracking-wider text-[var(--color-error)] font-semibold"></div>
             </form>
 
-            <!-- Signup -->
-            <div class="mt-10 text-center md:text-left">
-
-                <p class="text-[10px] uppercase tracking-[0.25em] text-neutral-500">
-
-                    Don't have an account?
-
-                    <a
-                        href="/signup"
-                        class="font-bold text-black hover:underline"
-                    >
-                        Create Account
-                    </a>
-
+            <div class="mt-8 text-center md:text-left">
+                <p class="text-xs tracking-wider text-[var(--neutral-500)] uppercase">
+                    No account yet?
+                    <a href="/signup" class="font-bold text-[var(--neutral-900)] hover:underline transition">Create one</a>
                 </p>
-
             </div>
 
             <!-- Demo Accounts -->
-            <div class="mt-10 border-t border-neutral-200 pt-8">
-
-                <p class="text-[10px] uppercase tracking-[0.35em] text-neutral-400 mb-5 text-center md:text-left">
-                    Quick Demo Access
-                </p>
-
+            <div class="mt-10 border-t border-[var(--neutral-100)] pt-8">
+                <p class="text-[10px] text-[var(--neutral-400)] uppercase tracking-widest mb-4 text-center md:text-left">Quick Demo</p>
                 <div class="grid grid-cols-2 gap-4">
-
-                    <button
-                        id="quickLoginAdminBtn"
-                        class="border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 p-4 text-left transition"
-                    >
-
-                        <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-neutral-700">
-                            Admin
-                        </p>
-
-                        <p class="mt-2 text-[9px] uppercase tracking-[0.15em] text-neutral-400">
-                            admin / admin123
-                        </p>
-
+                    <button id="quickLoginAdminBtn"
+                            class="border border-[var(--neutral-200)] bg-white hover:bg-[var(--neutral-50)] p-4 text-left transition hover:border-[var(--neutral-900)]">
+                        <p class="text-[10px] font-bold text-[var(--neutral-700)] uppercase tracking-wider">Admin</p>
+                        <p class="mt-1 text-[9px] tracking-wider text-[var(--neutral-400)]">admin / admin123</p>
                     </button>
-
-                    <button
-                        id="quickLoginCustomerBtn"
-                        class="border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 p-4 text-left transition"
-                    >
-
-                        <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-neutral-700">
-                            Customer
-                        </p>
-
-                        <p class="mt-2 text-[9px] uppercase tracking-[0.15em] text-neutral-400">
-                            customer / customer123
-                        </p>
-
+                    <button id="quickLoginCustomerBtn"
+                            class="border border-[var(--neutral-200)] bg-white hover:bg-[var(--neutral-50)] p-4 text-left transition hover:border-[var(--neutral-900)]">
+                        <p class="text-[10px] font-bold text-[var(--neutral-700)] uppercase tracking-wider">Customer</p>
+                        <p class="mt-1 text-[9px] tracking-wider text-[var(--neutral-400)]">customer / customer123</p>
                     </button>
-
                 </div>
-
             </div>
-
         </div>
-
     </div>
-
 </div>
 
-<script type="module"
-src="{{ url_for('static', filename='firebase-auth.js') }}">
-</script>
-
+<script type="module" src="{{ url_for('static', filename='firebase-auth.js') }}"></script>
 {% endblock %}

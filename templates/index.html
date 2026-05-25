@@ -1,221 +1,329 @@
 {% extends "base.html" %}
 
-{% block title %}Shibani Fashion | Haute Couture & Premium Wardrobe{% endblock %}
+{% block title %}SHIBANI | Premium Fashion & Contemporary Couture{% endblock %}
 
 {% block content %}
-<!-- Hero Section -->
-<section class="relative bg-neutral-900 overflow-hidden h-[75vh] min-h-[500px] flex items-center">
-    <div class="absolute inset-0 z-0">
-        <img src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=1600&auto=format&fit=crop" 
-             alt="Hero Background" 
-             class="w-full h-full object-cover object-center opacity-70 mix-blend-luminosity transform scale-105 animate-slow-pan" />
+
+<!-- ============================================================
+     HERO — Cinematic Parallax
+     ============================================================ -->
+<section class="hero-section">
+    <div class="hero-bg" id="heroBg">
+        <img src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2000&auto=format&fit=crop"
+             alt="Premium fashion collection"
+             class="w-full h-full object-cover object-center"
+             fetchpriority="high" />
     </div>
-    <div class="absolute inset-0 bg-black/40 z-10"></div>
-    
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20 w-full text-center">
-        <div class="max-w-2xl mx-auto space-y-6">
-            <span class="text-xs tracking-[0.4em] font-light text-neutral-300 uppercase block">
-                Summer Campaign 2026
-            </span>
-            <h1 class="text-3xl sm:text-5xl lg:text-6xl font-light tracking-[0.2em] text-white uppercase leading-tight">
-                Quiet Luxury
-            </h1>
-            <p class="text-xs sm:text-sm text-neutral-300 max-w-md mx-auto leading-relaxed tracking-wider uppercase font-light">
-                Hand-picked linen sets, premium cotton essentials, and timeless sarees crafted for the modern wardrobe.
+    <div class="hero-overlay"></div>
+
+    <div class="relative z-10 h-full flex items-center">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+            <div class="max-w-2xl">
+                <span class="text-xs tracking-[0.4em] font-light text-white/70 uppercase block mb-4 reveal">
+                    Summer Campaign 2026
+                </span>
+                <h1 class="text-4xl sm:text-6xl lg:text-7xl font-display font-light tracking-[0.15em] text-white uppercase leading-[1.1] mb-6 reveal">
+                    Quiet<br>Luxury
+                </h1>
+                <p class="text-sm sm:text-base text-white/60 max-w-md leading-relaxed tracking-wider uppercase font-light reveal">
+                    Hand-picked linen sets, premium cotton essentials, and timeless sarees crafted for the modern wardrobe.
+                </p>
+                <div class="pt-8 flex flex-wrap gap-4 reveal">
+                    <a href="/shop" class="btn-primary bg-white text-[var(--neutral-900)] hover:bg-white/90 text-xs px-10 py-4">
+                        Explore Collection
+                    </a>
+                    <a href="/shop?category=women" class="btn-secondary border-white/30 text-white hover:bg-white/10 hover:border-white/60 text-xs px-10 py-4">
+                        Women's Edit
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scroll indicator -->
+    <div class="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 text-white/40 animate-float">
+        <span class="text-[9px] tracking-widest uppercase font-semibold">Scroll</span>
+        <i class="fa-solid fa-chevron-down text-xs"></i>
+    </div>
+</section>
+
+<!-- ============================================================
+     FEATURE STRIP — Trust Badges
+     ============================================================ -->
+<section class="bg-[var(--color-cream)] border-y border-[var(--neutral-100)]">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div class="flex items-center justify-center gap-3 text-xs uppercase tracking-wider">
+                <i class="fa-solid fa-truck-fast text-lg text-[var(--neutral-900)]"></i>
+                <span class="font-semibold text-[var(--neutral-700)]">Free shipping over Rs. 999</span>
+            </div>
+            <div class="flex items-center justify-center gap-3 text-xs uppercase tracking-wider">
+                <i class="fa-solid fa-rotate-left text-lg text-[var(--neutral-900)]"></i>
+                <span class="font-semibold text-[var(--neutral-700)]">30-day returns</span>
+            </div>
+            <div class="flex items-center justify-center gap-3 text-xs uppercase tracking-wider">
+                <i class="fa-solid fa-shield-halved text-lg text-[var(--neutral-900)]"></i>
+                <span class="font-semibold text-[var(--neutral-700)]">Secure checkout</span>
+            </div>
+            <div class="flex items-center justify-center gap-3 text-xs uppercase tracking-wider">
+                <i class="fa-solid fa-leaf text-lg text-[var(--neutral-900)]"></i>
+                <span class="font-semibold text-[var(--neutral-700)]">Sustainable fabrics</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================================================
+     CATEGORIES — Editorial Grid
+     ============================================================ -->
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28">
+    <div class="text-center max-w-xl mx-auto mb-16 reveal">
+        <span class="text-eyebrow">Curated Collections</span>
+        <h2 class="text-2xl sm:text-3xl font-display font-light tracking-[0.15em] text-[var(--neutral-900)] uppercase mt-3">
+            Browse by Category
+        </h2>
+        <div class="w-12 h-[1px] bg-[var(--neutral-300)] mx-auto mt-4"></div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 stagger-children">
+        <!-- Women -->
+        <a href="/shop?category=women" class="group relative aspect-[4/5] overflow-hidden block bg-[var(--neutral-50)]">
+            <img src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=800&auto=format&fit=crop"
+                 alt="Women's Collection"
+                 class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-[1200ms]" />
+            <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-8">
+                <span class="text-[10px] tracking-[0.3em] font-semibold text-white/70 uppercase block mb-1">Traditional & Western</span>
+                <h3 class="text-xl sm:text-2xl font-display font-light tracking-widest text-white uppercase">Women</h3>
+                <span class="inline-flex items-center gap-2 text-[10px] font-bold text-white uppercase tracking-widest mt-3 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300">
+                    Shop Now <i class="fa-solid fa-arrow-right text-[8px]"></i>
+                </span>
+            </div>
+        </a>
+
+        <!-- Men -->
+        <a href="/shop?category=men" class="group relative aspect-[4/5] overflow-hidden block bg-[var(--neutral-50)]">
+            <img src="https://images.unsplash.com/photo-1617137968427-85924c800a22?q=80&w=800&auto=format&fit=crop"
+                 alt="Men's Collection"
+                 class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-[1200ms]" />
+            <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-8">
+                <span class="text-[10px] tracking-[0.3em] font-semibold text-white/70 uppercase block mb-1">Tailored & Casual</span>
+                <h3 class="text-xl sm:text-2xl font-display font-light tracking-widest text-white uppercase">Men</h3>
+                <span class="inline-flex items-center gap-2 text-[10px] font-bold text-white uppercase tracking-widest mt-3 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300">
+                    Shop Now <i class="fa-solid fa-arrow-right text-[8px]"></i>
+                </span>
+            </div>
+        </a>
+
+        <!-- Kids -->
+        <a href="/shop?category=kids" class="group relative aspect-[4/5] overflow-hidden block bg-[var(--neutral-50)]">
+            <img src="https://images.unsplash.com/photo-1519457431-44ccd64a579b?q=80&w=800&auto=format&fit=crop"
+                 alt="Kids Collection"
+                 class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-[1200ms]" />
+            <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-8">
+                <span class="text-[10px] tracking-[0.3em] font-semibold text-white/70 uppercase block mb-1">Soft & Durable</span>
+                <h3 class="text-xl sm:text-2xl font-display font-light tracking-widest text-white uppercase">Kids</h3>
+                <span class="inline-flex items-center gap-2 text-[10px] font-bold text-white uppercase tracking-widest mt-3 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300">
+                    Shop Now <i class="fa-solid fa-arrow-right text-[8px]"></i>
+                </span>
+            </div>
+        </a>
+    </div>
+</section>
+
+<!-- ============================================================
+     FEATURED COLLECTION — Core Collection Grid
+     ============================================================ -->
+<section class="bg-[var(--neutral-50)] py-20 sm:py-28 border-t border-[var(--neutral-100)]">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-16 gap-4 reveal">
+            <div>
+                <span class="text-eyebrow">Core Collection</span>
+                <h2 class="text-2xl sm:text-3xl font-display font-light tracking-[0.15em] text-[var(--neutral-900)] uppercase mt-3">
+                    Our Most Sought-After
+                </h2>
+            </div>
+            <a href="/shop" class="group inline-flex items-center gap-2 text-xs tracking-widest font-bold text-[var(--neutral-900)] uppercase transition hover:opacity-70">
+                View All <i class="fa-solid fa-arrow-right text-[10px] group-hover:translate-x-1 transition-transform"></i>
+            </a>
+        </div>
+
+        <!-- Product Grid -->
+        <div id="featuredProductsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+            {% for i in range(4) %}
+            <div class="skeleton aspect-[3/4] w-full"></div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- ============================================================
+     EDITORIAL CAMPAIGN — Welcome Offer
+     ============================================================ -->
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 reveal">
+    <div class="relative bg-[var(--color-cream)] border border-[var(--neutral-100)] overflow-hidden">
+        <div class="absolute top-0 right-0 w-1/3 h-full hidden lg:block">
+            <img src="https://images.unsplash.com/photo-1595777457583-95e059d581b8?q=80&w=800&auto=format&fit=crop"
+                 alt="Luxury fabric"
+                 class="w-full h-full object-cover opacity-20 mix-blend-multiply" />
+        </div>
+        <div class="relative z-10 p-8 sm:p-16 lg:p-20 max-w-2xl">
+            <span class="text-[9px] tracking-[0.3em] font-bold text-[var(--neutral-400)] uppercase">Limited Offer</span>
+            <h2 class="text-2xl sm:text-3xl font-display font-light tracking-[0.15em] text-[var(--neutral-900)] uppercase mt-4 mb-6">
+                A Welcome Privilege
+            </h2>
+            <p class="text-xs sm:text-sm text-[var(--neutral-500)] uppercase tracking-wider leading-relaxed font-light mb-8 max-w-lg">
+                Unlock exclusive first-order benefits. Sign up today and use code
+                <span class="inline-flex items-center px-3 py-1 bg-white border border-[var(--neutral-200)] font-bold text-[var(--neutral-900)] tracking-widest mx-1">SHIBANI10</span>
+                at checkout for 10% off your first collection order.
             </p>
-            <div class="pt-4">
-                <a href="/shop" class="inline-block px-8 py-3.5 bg-white hover:bg-neutral-100 text-neutral-900 font-semibold text-xs tracking-widest uppercase transition duration-300">
-                    Explore Catalog
+            <div class="flex flex-wrap gap-4">
+                <a href="/signup" class="btn-primary">
+                    <i class="fa-regular fa-user-plus"></i> Create Account
+                </a>
+                <a href="/shop" class="btn-secondary">
+                    <i class="fa-regular fa-eye"></i> Browse Collection
                 </a>
             </div>
         </div>
     </div>
 </section>
 
-<!-- Categories Section -->
-<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 bg-white">
-    <div class="text-center max-w-xl mx-auto mb-16">
-        <h2 class="text-xs tracking-[0.3em] font-bold text-neutral-900 uppercase">Browse Collections</h2>
-        <p class="text-xs tracking-wider text-neutral-400 uppercase mt-2">Discover curated seasonal capsules.</p>
-    </div>
-    
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <!-- Category Card 1: Women -->
-        <a href="/shop?category=women" class="group relative aspect-[3/4] overflow-hidden block bg-neutral-100">
-            <img src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=600&auto=format&fit=crop" 
-                 alt="Women Closet" 
-                 class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-1000 mix-blend-multiply opacity-90" />
-            <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent flex flex-col justify-end p-8">
-                <span class="text-[10px] tracking-[0.3em] font-semibold text-white uppercase block mb-1">Traditional & Western</span>
-                <h3 class="text-lg tracking-widest font-light text-white uppercase">Women</h3>
-            </div>
-        </a>
-        
-        <!-- Category Card 2: Men -->
-        <a href="/shop?category=men" class="group relative aspect-[3/4] overflow-hidden block bg-neutral-100">
-            <img src="https://images.unsplash.com/photo-1617137968427-85924c800a22?q=80&w=600&auto=format&fit=crop" 
-                 alt="Men Wardrobe" 
-                 class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-1000 mix-blend-multiply opacity-90" />
-            <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent flex flex-col justify-end p-8">
-                <span class="text-[10px] tracking-[0.3em] font-semibold text-white uppercase block mb-1">Tailored & Casual</span>
-                <h3 class="text-lg tracking-widest font-light text-white uppercase">Men</h3>
-            </div>
-        </a>
-        
-        <!-- Category Card 3: Kids -->
-        <a href="/shop?category=kids" class="group relative aspect-[3/4] overflow-hidden block bg-neutral-100">
-            <img src="https://images.unsplash.com/photo-1519457431-44ccd64a579b?q=80&w=600&auto=format&fit=crop" 
-                 alt="Kids Fashion" 
-                 class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-1000 mix-blend-multiply opacity-90" />
-            <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent flex flex-col justify-end p-8">
-                <span class="text-[10px] tracking-[0.3em] font-semibold text-white uppercase block mb-1">Soft & Durable</span>
-                <h3 class="text-lg tracking-widest font-light text-white uppercase">Kids</h3>
-            </div>
-        </a>
-    </div>
-</section>
-
-<!-- Trending/Best Sellers Grid -->
-<section class="bg-neutral-50 py-20 sm:py-28 border-t border-neutral-100">
+<!-- ============================================================
+     FEATURES — Quality Commitments
+     ============================================================ -->
+<section class="bg-[var(--neutral-50)] border-t border-[var(--neutral-100)] py-20">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-16 gap-4">
-            <div>
-                <h2 class="text-xs tracking-[0.3em] font-bold text-neutral-900 uppercase">Core Collection</h2>
-                <p class="text-xs tracking-wider text-neutral-400 uppercase mt-2">Our most sought-after products.</p>
-            </div>
-            <a href="/shop" class="text-xs tracking-widest font-bold text-neutral-900 hover:opacity-75 uppercase transition flex items-center gap-2">
-                View All <i class="fa-solid fa-arrow-right text-[10px]"></i>
-            </a>
+        <div class="text-center max-w-xl mx-auto mb-16 reveal">
+            <span class="text-eyebrow">Why Shibani</span>
+            <h2 class="text-2xl sm:text-3xl font-display font-light tracking-[0.15em] text-[var(--neutral-900)] uppercase mt-3">
+                Our Commitment
+            </h2>
+            <div class="w-12 h-[1px] bg-[var(--neutral-300)] mx-auto mt-4"></div>
         </div>
-        
-        <!-- Product Grid (Loaded Dynamically by JS in main.js) -->
-        <div id="featuredProductsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            <!-- Loading Skeletons -->
-            {% for i in range(4) %}
-            <div class="animate-pulse bg-white p-4 border border-neutral-100 space-y-4">
-                <div class="bg-neutral-100 aspect-[3/4] w-full"></div>
-                <div class="h-3 bg-neutral-100 w-2/3"></div>
-                <div class="h-3 bg-neutral-100 w-1/3"></div>
-                <div class="h-9 bg-neutral-100 w-full"></div>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-</section>
 
-<!-- Editorial Campaign Block -->
-<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 bg-white">
-    <div class="border border-neutral-200 p-8 sm:p-16 flex flex-col md:flex-row items-center justify-between gap-8 bg-[#FAF9F6]">
-        <div class="space-y-4 max-w-xl text-left">
-            <span class="text-[9px] tracking-[0.3em] font-bold text-neutral-500 uppercase">Limited Event</span>
-            <h2 class="text-2xl font-light tracking-widest text-neutral-900 uppercase">A Welcome Privilege</h2>
-            <p class="text-xs tracking-wider text-neutral-500 uppercase leading-relaxed font-light font-sans">
-                Unlock exclusive first-order benefits. Register as a customer today, enter coupon code <strong class="text-neutral-900 font-bold bg-white px-2 py-1 border border-neutral-200">SHIBANI10</strong> at checkout and enjoy 10% savings on your initial collection order.
-            </p>
-        </div>
-        <div class="flex-shrink-0 w-full md:w-auto">
-            <a href="/signup" class="px-8 py-3.5 bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-xs uppercase tracking-widest transition duration-300 block text-center">
-                Create Account
-            </a>
-        </div>
-    </div>
-</section>
-
-<!-- Quality Commitments -->
-<section class="bg-neutral-50 border-t border-neutral-100 py-16">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
-            <!-- Box 1 -->
-            <div class="flex flex-col items-center text-center space-y-3">
-                <span class="text-neutral-900 text-xl">
-                    <i class="fa-solid fa-truck-fast"></i>
-                </span>
-                <h3 class="text-xs tracking-widest font-bold uppercase text-neutral-900">Complimentary Shipping</h3>
-                <p class="text-xs text-neutral-500 leading-relaxed max-w-xs font-light uppercase tracking-wider">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-12 stagger-children">
+            <div class="text-center space-y-4">
+                <div class="w-14 h-14 mx-auto bg-[var(--neutral-900)] flex items-center justify-center">
+                    <i class="fa-solid fa-truck-fast text-white text-xl"></i>
+                </div>
+                <h3 class="text-xs tracking-widest font-bold uppercase text-[var(--neutral-900)]">Complimentary Shipping</h3>
+                <p class="text-xs text-[var(--neutral-500)] leading-relaxed max-w-xs mx-auto font-light uppercase tracking-wider">
                     Free standard delivery on all domestic orders above Rs. 999. Dispatch within 24 hours.
                 </p>
             </div>
-            
-            <!-- Box 2 -->
-            <div class="flex flex-col items-center text-center space-y-3">
-                <span class="text-neutral-900 text-xl">
-                    <i class="fa-solid fa-award"></i>
-                </span>
-                <h3 class="text-xs tracking-widest font-bold uppercase text-neutral-900">Artisan Integrity</h3>
-                <p class="text-xs text-neutral-500 leading-relaxed max-w-xs font-light uppercase tracking-wider">
-                    Hand-crafted materials. 100% fine fabrics vetted for durability, comfort, and premium textures.
+
+            <div class="text-center space-y-4">
+                <div class="w-14 h-14 mx-auto bg-[var(--neutral-900)] flex items-center justify-center">
+                    <i class="fa-solid fa-award text-white text-xl"></i>
+                </div>
+                <h3 class="text-xs tracking-widest font-bold uppercase text-[var(--neutral-900)]">Artisan Integrity</h3>
+                <p class="text-xs text-[var(--neutral-500)] leading-relaxed max-w-xs mx-auto font-light uppercase tracking-wider">
+                    Hand-crafted materials. 100% fine fabrics vetted for durability, comfort, and premium texture.
                 </p>
             </div>
-            
-            <!-- Box 3 -->
-            <div class="flex flex-col items-center text-center space-y-3">
-                <span class="text-neutral-900 text-xl">
-                    <i class="fa-solid fa-lock"></i>
-                </span>
-                <h3 class="text-xs tracking-widest font-bold uppercase text-neutral-900">Encrypted checkout</h3>
-                <p class="text-xs text-neutral-500 leading-relaxed max-w-xs font-light uppercase tracking-wider">
-                    Committed to purchase security. We support Cash on Delivery, UPI, and major card networks.
+
+            <div class="text-center space-y-4">
+                <div class="w-14 h-14 mx-auto bg-[var(--neutral-900)] flex items-center justify-center">
+                    <i class="fa-solid fa-lock text-white text-xl"></i>
+                </div>
+                <h3 class="text-xs tracking-widest font-bold uppercase text-[var(--neutral-900)]">Encrypted Checkout</h3>
+                <p class="text-xs text-[var(--neutral-500)] leading-relaxed max-w-xs mx-auto font-light uppercase tracking-wider">
+                    Secured transactions. We support Cash on Delivery, UPI, and major card networks.
                 </p>
             </div>
         </div>
     </div>
 </section>
 
-<!-- Testimonials Section -->
-<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 bg-white border-t border-neutral-100">
+<!-- ============================================================
+     TESTIMONIALS — Client Notes
+     ============================================================ -->
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 reveal">
     <div class="text-center max-w-xl mx-auto mb-16">
-        <h2 class="text-xs tracking-[0.3em] font-bold text-neutral-900 uppercase">Client Notes</h2>
-        <p class="text-xs tracking-wider text-neutral-400 uppercase mt-2">Reflections from our community.</p>
+        <span class="text-eyebrow">Client Notes</span>
+        <h2 class="text-2xl sm:text-3xl font-display font-light tracking-[0.15em] text-[var(--neutral-900)] uppercase mt-3">
+            From Our Community
+        </h2>
+        <div class="w-12 h-[1px] bg-[var(--neutral-300)] mx-auto mt-4"></div>
     </div>
-    
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <!-- Review 1 -->
-        <div class="border border-neutral-200 p-8 flex flex-col justify-between space-y-6 bg-neutral-50">
-            <p class="text-neutral-600 font-light leading-relaxed text-xs uppercase tracking-wide">
-                "The Elegance Saree has a beautiful drape. Soft fabric, premium texture. Delivered in just 2 days. Exceptional service."
-            </p>
-            <div class="flex items-center gap-3">
-                <span class="w-8 h-8 rounded-full bg-neutral-900 text-white font-bold flex items-center justify-center text-[10px]">
-                    PS
-                </span>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 stagger-children">
+        <div class="border border-[var(--neutral-100)] p-8 sm:p-10 flex flex-col justify-between space-y-6 bg-white hover:shadow-lg transition-shadow duration-300">
+            <div>
+                <div class="flex gap-0.5 text-[var(--color-gold)] text-xs mb-4">
+                    <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
+                </div>
+                <p class="text-[var(--neutral-600)] font-light leading-relaxed text-xs uppercase tracking-wide">
+                    "The Elegance Saree has a beautiful drape. Soft fabric, premium texture. Delivered in just 2 days. Exceptional service."
+                </p>
+            </div>
+            <div class="flex items-center gap-3 pt-4 border-t border-[var(--neutral-100)]">
+                <span class="w-10 h-10 rounded-full bg-[var(--neutral-900)] text-white font-bold flex items-center justify-center text-xs">PS</span>
                 <div>
-                    <h4 class="font-bold text-xs uppercase tracking-wider text-neutral-800">Pooja Sharma</h4>
-                    <span class="text-[9px] text-neutral-400 font-bold uppercase tracking-widest">Verified Buyer</span>
+                    <h4 class="font-bold text-xs uppercase tracking-wider text-[var(--neutral-800)]">Pooja Sharma</h4>
+                    <span class="text-[9px] text-[var(--neutral-400)] font-bold uppercase tracking-widest">Verified Buyer</span>
                 </div>
             </div>
         </div>
-        
-        <!-- Review 2 -->
-        <div class="border border-neutral-200 p-8 flex flex-col justify-between space-y-6 bg-neutral-50">
-            <p class="text-neutral-600 font-light leading-relaxed text-xs uppercase tracking-wide">
-                "Bought a cotton shirt. Perfect fit, breathable linen-style weave. Does not shrink. Will purchase again."
-            </p>
-            <div class="flex items-center gap-3">
-                <span class="w-8 h-8 rounded-full bg-neutral-900 text-white font-bold flex items-center justify-center text-[10px]">
-                    AP
-                </span>
+
+        <div class="border border-[var(--neutral-100)] p-8 sm:p-10 flex flex-col justify-between space-y-6 bg-white hover:shadow-lg transition-shadow duration-300">
+            <div>
+                <div class="flex gap-0.5 text-[var(--color-gold)] text-xs mb-4">
+                    <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
+                </div>
+                <p class="text-[var(--neutral-600)] font-light leading-relaxed text-xs uppercase tracking-wide">
+                    "Bought a cotton shirt. Perfect fit, breathable linen-style weave. Does not shrink. Will purchase again."
+                </p>
+            </div>
+            <div class="flex items-center gap-3 pt-4 border-t border-[var(--neutral-100)]">
+                <span class="w-10 h-10 rounded-full bg-[var(--neutral-900)] text-white font-bold flex items-center justify-center text-xs">AP</span>
                 <div>
-                    <h4 class="font-bold text-xs uppercase tracking-wider text-neutral-800">Amit Patel</h4>
-                    <span class="text-[9px] text-neutral-400 font-bold uppercase tracking-widest">Verified Buyer</span>
+                    <h4 class="font-bold text-xs uppercase tracking-wider text-[var(--neutral-800)]">Amit Patel</h4>
+                    <span class="text-[9px] text-[var(--neutral-400)] font-bold uppercase tracking-widest">Verified Buyer</span>
                 </div>
             </div>
         </div>
-        
-        <!-- Review 3 -->
-        <div class="border border-neutral-200 p-8 flex flex-col justify-between space-y-6 bg-neutral-50">
-            <p class="text-neutral-600 font-light leading-relaxed text-xs uppercase tracking-wide">
-                "We loved the kids cotton set. The color is bright, fits perfectly and feels soft. Perfect daily playwear."
-            </p>
-            <div class="flex items-center gap-3">
-                <span class="w-8 h-8 rounded-full bg-neutral-900 text-white font-bold flex items-center justify-center text-[10px]">
-                    MK
-                </span>
+
+        <div class="border border-[var(--neutral-100)] p-8 sm:p-10 flex flex-col justify-between space-y-6 bg-white hover:shadow-lg transition-shadow duration-300">
+            <div>
+                <div class="flex gap-0.5 text-[var(--color-gold)] text-xs mb-4">
+                    <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-regular fa-star"></i>
+                </div>
+                <p class="text-[var(--neutral-600)] font-light leading-relaxed text-xs uppercase tracking-wide">
+                    "We loved the kids cotton set. The color is bright, fits perfectly and feels soft. Perfect daily playwear."
+                </p>
+            </div>
+            <div class="flex items-center gap-3 pt-4 border-t border-[var(--neutral-100)]">
+                <span class="w-10 h-10 rounded-full bg-[var(--neutral-900)] text-white font-bold flex items-center justify-center text-xs">MK</span>
                 <div>
-                    <h4 class="font-bold text-xs uppercase tracking-wider text-neutral-800">Meera Krishnan</h4>
-                    <span class="text-[9px] text-neutral-400 font-bold uppercase tracking-widest">Verified Buyer</span>
+                    <h4 class="font-bold text-xs uppercase tracking-wider text-[var(--neutral-800)]">Meera Krishnan</h4>
+                    <span class="text-[9px] text-[var(--neutral-400)] font-bold uppercase tracking-widest">Verified Buyer</span>
                 </div>
             </div>
         </div>
+    </div>
+</section>
+
+<!-- ============================================================
+     NEWSLETTER
+     ============================================================ -->
+<section class="bg-[var(--neutral-900)] py-20 reveal">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <span class="text-[10px] tracking-[0.3em] font-semibold text-[var(--neutral-500)] uppercase">Stay Connected</span>
+        <h2 class="text-2xl sm:text-3xl font-display font-light tracking-[0.15em] text-white uppercase mt-4 mb-4">
+            The Edit
+        </h2>
+        <p class="text-sm text-[var(--neutral-400)] max-w-md mx-auto leading-relaxed font-light mb-8">
+            Subscribe for early access to new collections, exclusive offers, and styling inspiration.
+        </p>
+        <form class="max-w-md mx-auto flex gap-3">
+            <input type="email" placeholder="Your email address" required
+                   class="flex-grow px-4 py-3 bg-white/10 border border-white/20 text-white text-xs uppercase tracking-wider placeholder-[var(--neutral-500)] focus:outline-none focus:border-white/50 transition" />
+            <button type="submit"
+                    class="px-6 py-3 bg-white text-[var(--neutral-900)] font-bold text-xs uppercase tracking-widest hover:bg-[var(--neutral-200)] transition duration-300">
+                Subscribe
+            </button>
+        </form>
     </div>
 </section>
 {% endblock %}

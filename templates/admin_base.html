@@ -4,21 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ session.get('csrf_token') }}">
-    <title>{% block title %}Admin Console | Shibani Fashion{% endblock %}</title>
-    
-    <!-- Tailwind CSS Play CDN -->
+    <meta name="theme-color" content="#0a0a0a">
+    <title>{% block title %}Admin | SHIBANI{% endblock %}</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.tailwindcss.com">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        primary: '#171717', // neutral-900
-                        primaryHover: '#262626', // neutral-800
-                        success: '#10b981', // emerald-500
-                        danger: '#ef4444', // red-500
-                        warning: '#f59e0b', // amber-500
-                        darkBg: '#0a0a0a', // neutral-950
+                        primary: '#0a0a0a',
+                        success: '#059669',
+                        danger: '#dc2626',
+                        warning: '#d97706',
+                        darkBg: '#0a0a0a',
                     },
                     fontFamily: {
                         sans: ['Outfit', 'Inter', 'sans-serif'],
@@ -27,115 +31,97 @@
             }
         }
     </script>
-    
-    <!-- Google Fonts: Outfit & Inter -->
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <!-- FontAwesome Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/shibani.css') }}">
+
     <style>
-        body {
-            font-family: 'Outfit', 'Inter', sans-serif;
-        }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, h4, .font-display { font-family: 'Outfit', sans-serif; }
     </style>
     {% block head %}{% endblock %}
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex">
+<body class="bg-[var(--neutral-50)] text-[var(--neutral-800)] min-h-screen flex" data-theme="light">
 
-    <!-- Sidebar Navigation -->
-    <aside class="w-64 bg-[#0a0a0a] text-neutral-400 flex-shrink-0 flex flex-col hidden md:flex border-r border-neutral-900">
-        <!-- Sidebar Brand Header -->
-        <div class="h-20 flex items-center px-6 border-b border-neutral-900 gap-2">
-            <span class="font-light text-base tracking-[0.2em] text-white uppercase">
-                ADMIN PORTAL
-            </span>
+    <!-- Sidebar -->
+    <aside class="w-64 bg-[var(--neutral-900)] text-[var(--neutral-400)] flex-shrink-0 flex flex-col hidden md:flex border-r border-[var(--neutral-800)]">
+        <div class="h-20 flex items-center px-6 border-b border-[var(--neutral-800)]">
+            <a href="/admin" class="font-display font-light text-base tracking-[0.2em] text-white uppercase">Admin Portal</a>
         </div>
-        
-        <!-- Sidebar Nav Links -->
+
         <nav class="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
-            <a href="/admin" class="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-semibold uppercase tracking-wider hover:bg-neutral-900 hover:text-white transition duration-200 {% if request.path == '/admin' %}bg-neutral-900 text-white{% endif %}">
-                <i class="fa-solid fa-chart-line text-base"></i> Overview
+            {% set nav_items = [
+                ('/admin', 'chart-line', 'Overview'),
+                ('/admin/products', 'shirt', 'Products'),
+                ('/admin/orders', 'receipt', 'Orders'),
+                ('/admin/customers', 'users', 'Customers'),
+                ('/admin/reviews', 'star-half-stroke', 'Reviews'),
+                ('/admin/analytics', 'chart-pie', 'Analytics'),
+            ] %}
+            {% for href, icon, label in nav_items %}
+            <a href="{{ href }}"
+               class="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-semibold uppercase tracking-wider hover:bg-[var(--neutral-800)] hover:text-white transition duration-200 {% if request.path == href %}bg-[var(--neutral-800)] text-white{% endif %}">
+                <i class="fa-solid fa-{{ icon }} text-base w-5 text-center"></i> {{ label }}
             </a>
-            <a href="/admin/products" class="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-semibold uppercase tracking-wider hover:bg-neutral-900 hover:text-white transition duration-200 {% if request.path == '/admin/products' %}bg-neutral-900 text-white{% endif %}">
-                <i class="fa-solid fa-shirt text-base"></i> Products
-            </a>
-            <a href="/admin/orders" class="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-semibold uppercase tracking-wider hover:bg-neutral-900 hover:text-white transition duration-200 {% if request.path == '/admin/orders' %}bg-neutral-900 text-white{% endif %}">
-                <i class="fa-solid fa-receipt text-base"></i> Orders
-            </a>
-            <a href="/admin/customers" class="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-semibold uppercase tracking-wider hover:bg-neutral-900 hover:text-white transition duration-200 {% if request.path == '/admin/customers' %}bg-neutral-900 text-white{% endif %}">
-                <i class="fa-solid fa-users text-base"></i> Customers
-            </a>
-            <a href="/admin/reviews" class="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-semibold uppercase tracking-wider hover:bg-neutral-900 hover:text-white transition duration-200 {% if request.path == '/admin/reviews' %}bg-neutral-900 text-white{% endif %}">
-                <i class="fa-solid fa-star-half-stroke text-base"></i> Reviews
-            </a>
-            <a href="/admin/analytics" class="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-semibold uppercase tracking-wider hover:bg-neutral-900 hover:text-white transition duration-200 {% if request.path == '/admin/analytics' %}bg-neutral-900 text-white{% endif %}">
-                <i class="fa-solid fa-chart-pie text-base"></i> Analytics
-            </a>
+            {% endfor %}
         </nav>
-        
-        <!-- Sidebar Footer Options -->
-        <div class="p-4 border-t border-neutral-900 space-y-2">
-            <a href="/" class="flex items-center gap-3 px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider hover:bg-neutral-900 text-neutral-500 hover:text-white transition">
-                <i class="fa-solid fa-arrow-left"></i> View Live Shop
+
+        <div class="p-4 border-t border-[var(--neutral-800)] space-y-2">
+            <a href="/" class="flex items-center gap-3 px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider hover:bg-[var(--neutral-800)] text-[var(--neutral-500)] hover:text-white transition">
+                <i class="fa-solid fa-arrow-left w-4"></i> Live Shop
             </a>
             <button id="adminLogoutBtn" class="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider hover:bg-red-950 text-red-400 hover:text-red-200 transition">
-                <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
+                <i class="fa-solid fa-arrow-right-from-bracket w-4"></i> Sign Out
             </button>
         </div>
     </aside>
 
-    <!-- Content Panel Wrapper -->
+    <!-- Main Area -->
     <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <!-- Top header bar -->
-        <header class="h-20 bg-white border-b border-neutral-100 flex-shrink-0 flex items-center justify-between px-6 sm:px-8">
+        <header class="h-20 bg-white border-b border-[var(--neutral-100)] flex-shrink-0 flex items-center justify-between px-6 sm:px-8">
             <div class="flex items-center gap-4">
-                <!-- Mobile menu toggle -->
-                <button class="md:hidden p-2 text-neutral-500 hover:bg-neutral-50 rounded-lg" id="adminMobileMenuToggle">
+                <button class="md:hidden p-2 text-[var(--neutral-500)] hover:bg-[var(--neutral-50)] rounded-lg transition" id="adminMobileMenuToggle" aria-label="Toggle menu">
                     <i class="fa-solid fa-bars text-xl"></i>
                 </button>
-                <h1 class="text-xs sm:text-sm font-bold uppercase tracking-widest text-neutral-800">
+                <h1 class="text-xs sm:text-sm font-bold uppercase tracking-widest text-[var(--neutral-800)]">
                     {% block page_title %}Dashboard{% endblock %}
                 </h1>
             </div>
-            
             <div class="flex items-center gap-4">
-                <div id="adminDBStatusAlert" class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider font-semibold bg-emerald-50 text-emerald-600 border border-emerald-100">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> MySQL Active
+                <div id="adminDBStatusAlert" class="hidden sm:flex items-center gap-2 px-3 py-1.5 text-[10px] uppercase tracking-wider font-semibold bg-emerald-50 text-emerald-600 border border-emerald-100">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Live
                 </div>
                 <div class="flex items-center gap-3">
-                    <span class="w-8 h-8 rounded-full bg-neutral-900 text-white font-bold flex items-center justify-center text-[10px] uppercase">
-                        AD
-                    </span>
-                    <span class="hidden sm:inline text-xs font-bold uppercase tracking-wider text-neutral-700">Administrator</span>
+                    <span class="w-8 h-8 rounded-full bg-[var(--neutral-900)] text-white font-bold flex items-center justify-center text-[10px] uppercase">AD</span>
+                    <span class="hidden sm:inline text-xs font-bold uppercase tracking-wider text-[var(--neutral-600)]">Admin</span>
                 </div>
             </div>
         </header>
 
-        <!-- Admin Mobile Navigation (Hidden by default) -->
-        <div id="adminMobileNavMenu" class="hidden md:hidden border-b border-neutral-200 bg-[#0a0a0a] text-neutral-400 py-4 px-6 space-y-2 flex flex-col font-semibold text-xs uppercase tracking-wider">
-            <a href="/admin" class="hover:text-white py-1.5 transition">Overview</a>
-            <a href="/admin/products" class="hover:text-white py-1.5 transition">Products</a>
-            <a href="/admin/orders" class="hover:text-white py-1.5 transition">Orders</a>
-            <a href="/admin/customers" class="hover:text-white py-1.5 transition">Customers</a>
-            <a href="/admin/reviews" class="hover:text-white py-1.5 transition">Reviews</a>
-            <a href="/admin/analytics" class="hover:text-white py-1.5 transition">Analytics</a>
-            <div class="border-t border-neutral-900 my-2"></div>
-            <a href="/" class="text-neutral-500 hover:text-white py-1 transition">View Live Shop</a>
-            <button id="adminMobileLogoutBtn" class="text-red-400 hover:text-red-200 py-1 text-left transition">Logout Console</button>
+        <!-- Mobile Nav -->
+        <div id="adminMobileNavMenu" class="hidden md:hidden border-b border-[var(--neutral-100)] bg-[var(--neutral-900)] text-[var(--neutral-400)] py-4 px-6 space-y-1">
+            {% for href, icon, label in nav_items %}
+            <a href="{{ href }}" class="flex items-center gap-3 py-2.5 text-xs font-semibold uppercase tracking-wider hover:text-white transition">
+                <i class="fa-solid fa-{{ icon }} w-4"></i> {{ label }}
+            </a>
+            {% endfor %}
+            <div class="border-t border-[var(--neutral-800)] my-2"></div>
+            <a href="/" class="flex items-center gap-3 py-2 text-xs text-[var(--neutral-500)] hover:text-white transition">
+                <i class="fa-solid fa-arrow-left w-4"></i> Live Shop
+            </a>
+            <button id="adminMobileLogoutBtn" class="flex items-center gap-3 py-2 text-xs text-red-400 hover:text-red-200 transition">
+                <i class="fa-solid fa-arrow-right-from-bracket w-4"></i> Sign Out
+            </button>
         </div>
 
-        <!-- Dashboard Content Body -->
         <main class="flex-1 overflow-y-auto p-6 sm:p-8">
             {% block content %}{% endblock %}
         </main>
     </div>
 
-    <!-- Toast Alert notifications -->
-    <div id="toastContainer" class="fixed bottom-5 right-5 z-[9999] flex flex-col gap-3 max-w-sm w-full pointer-events-none"></div>
-
+    <div id="toastContainer" class="toast-container"></div>
     <script src="{{ url_for('static', filename='main.js') }}"></script>
     {% block scripts %}{% endblock %}
 </body>

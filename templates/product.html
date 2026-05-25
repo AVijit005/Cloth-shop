@@ -1,318 +1,368 @@
 {% extends "base.html" %}
 
-{% block title %}Shop {{ product.name }} | Shibani Fashion{% endblock %}
+{% block title %}{{ product.name }} | SHIBANI{% endblock %}
 
 {% block content %}
-<!-- Product ID Container -->
 <div class="hidden" id="currentProductId" data-id="{{ product.id }}"></div>
 
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 bg-white">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+
     <!-- Breadcrumb -->
-    <nav class="flex text-[10px] tracking-widest text-neutral-400 font-semibold mb-8 gap-2 uppercase">
-        <a href="/" class="hover:text-neutral-900 transition">Home</a>
-        <span>/</span>
-        <a href="/shop?category={{ product.category }}" class="hover:text-neutral-900 transition">{{ product.category }}</a>
-        <span>/</span>
-        <span class="text-neutral-600 truncate max-w-[200px]">{{ product.name }}</span>
+    <nav class="flex text-[10px] tracking-widest text-[var(--neutral-400)] font-semibold mb-8 gap-2 uppercase flex-wrap">
+        <a href="/" class="hover:text-[var(--neutral-900)] transition">Home</a>
+        <span class="text-[var(--neutral-200)]">/</span>
+        <a href="/shop?category={{ product.category }}" class="hover:text-[var(--neutral-900)] transition">{{ product.category }}</a>
+        <span class="text-[var(--neutral-200)]">/</span>
+        <span class="text-[var(--neutral-600)] truncate max-w-[200px]">{{ product.name }}</span>
     </nav>
-    
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 sm:gap-16 items-start">
-        
-        <!-- Left Column: Image Gallery -->
-        <div class="space-y-4 animate-fade-in">
-            <!-- Main Preview Box with Zoom -->
-            <div class="relative bg-neutral-50 border border-neutral-100 overflow-hidden aspect-[3/4] group zoom-container">
-                <img id="detailMainImage" 
-                     src="{{ product.images_list[0] if product.images_list else 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600' }}" 
-                     alt="{{ product.name }}" 
-                     class="w-full h-full object-cover object-top transition duration-500 hover:scale-105 cursor-zoom-in" />
-                <div id="imageZoomLens" class="zoom-lens hidden"></div>
-                
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-16 items-start">
+
+        <!-- ============================================================
+             LEFT: IMAGE GALLERY
+             ============================================================ -->
+        <div class="space-y-4 lg:sticky lg:top-28">
+            <!-- Main Image -->
+            <div class="relative bg-[var(--neutral-50)] border border-[var(--neutral-100)] overflow-hidden aspect-[3/4] group cursor-crosshair">
+                <img id="detailMainImage"
+                     src="{{ product.images_list[0] if product.images_list else 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800' }}"
+                     alt="{{ product.name }}"
+                     class="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
+                     loading="eager" />
+
                 {% if product.badge %}
-                <span class="absolute top-4 left-4 bg-neutral-900 text-white font-bold text-[9px] tracking-widest px-3 py-1.5 uppercase">
-                    {{ product.badge }}
-                </span>
+                <span class="badge badge-primary absolute top-4 left-4">{{ product.badge }}</span>
+                {% endif %}
+
+                <!-- Discount badge -->
+                {% if product.old_price and product.old_price > product.price %}
+                {% set save_pct = ((1 - product.price/product.old_price)*100)|int %}
+                <span class="badge-discount absolute top-4 right-4">{{ save_pct }}% OFF</span>
                 {% endif %}
             </div>
-            
-            <!-- Gallery Thumbnails (if multiple images exist) -->
+
+            <!-- Thumbnails -->
             {% if product.images_list and product.images_list|length > 1 %}
-            <div class="flex gap-3 overflow-x-auto pb-2">
+            <div class="flex gap-3 overflow-x-auto pb-2" id="galleryThumbnails">
                 {% for img in product.images_list %}
-                <button class="w-16 h-20 overflow-hidden border {% if loop.first %}border-neutral-900{% else %}border-neutral-200{% endif %} bg-white flex-shrink-0 thumbnail-btn" 
+                <button class="gallery-thumb w-16 h-20 flex-shrink-0 {% if loop.first %}active{% endif %}"
                         data-img-src="{{ img }}">
-                    <img src="{{ img }}" alt="Thumbnail {{ loop.index }}" class="w-full h-full object-cover object-top" />
+                    <img src="{{ img }}" alt="View {{ loop.index }}" class="w-full h-full object-cover object-top" loading="lazy" />
                 </button>
                 {% endfor %}
             </div>
             {% endif %}
         </div>
-        
-        <!-- Right Column: Product Info & Actions -->
-        <div class="space-y-6">
-            <!-- Category and Rating -->
+
+        <!-- ============================================================
+             RIGHT: PRODUCT INFO
+             ============================================================ -->
+        <div class="space-y-8">
+            <!-- Category + Rating -->
             <div class="flex items-center justify-between">
-                <span class="text-[10px] tracking-widest text-neutral-500 uppercase font-bold">
-                    COLLECTION / {{ product.category }}
+                <span class="text-[10px] tracking-widest text-[var(--neutral-400)] uppercase font-semibold">
+                    {{ product.category }}
                 </span>
-                <div class="flex items-center gap-1 text-neutral-800 text-xs">
-                    <i class="fa-solid fa-star text-neutral-900 text-[10px]"></i>
-                    <span class="font-bold">{{ product.rating }}</span>
+                <div class="flex items-center gap-1.5">
+                    <div class="star-rating text-xs">
+                        {% set rating = product.rating|default(4)|round(1) %}
+                        {% for i in range(5) %}
+                            {% if rating >= i + 1 %}
+                                <i class="fa-solid fa-star star-filled"></i>
+                            {% elif rating >= i + 0.5 %}
+                                <i class="fa-solid fa-star-half-stroke star-half"></i>
+                            {% else %}
+                                <i class="fa-regular fa-star star-empty"></i>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <span class="text-xs font-semibold text-[var(--neutral-600)]">{{ rating }}</span>
                 </div>
             </div>
-            
+
             <!-- Title -->
-            <h1 class="text-2xl sm:text-3xl font-light tracking-widest text-neutral-900 uppercase">
+            <h1 class="text-2xl sm:text-3xl lg:text-4xl font-display font-light tracking-[0.1em] text-[var(--neutral-900)] uppercase">
                 {{ product.name }}
             </h1>
-            
+
             <!-- Pricing -->
             <div class="flex items-baseline gap-4">
-                <span class="text-2xl font-semibold text-neutral-900">
-                    Rs. {{ "{:,.2f}".format(product.price) }}
+                <span class="text-3xl sm:text-4xl font-semibold text-[var(--neutral-900)]">
+                    Rs. {{ "{:,.0f}".format(product.price) }}
                 </span>
                 {% if product.old_price and product.old_price > product.price %}
-                <span class="text-sm text-neutral-400 line-through">
-                    Rs. {{ "{:,.2f}".format(product.old_price) }}
+                <span class="text-lg text-[var(--neutral-400)] line-through">
+                    Rs. {{ "{:,.0f}".format(product.old_price) }}
                 </span>
-                <span class="text-[10px] font-bold text-neutral-900 border border-neutral-900 px-2 py-0.5 uppercase tracking-wider">
+                <span class="badge-discount text-[11px]">
                     Save {{ "{:.0f}%".format((1 - product.price/product.old_price)*100) }}
                 </span>
                 {% endif %}
             </div>
-            
+
             <!-- Description -->
-            <p class="text-neutral-500 leading-relaxed text-xs uppercase tracking-wider font-light border-t border-neutral-100 pt-6">
-                {{ product.description or 'Premium quality apparel. Carefully chosen fabric tailored with style and care. Perfect for casual wear, outings, or festive occasions.' }}
-            </p>
-            
-            <!-- Size Selector & AI Fit Finder -->
-            <div class="border-t border-neutral-100 pt-6 space-y-4">
+            <div class="border-t border-[var(--neutral-100)] pt-8">
+                <p class="text-sm text-[var(--neutral-500)] leading-relaxed font-light">
+                    {{ product.description or 'Premium quality apparel. Carefully chosen fabric tailored with style and care.' }}
+                </p>
+            </div>
+
+            <!-- Size Selector -->
+            <div class="border-t border-[var(--neutral-100)] pt-8 space-y-4">
                 <div class="flex justify-between items-center">
-                    <span class="text-[10px] font-bold uppercase tracking-widest text-neutral-500">Select Size:</span>
-                    <button type="button" id="triggerFitFinderBtn" class="text-[10px] font-bold text-neutral-900 hover:opacity-75 uppercase tracking-widest transition flex items-center gap-1.5 underline">
-                        Fit & Size Guide
+                    <span class="text-[10px] font-bold uppercase tracking-widest text-[var(--neutral-500)]">Select Size</span>
+                    <button type="button" id="triggerFitFinderBtn"
+                            class="text-[10px] font-semibold text-[var(--neutral-600)] hover:text-[var(--neutral-900)] uppercase tracking-widest transition flex items-center gap-1.5 underline">
+                        <i class="fa-solid fa-ruler-combined"></i> Size Guide
                     </button>
                 </div>
-                
                 <div class="flex flex-wrap gap-2" id="detailSizesContainer">
                     {% for sz in product.size.split(',') %}
                     {% set sz_trimmed = sz.strip() %}
                     {% if sz_trimmed %}
-                    <button class="size-pill-detail px-4 py-2 border {% if loop.first %}border-neutral-900 bg-neutral-900 text-white font-bold{% else %}border-neutral-200 text-neutral-800 hover:border-neutral-900{% endif %} text-[10px] tracking-widest uppercase transition duration-200" 
-                            data-size="{{ sz_trimmed }}">
-                        {{ sz_trimmed }}
-                    </button>
+                    <button class="size-pill {% if loop.first %}active{% endif %}"
+                            data-size="{{ sz_trimmed }}">{{ sz_trimmed }}</button>
                     {% endif %}
                     {% endfor %}
                 </div>
             </div>
-            
-            <!-- Actions buttons -->
-            <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t border-neutral-100">
-                <button type="button" id="detailAddToCartBtn" 
-                        class="flex-grow py-4 px-6 bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-xs uppercase tracking-widest transition duration-300 flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-cart-shopping"></i> Add to Bag
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row gap-3 pt-4">
+                <button type="button" id="detailAddToCartBtn"
+                        class="btn-primary flex-grow py-4 ripple">
+                    <i class="fa-solid fa-bag-shopping"></i> Add to Bag
                 </button>
-                <button type="button" id="detailAddToWishlistBtn" 
-                        class="py-4 px-6 border border-neutral-200 hover:border-neutral-900 text-neutral-800 font-bold text-xs uppercase tracking-widest transition duration-300 flex items-center justify-center gap-2">
-                    <i class="fa-regular fa-heart"></i> Wishlist
+                <button type="button" id="detailAddToWishlistBtn"
+                        class="btn-secondary py-4">
+                    <i class="fa-regular fa-heart"></i> Save
                 </button>
+            </div>
+
+            <!-- Trust Badges -->
+            <div class="trust-badges border-t border-[var(--neutral-100)] pt-6">
+                <span class="trust-badge"><i class="fa-solid fa-truck-fast"></i> Free shipping over Rs. 999</span>
+                <span class="trust-badge"><i class="fa-solid fa-rotate-left"></i> 30-day returns</span>
+                <span class="trust-badge"><i class="fa-solid fa-shield-halved"></i> Secure checkout</span>
+                <span class="trust-badge"><i class="fa-regular fa-clock"></i> Dispatch in 24h</span>
+            </div>
+
+            <!-- Stock indicator -->
+            <div class="border-t border-[var(--neutral-100)] pt-6">
+                <span id="detailStockIndicator"
+                      class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-success)]">
+                    <span class="w-2 h-2 rounded-full bg-[var(--color-success)]"></span>
+                    In Stock
+                </span>
             </div>
         </div>
     </div>
-    
-    <!-- Sizing & Reviews Section -->
-    <section class="mt-20 border-t border-neutral-200 pt-16">
+
+    <!-- ============================================================
+         REVIEWS & SIZING SECTION
+         ============================================================ -->
+    <section class="mt-20 border-t border-[var(--neutral-100)] pt-16">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-16 items-start">
-            
-            <!-- Left 1 Column: Rating Distribution & Submission Form -->
+
+            <!-- Left Column: Reviews Summary + Form -->
             <div class="lg:col-span-1 space-y-8">
-                <div>
-                    <h3 class="text-xs tracking-[0.2em] font-bold text-neutral-900 uppercase mb-4">Customer Reviews</h3>
+                <!-- Rating Summary -->
+                <div class="bg-[var(--neutral-50)] p-8 border border-[var(--neutral-100)]">
+                    <h3 class="font-bold text-xs tracking-widest uppercase text-[var(--neutral-900)] mb-6">Customer Reviews</h3>
                     <div class="flex items-center gap-4">
-                        <span class="text-4xl font-light text-neutral-900">{{ product.rating }}</span>
+                        <span class="text-5xl font-display font-light text-[var(--neutral-900)]">{{ product.rating }}</span>
                         <div>
-                            <div class="flex text-neutral-800 text-[10px] gap-0.5">
-                                <i class="fa-solid fa-star"></i>
-                                <i class="fa-solid fa-star"></i>
-                                <i class="fa-solid fa-star"></i>
-                                <i class="fa-solid fa-star"></i>
-                                <i class="fa-solid fa-star-half-stroke"></i>
+                            <div class="star-rating text-sm">
+                                {% for i in range(5) %}
+                                    {% if product.rating >= i + 1 %}
+                                        <i class="fa-solid fa-star star-filled"></i>
+                                    {% elif product.rating >= i + 0.5 %}
+                                        <i class="fa-solid fa-star-half-stroke star-half"></i>
+                                    {% else %}
+                                        <i class="fa-regular fa-star star-empty"></i>
+                                    {% endif %}
+                                {% endfor %}
                             </div>
-                            <span class="text-[9px] text-neutral-400 font-bold uppercase tracking-wider block mt-1">Based on community ratings</span>
+                            <span class="text-[9px] text-[var(--neutral-400)] font-bold uppercase tracking-wider block mt-1">Overall Rating</span>
                         </div>
                     </div>
                 </div>
-                
-                <!-- Fit indicators -->
-                <div class="space-y-4 bg-neutral-50 p-6 border border-neutral-200">
-                    <h4 class="font-bold text-[10px] tracking-widest uppercase text-neutral-900">Size & Fit feedback</h4>
-                    <div class="space-y-3 text-[9px] tracking-wider uppercase font-bold text-neutral-500">
+
+                <!-- Fit Feedback -->
+                <div class="bg-[var(--neutral-50)] p-8 border border-[var(--neutral-100)]">
+                    <h4 class="font-bold text-[10px] tracking-widest uppercase text-[var(--neutral-900)] mb-4">Size & Fit</h4>
+                    <div class="space-y-3 text-[9px] tracking-wider uppercase font-bold text-[var(--neutral-500)]">
                         <div>
-                            <div class="flex justify-between mb-1">
+                            <div class="flex justify-between mb-1.5">
                                 <span>Runs Small</span>
-                                <span class="text-neutral-900">True to Size</span>
+                                <span class="text-[var(--neutral-900)]">True to Size</span>
                                 <span>Runs Large</span>
                             </div>
-                            <div class="w-full bg-neutral-200 h-1 relative">
-                                <div class="absolute bg-neutral-900 w-3 h-3 rounded-none -top-1 left-[50%] -translate-x-1/2 shadow border border-white"></div>
+                            <div class="w-full bg-[var(--neutral-200)] h-1 relative">
+                                <div class="absolute bg-[var(--neutral-900)] w-3 h-3 -top-1 left-1/2 -translate-x-1/2 border-2 border-white"></div>
                             </div>
                         </div>
                     </div>
                 </div>
-                
-                <!-- Review Write Form -->
+
+                <!-- Review Form -->
                 {% if session.get('user') %}
-                <form id="submitReviewForm" class="space-y-4 bg-white border border-neutral-200 p-6">
-                    <h4 class="font-bold text-xs tracking-widest uppercase text-neutral-900">Write a Review</h4>
+                <form id="submitReviewForm" class="border border-[var(--neutral-100)] p-8 space-y-4">
+                    <h4 class="font-bold text-xs tracking-widest uppercase text-[var(--neutral-900)]">Write a Review</h4>
                     <div>
-                        <label class="block text-[9px] font-bold uppercase tracking-widest text-neutral-500 mb-1">Your Rating</label>
-                        <select id="reviewRatingSelect" class="w-full bg-neutral-50 border border-neutral-200 px-3 py-2 text-xs tracking-wider uppercase focus:outline-none focus:border-neutral-900">
-                            <option value="5">★★★★★ (5 Stars)</option>
-                            <option value="4">★★★★☆ (4 Stars)</option>
-                            <option value="3">★★★☆☆ (3 Stars)</option>
-                            <option value="2">★★☆☆☆ (2 Stars)</option>
-                            <option value="1">★☆☆☆☆ (1 Star)</option>
+                        <label class="block text-[9px] font-bold uppercase tracking-widest text-[var(--neutral-500)] mb-1.5">Rating</label>
+                        <select id="reviewRatingSelect"
+                                class="w-full bg-[var(--neutral-50)] border border-[var(--neutral-100)] px-3 py-2.5 text-xs tracking-wider uppercase focus:outline-none focus:border-[var(--neutral-900)] transition">
+                            <option value="5">5 Stars</option>
+                            <option value="4">4 Stars</option>
+                            <option value="3">3 Stars</option>
+                            <option value="2">2 Stars</option>
+                            <option value="1">1 Star</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[9px] font-bold uppercase tracking-widest text-neutral-500 mb-1">Sizing Fit</label>
-                        <select id="reviewSizingSelect" class="w-full bg-neutral-50 border border-neutral-200 px-3 py-2 text-xs tracking-wider uppercase focus:outline-none focus:border-neutral-900">
+                        <label class="block text-[9px] font-bold uppercase tracking-widest text-[var(--neutral-500)] mb-1.5">Fit</label>
+                        <select id="reviewSizingSelect"
+                                class="w-full bg-[var(--neutral-50)] border border-[var(--neutral-100)] px-3 py-2.5 text-xs tracking-wider uppercase focus:outline-none focus:border-[var(--neutral-900)] transition">
                             <option value="True to size">True to size</option>
                             <option value="Slightly small">Slightly small</option>
                             <option value="Slightly large">Slightly large</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[9px] font-bold uppercase tracking-widest text-neutral-500 mb-1">Comments</label>
-                        <textarea id="reviewCommentText" rows="3" required placeholder="Describe fabric quality and fit..." 
-                                  class="w-full bg-neutral-50 border border-neutral-200 p-3 text-xs tracking-wider focus:outline-none focus:border-neutral-900"></textarea>
+                        <label class="block text-[9px] font-bold uppercase tracking-widest text-[var(--neutral-500)] mb-1.5">Comment</label>
+                        <textarea id="reviewCommentText" rows="3" required
+                                  placeholder="Share your thoughts on fit, fabric, quality..."
+                                  class="w-full bg-[var(--neutral-50)] border border-[var(--neutral-100)] p-3 text-xs tracking-wider focus:outline-none focus:border-[var(--neutral-900)] transition"></textarea>
                     </div>
-                    <button type="submit" class="w-full py-3 bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-xs uppercase tracking-widest transition duration-300">
-                        Submit Review
+                    <button type="submit" class="btn-primary w-full">
+                        <i class="fa-regular fa-pen-to-square"></i> Submit Review
                     </button>
                 </form>
                 {% else %}
-                <div class="bg-neutral-50 border border-neutral-200 p-6 text-center space-y-3">
-                    <p class="text-xs font-bold uppercase tracking-wider text-neutral-600">Want to write a review?</p>
-                    <a href="/login" class="inline-block px-5 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white text-[10px] font-bold uppercase tracking-widest transition">Log In</a>
+                <div class="border border-[var(--neutral-100)] p-8 text-center space-y-4 bg-[var(--neutral-50)]">
+                    <p class="text-xs font-bold uppercase tracking-wider text-[var(--neutral-600)]">Share your feedback</p>
+                    <a href="/login" class="btn-primary">Sign In to Review</a>
                 </div>
                 {% endif %}
             </div>
-            
-            <!-- Right 2 Columns: Reviews List -->
+
+            <!-- Right Column: Reviews List -->
             <div class="lg:col-span-2 space-y-6">
-                <h4 class="font-bold text-xs tracking-widest uppercase text-neutral-900 flex items-center gap-2">
-                    Reviews Board (<span id="reviewsCountLabel">0</span>)
+                <h4 class="font-bold text-xs tracking-widest uppercase text-[var(--neutral-900)] flex items-center gap-2">
+                    Reviews (<span id="reviewsCountLabel">0</span>)
                 </h4>
-                <div id="productReviewsList" class="space-y-6">
-                    <!-- Skeletons review -->
-                    <div class="animate-pulse bg-white p-6 border border-neutral-200 space-y-3">
-                        <div class="h-3 bg-neutral-100 w-1/4"></div>
-                        <div class="h-3 bg-neutral-100 w-full"></div>
-                        <div class="h-3 bg-neutral-100 w-2/3"></div>
-                    </div>
+                <div id="productReviewsList" class="space-y-4">
+                    <div class="skeleton h-24 w-full"></div>
+                    <div class="skeleton h-24 w-full"></div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Related Products Section -->
-    <section class="mt-20 border-t border-neutral-200 pt-16">
-        <div class="mb-10 flex justify-between items-end">
-            <div>
-                <h3 class="text-xs tracking-[0.2em] font-bold text-neutral-900 uppercase">You May Also Like</h3>
-                <p class="text-neutral-400 text-xs mt-1 uppercase tracking-wider">Recommended premium items from the same collection.</p>
-            </div>
+    <!-- ============================================================
+         RELATED + RECOMMENDATIONS
+         ============================================================ -->
+    <section class="mt-20 border-t border-[var(--neutral-100)] pt-16">
+        <div class="mb-10">
+            <span class="text-eyebrow">Complete The Look</span>
+            <h3 class="text-xl sm:text-2xl font-display font-light tracking-[0.15em] text-[var(--neutral-900)] uppercase mt-2">You May Also Like</h3>
         </div>
         <div id="relatedProductsGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6">
-            <!-- Loaded dynamically by JS -->
+            {% for i in range(6) %}
+            <div class="skeleton aspect-[3/4] w-full"></div>
+            {% endfor %}
         </div>
     </section>
 
-    <!-- Recently Viewed Section -->
-    <section id="recentlyViewedSection" class="mt-20 border-t border-neutral-200 pt-16 hidden">
+    <!-- Recently Viewed -->
+    <section id="recentlyViewedSection" class="mt-20 border-t border-[var(--neutral-100)] pt-16 hidden">
         <div class="mb-10">
-            <h3 class="text-xs tracking-[0.2em] font-bold text-neutral-900 uppercase">Recently Viewed</h3>
-            <p class="text-neutral-400 text-xs mt-1 uppercase tracking-wider">Items you've browsed recently.</p>
+            <span class="text-eyebrow">Continue Browsing</span>
+            <h3 class="text-xl sm:text-2xl font-display font-light tracking-[0.15em] text-[var(--neutral-900)] uppercase mt-2">Recently Viewed</h3>
         </div>
-        <div id="recentlyViewedGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6">
-            <!-- Loaded dynamically by JS -->
-        </div>
+        <div id="recentlyViewedGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6"></div>
     </section>
 
     <!-- Personalized Recommendations -->
-    <section id="recommendationsSection" class="mt-20 border-t border-neutral-200 pt-16 hidden">
+    <section id="recommendationsSection" class="mt-20 border-t border-[var(--neutral-100)] pt-16 hidden">
         <div class="mb-10">
-            <h3 id="recommendationsHeading" class="text-xs tracking-[0.2em] font-bold text-neutral-900 uppercase">Recommended For You</h3>
-            <p class="text-neutral-400 text-xs mt-1 uppercase tracking-wider">Based on your browsing preferences.</p>
+            <span class="text-eyebrow">Curated For You</span>
+            <h3 id="recommendationsHeading" class="text-xl sm:text-2xl font-display font-light tracking-[0.15em] text-[var(--neutral-900)] uppercase mt-2">Recommended</h3>
         </div>
-        <div id="recommendationsGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6">
-            <!-- Loaded dynamically by JS -->
-        </div>
+        <div id="recommendationsGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6"></div>
     </section>
 </div>
 
-<!-- Sizing Fit Finder Modal (Hidden by default) -->
-<div id="sizeFinderModal" class="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm z-[999] flex items-center justify-center p-4 hidden">
-    <div class="bg-white max-w-lg w-full border border-neutral-200 transform scale-95 transition-all duration-300">
-        <!-- Header -->
-        <div class="px-6 py-4 border-b border-neutral-200 flex items-center justify-between">
-            <div class="flex items-center gap-2 text-neutral-900 font-bold text-xs uppercase tracking-widest">
-                <i class="fa-solid fa-ruler-combined"></i>
-                <span>Fit Finder Size Advisor</span>
-            </div>
-            <button id="closeFitFinderBtn" class="p-2 text-neutral-400 hover:text-neutral-900 transition"><i class="fa-solid fa-xmark"></i></button>
+<!-- Sticky Mobile Add to Cart (visible on mobile only) -->
+<div id="stickyMobileCart" class="fixed bottom-16 left-0 right-0 bg-white border-t border-[var(--neutral-100)] p-3 lg:hidden z-[var(--z-sticky)] shadow-2xl hidden">
+    <div class="flex items-center justify-between gap-3">
+        <div>
+            <span class="text-sm font-bold text-[var(--neutral-900)]">Rs. {{ "{:,.0f}".format(product.price) }}</span>
+            {% if product.old_price and product.old_price > product.price %}
+            <span class="text-xs text-[var(--neutral-400)] line-through ml-2">Rs. {{ "{:,.0f}".format(product.old_price) }}</span>
+            {% endif %}
         </div>
-        
-        <!-- Body -->
-        <div class="p-6 sm:p-8 space-y-8">
-            <p class="text-xs text-neutral-500 uppercase tracking-wider leading-relaxed font-light font-sans">
-                Provide your height and weight to get a personalized recommendation based on your Body Mass Index (BMI) and fit preference.
-            </p>
-            
+        <button type="button" id="stickyAddToCartBtn"
+                class="btn-primary flex-grow max-w-[200px] py-3 text-[10px] ripple">
+            <i class="fa-solid fa-bag-shopping"></i> Add to Bag
+        </button>
+    </div>
+</div>
+
+<!-- Size Guide Modal -->
+<div id="sizeFinderModal" class="modal-overlay hidden">
+    <div class="modal-content max-w-lg">
+        <div class="p-6 sm:p-8">
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-2 font-bold text-xs uppercase tracking-widest text-[var(--neutral-900)]">
+                    <i class="fa-solid fa-ruler-combined"></i>
+                    <span>Fit Finder</span>
+                </div>
+                <button id="closeFitFinderBtn" class="p-2 text-[var(--neutral-400)] hover:text-[var(--neutral-900)] transition rounded-full hover:bg-[var(--neutral-50)]">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
             <div class="space-y-6">
-                <!-- Height -->
+                <p class="text-xs text-[var(--neutral-500)] uppercase tracking-wider leading-relaxed font-light">
+                    Enter your height and weight for a personalized size recommendation.
+                </p>
+
                 <div class="space-y-2">
-                    <div class="flex justify-between text-xs font-bold uppercase tracking-wider text-neutral-700">
-                        <span>Height:</span>
-                        <span id="sfHeightVal" class="text-neutral-900">170 cm</span>
+                    <div class="flex justify-between text-xs font-bold uppercase tracking-wider text-[var(--neutral-700)]">
+                        <span>Height</span>
+                        <span id="sfHeightVal" class="text-[var(--neutral-900)]">170 cm</span>
                     </div>
-                    <input type="range" id="sfHeight" min="100" max="220" value="170" 
-                           class="w-full h-1 bg-neutral-200 rounded-none appearance-none cursor-pointer accent-neutral-900" />
+                    <input type="range" id="sfHeight" min="100" max="220" value="170" class="w-full" />
                 </div>
-                
-                <!-- Weight -->
+
                 <div class="space-y-2">
-                    <div class="flex justify-between text-xs font-bold uppercase tracking-wider text-neutral-700">
-                        <span>Weight:</span>
-                        <span id="sfWeightVal" class="text-neutral-900">65 kg</span>
+                    <div class="flex justify-between text-xs font-bold uppercase tracking-wider text-[var(--neutral-700)]">
+                        <span>Weight</span>
+                        <span id="sfWeightVal" class="text-[var(--neutral-900)]">65 kg</span>
                     </div>
-                    <input type="range" id="sfWeight" min="30" max="150" value="65" 
-                           class="w-full h-1 bg-neutral-200 rounded-none appearance-none cursor-pointer accent-neutral-900" />
+                    <input type="range" id="sfWeight" min="30" max="150" value="65" class="w-full" />
                 </div>
-                
-                <!-- Fit Preference -->
+
                 <div class="space-y-2">
-                    <label for="sfFit" class="block text-xs font-bold uppercase tracking-widest text-neutral-700">Preferred Fit:</label>
-                    <select id="sfFit" class="w-full bg-neutral-50 border border-neutral-200 px-3 py-2 text-xs tracking-wider uppercase focus:outline-none focus:border-neutral-900">
+                    <label for="sfFit" class="block text-xs font-bold uppercase tracking-widest text-[var(--neutral-700)]">Preferred Fit</label>
+                    <select id="sfFit" class="w-full bg-[var(--neutral-50)] border border-[var(--neutral-100)] px-3 py-2.5 text-xs tracking-wider uppercase focus:outline-none focus:border-[var(--neutral-900)]">
                         <option value="regular">Regular Fit</option>
-                        <option value="slim">Slim Fit (Fitted)</option>
-                        <option value="loose">Loose Fit (Comfortable)</option>
+                        <option value="slim">Slim Fit</option>
+                        <option value="loose">Loose Fit</option>
                     </select>
                 </div>
-            </div>
-            
-            <!-- Result Box -->
-            <div class="bg-neutral-50 p-6 border border-neutral-200 flex items-center justify-between gap-4">
-                <div>
-                    <span class="text-[9px] tracking-widest font-bold text-neutral-400 uppercase block mb-0.5">Recommended Size</span>
-                    <strong class="text-2xl font-semibold text-neutral-900" id="sfResultSize">M</strong>
+
+                <div class="bg-[var(--neutral-50)] p-6 border border-[var(--neutral-100)] flex items-center justify-between gap-4">
+                    <div>
+                        <span class="text-[9px] tracking-widest font-bold text-[var(--neutral-400)] uppercase block mb-0.5">Recommended</span>
+                        <strong class="text-2xl font-semibold text-[var(--neutral-900)]" id="sfResultSize">M</strong>
+                    </div>
+                    <button type="button" id="applyFitFinderSizeBtn" class="btn-primary">
+                        Apply Size
+                    </button>
                 </div>
-                <button type="button" id="applyFitFinderSizeBtn" class="px-5 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-xs uppercase tracking-widest transition duration-300">
-                    Apply Recommended Size
-                </button>
             </div>
         </div>
     </div>

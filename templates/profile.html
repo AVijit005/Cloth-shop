@@ -1,99 +1,100 @@
 {% extends "base.html" %}
 
-{% block title %}My Profile | Shibani Fashion{% endblock %}
+{% block title %}My Profile | SHIBANI{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 space-y-12 animate-fade-in">
-    <h1 class="text-xl font-light uppercase tracking-widest text-neutral-900 mb-8">My Profile</h1>
-    
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-10">
+    <div>
+        <span class="text-eyebrow">Account</span>
+        <h1 class="text-xl sm:text-2xl font-display font-light tracking-[0.15em] text-[var(--neutral-900)] uppercase mt-1">My Profile</h1>
+    </div>
+
     <div class="grid grid-cols-1 md:grid-cols-3 gap-10 items-start">
-        
-        <!-- Left: Basic Details Card -->
-        <div class="md:col-span-1 bg-white border border-neutral-200 p-6 space-y-6 text-center">
+
+        <!-- Left: Avatar card -->
+        <div class="md:col-span-1 border border-[var(--neutral-100)] p-8 text-center space-y-5">
             <div class="flex justify-center">
-                <span class="w-16 h-16 bg-neutral-900 text-white font-light flex items-center justify-center text-lg uppercase">
+                <span class="w-20 h-20 bg-[var(--neutral-900)] text-white font-display font-light flex items-center justify-center text-2xl uppercase tracking-wider">
                     {{ session['user']['full_name'][:2] | upper }}
                 </span>
             </div>
             <div>
-                <h3 class="font-medium text-neutral-900 text-sm uppercase tracking-wider leading-tight">{{ session['user']['full_name'] }}</h3>
-                <span class="text-[10px] font-light text-neutral-400 uppercase tracking-widest block mt-1">{{ session['user']['role'] }}</span>
+                <h3 class="font-medium text-sm text-[var(--neutral-900)] uppercase tracking-wider">{{ session['user']['full_name'] }}</h3>
+                <span class="text-[10px] text-[var(--neutral-400)] uppercase tracking-widest block mt-1">{{ session['user']['role'] }}</span>
             </div>
         </div>
-        
-        <!-- Right: Edit Form & Address Book -->
+
+        <!-- Right: Forms -->
         <div class="md:col-span-2 space-y-10">
-            <!-- Edit Profile details Form -->
-            <form id="profileForm" class="bg-white border border-neutral-200 p-6 sm:p-8 space-y-4">
-                <h3 class="font-medium text-neutral-900 text-xs uppercase tracking-widest mb-4">Edit Account Information</h3>
+            <!-- Edit Profile -->
+            <form id="profileForm" class="border border-[var(--neutral-100)] p-6 sm:p-8 space-y-5">
+                <h3 class="font-bold text-xs uppercase tracking-widest text-[var(--neutral-900)]">Account Information</h3>
                 <div>
-                    <label for="profileFullName" class="block text-[10px] font-medium uppercase tracking-widest text-neutral-500 mb-1">Full Name</label>
-                    <input type="text" id="profileFullName" required value="{{ session['user']['full_name'] }}" 
-                           class="w-full bg-neutral-50 border border-neutral-200 px-5 py-3 text-xs font-light tracking-wider placeholder-neutral-400 focus:outline-none focus:border-neutral-900 focus:ring-0" />
+                    <label for="profileFullName" class="block text-[10px] font-bold uppercase tracking-widest text-[var(--neutral-500)] mb-1">Full Name</label>
+                    <input type="text" id="profileFullName" required value="{{ session['user']['full_name'] }}"
+                           class="w-full bg-[var(--neutral-50)] border border-[var(--neutral-100)] px-4 py-3 text-xs tracking-wider focus:outline-none focus:border-[var(--neutral-900)] transition" />
                 </div>
                 <div>
-                    <label for="profilePhone" class="block text-[10px] font-medium uppercase tracking-widest text-neutral-500 mb-1">Default Phone</label>
-                    <input type="tel" id="profilePhone" placeholder="Enter default phone number" 
-                           class="w-full bg-neutral-50 border border-neutral-200 px-5 py-3 text-xs font-light tracking-wider placeholder-neutral-400 focus:outline-none focus:border-neutral-900 focus:ring-0" />
+                    <label for="profilePhone" class="block text-[10px] font-bold uppercase tracking-widest text-[var(--neutral-500)] mb-1">Phone</label>
+                    <input type="tel" id="profilePhone" placeholder="Enter your phone number"
+                           class="w-full bg-[var(--neutral-50)] border border-[var(--neutral-100)] px-4 py-3 text-xs tracking-wider focus:outline-none focus:border-[var(--neutral-900)] transition" />
                 </div>
-                <div>
-                    <button type="submit" class="px-6 py-3 bg-neutral-900 hover:bg-neutral-800 text-white font-light text-[10px] uppercase tracking-widest transition duration-300">
-                        Update Information
-                    </button>
-                </div>
+                <button type="submit" class="btn-primary text-[10px]">
+                    <i class="fa-regular fa-floppy-disk"></i> Update Profile
+                </button>
             </form>
-            
-            <!-- Multi-Address Book Manager -->
-            <div class="bg-white border border-neutral-200 p-6 sm:p-8 space-y-6">
+
+            <!-- Address Book -->
+            <div class="border border-[var(--neutral-100)] p-6 sm:p-8 space-y-6">
                 <div class="flex justify-between items-center">
-                    <h3 class="font-medium text-neutral-900 text-xs uppercase tracking-widest">Shipping Address Book</h3>
-                    <button type="button" id="addNewAddressBtn" class="px-4 py-2 border border-neutral-200 hover:bg-neutral-50 text-neutral-600 font-light text-[10px] uppercase tracking-widest transition">
-                        + Add Address
+                    <h3 class="font-bold text-xs uppercase tracking-widest text-[var(--neutral-900)]">Shipping Addresses</h3>
+                    <button type="button" id="addNewAddressBtn" class="btn-ghost text-xs">
+                        <i class="fa-solid fa-plus"></i> Add Address
                     </button>
                 </div>
-                
-                <div id="profileAddressesList" class="space-y-4">
-                    <!-- Loaded dynamically via JS -->
-                </div>
+                <div id="profileAddressesList" class="space-y-4"></div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Address Creation Modal (Hidden by default) -->
-<div id="addressModal" class="fixed inset-0 bg-neutral-950/60 backdrop-blur-sm z-[999] flex items-center justify-center p-4 hidden">
-    <div class="bg-white max-w-md w-full p-6 sm:p-8 border border-neutral-200 space-y-6 transform scale-95 transition-all duration-300">
-        <div class="flex items-center justify-between">
-            <h3 class="font-medium text-neutral-900 text-xs uppercase tracking-widest">Add New Shipping Address</h3>
-            <button id="closeAddressModalBtn" class="p-2 text-neutral-400 hover:text-neutral-900 transition"><i class="fa-solid fa-xmark"></i></button>
+<!-- Address Modal -->
+<div id="addressModal" class="modal-overlay hidden">
+    <div class="modal-content max-w-md">
+        <div class="p-6 sm:p-8 space-y-6">
+            <div class="flex items-center justify-between">
+                <h3 class="font-bold text-xs uppercase tracking-widest text-[var(--neutral-900)]">New Address</h3>
+                <button id="closeAddressModalBtn" class="p-2 text-[var(--neutral-400)] hover:text-[var(--neutral-900)] transition rounded-full hover:bg-[var(--neutral-50)]">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="addressForm" class="space-y-4">
+                <div>
+                    <label for="addressLabelInput" class="block text-[10px] font-bold uppercase tracking-widest text-[var(--neutral-500)] mb-1">Label</label>
+                    <input type="text" id="addressLabelInput" required placeholder="e.g. Home, Work"
+                           class="w-full bg-[var(--neutral-50)] border border-[var(--neutral-100)] px-4 py-2.5 text-xs tracking-wider focus:outline-none focus:border-[var(--neutral-900)] transition" />
+                </div>
+                <div>
+                    <label for="addressNameInput" class="block text-[10px] font-bold uppercase tracking-widest text-[var(--neutral-500)] mb-1">Recipient Name</label>
+                    <input type="text" id="addressNameInput" required placeholder="Full name"
+                           class="w-full bg-[var(--neutral-50)] border border-[var(--neutral-100)] px-4 py-2.5 text-xs tracking-wider focus:outline-none focus:border-[var(--neutral-900)] transition" />
+                </div>
+                <div>
+                    <label for="addressPhoneInput" class="block text-[10px] font-bold uppercase tracking-widest text-[var(--neutral-500)] mb-1">Phone</label>
+                    <input type="tel" id="addressPhoneInput" required placeholder="Phone number"
+                           class="w-full bg-[var(--neutral-50)] border border-[var(--neutral-100)] px-4 py-2.5 text-xs tracking-wider focus:outline-none focus:border-[var(--neutral-900)] transition" />
+                </div>
+                <div>
+                    <label for="addressDetailsInput" class="block text-[10px] font-bold uppercase tracking-widest text-[var(--neutral-500)] mb-1">Address</label>
+                    <textarea id="addressDetailsInput" required rows="3" placeholder="Full shipping address"
+                              class="w-full bg-[var(--neutral-50)] border border-[var(--neutral-100)] p-4 text-xs tracking-wider focus:outline-none focus:border-[var(--neutral-900)] transition"></textarea>
+                </div>
+                <button type="submit" class="btn-primary w-full">
+                    Save Address
+                </button>
+            </form>
         </div>
-        
-        <form id="addressForm" class="space-y-4">
-            <div>
-                <label for="addressLabelInput" class="block text-[10px] font-medium uppercase tracking-widest text-neutral-500 mb-1">Label</label>
-                <input type="text" id="addressLabelInput" required placeholder="e.g. Home, Work, Parents Home" 
-                       class="w-full bg-neutral-50 border border-neutral-200 px-4 py-2.5 text-xs font-light tracking-wider placeholder-neutral-400 focus:outline-none focus:border-neutral-900 focus:ring-0" />
-            </div>
-            <div>
-                <label for="addressNameInput" class="block text-[10px] font-medium uppercase tracking-widest text-neutral-500 mb-1">Recipient Name</label>
-                <input type="text" id="addressNameInput" required placeholder="Full Name" 
-                       class="w-full bg-neutral-50 border border-neutral-200 px-4 py-2.5 text-xs font-light tracking-wider placeholder-neutral-400 focus:outline-none focus:border-neutral-900 focus:ring-0" />
-            </div>
-            <div>
-                <label for="addressPhoneInput" class="block text-[10px] font-medium uppercase tracking-widest text-neutral-500 mb-1">Recipient Phone</label>
-                <input type="tel" id="addressPhoneInput" required placeholder="Phone Number" 
-                       class="w-full bg-neutral-50 border border-neutral-200 px-4 py-2.5 text-xs font-light tracking-wider placeholder-neutral-400 focus:outline-none focus:border-neutral-900 focus:ring-0" />
-            </div>
-            <div>
-                <label for="addressDetailsInput" class="block text-[10px] font-medium uppercase tracking-widest text-neutral-500 mb-1">Address details</label>
-                <textarea id="addressDetailsInput" required rows="3" placeholder="Full shipping address" 
-                          class="w-full bg-neutral-50 border border-neutral-200 p-4 text-xs font-light tracking-wider placeholder-neutral-400 focus:outline-none focus:border-neutral-900 focus:ring-0"></textarea>
-            </div>
-            <button type="submit" class="w-full py-3 bg-neutral-900 hover:bg-neutral-800 text-white font-light text-[10px] uppercase tracking-widest transition">
-                Save Address
-            </button>
-        </form>
     </div>
 </div>
 {% endblock %}
-
