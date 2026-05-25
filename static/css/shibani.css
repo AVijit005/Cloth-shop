@@ -1092,3 +1092,27 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 [data-theme="dark"] .responsive-table td { border-bottom-color: var(--neutral-100); }
 [data-theme="dark"] .responsive-table tr:hover td { background: var(--neutral-100); }
+
+/* Tailwind utility overrides for dark mode — covers JS-rendered HTML
+   that uses hardcoded Tailwind classes instead of var() tokens */
+[data-theme="dark"] .bg-white { background-color: var(--color-white); }
+[data-theme="dark"] .bg-neutral-50 { background-color: var(--neutral-50); }
+[data-theme="dark"] .bg-neutral-900 { background-color: var(--neutral-900); }
+[data-theme="dark"] .text-neutral-900 { color: var(--neutral-900); }
+[data-theme="dark"] .text-neutral-800 { color: var(--neutral-800); }
+[data-theme="dark"] .text-neutral-600 { color: var(--neutral-600); }
+[data-theme="dark"] .text-neutral-500 { color: var(--neutral-500); }
+[data-theme="dark"] .text-neutral-400 { color: var(--neutral-400); }
+[data-theme="dark"] .text-white { color: var(--color-white); }
+[data-theme="dark"] .text-rose-500 { color: #fb7185; }
+[data-theme="dark"] .text-rose-600 { color: #f43f5e; }
+[data-theme="dark"] .border-neutral-100 { border-color: var(--neutral-100); }
+[data-theme="dark"] .border-neutral-200 { border-color: var(--neutral-200); }
+[data-theme="dark"] .border-neutral-300 { border-color: var(--neutral-300); }
+[data-theme="dark"] .border-neutral-900 { border-color: var(--neutral-900); }
+[data-theme="dark"] .hover\:text-neutral-900:hover { color: var(--neutral-900); }
+[data-theme="dark"] .hover\:bg-neutral-100:hover { background-color: var(--neutral-100); }
+[data-theme="dark"] .hover\:bg-neutral-800:hover { background-color: var(--neutral-800); }
+[data-theme="dark"] .hover\:border-neutral-400:hover { border-color: var(--neutral-400); }
+[data-theme="dark"] .divide-neutral-100 > * + * { border-color: var(--neutral-100); }
+[data-theme="dark"] .accent-black { accent-color: var(--neutral-900); }

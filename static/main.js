@@ -2,7 +2,8 @@
 
 // Global App State
 function safeParseJSON(val, fallback = null) {
-    try { return JSON.parse(val); } catch { return fallback; }
+    if (val == null) return fallback;
+    try { const r = JSON.parse(val); return r !== null ? r : fallback; } catch { return fallback; }
 }
 const appState = {
     user: null,
