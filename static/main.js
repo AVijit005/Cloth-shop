@@ -3,27 +3,49 @@
 // Global App State
 function safeParseJSON(val, fallback = null) {
     if (val == null) return fallback;
-    try { const r = JSON.parse(val); return r !== null ? r : fallback; } catch { return fallback; }
+    try {
+        const r = JSON.parse(val);
+        if (r === null) return fallback;
+        if (Array.isArray(fallback) && !Array.isArray(r)) return fallback;
+        return r;
+    } catch {
+        return fallback;
+    }
+}
+function getStorageItem(key) {
+    try { return localStorage.getItem(key); } catch { return null; }
+}
+function setStorageItem(key, value) {
+    try { localStorage.setItem(key, value); } catch { /* ignore */ }
+}
+function removeStorageItem(key) {
+    try { localStorage.removeItem(key); } catch { /* ignore */ }
 }
 const appState = {
     user: null,
     products: [],
-    cart: safeParseJSON(localStorage.getItem("shibani_cart"), []),
-    wishlist: safeParseJSON(localStorage.getItem("shibani_wishlist"), []),
+    cart: safeParseJSON(getStorageItem("shibani_cart"), []),
+    wishlist: safeParseJSON(getStorageItem("shibani_wishlist"), []),
     settings: {
         gst_rate: 5.0,
         delivery_fee_standard: 99.0,
         delivery_fee_threshold: 999.0,
         other_charges: 0.0
     },
-    compareList: safeParseJSON(localStorage.getItem("shibani_compare"), [])
+    compareList: safeParseJSON(getStorageItem("shibani_compare"), [])
 };
+const boundCompareButtons = new Set();
 
 // Global API Helper
 function escapeHTML(str) {
     const div = document.createElement("div");
     div.textContent = str;
     return div.innerHTML;
+}
+function formatPrice(amount) {
+    const num = typeof amount === "string" ? parseFloat(amount) : Number(amount);
+    if (Number.isNaN(num)) return "₹0.00";
+    return "₹" + num.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 // Focus trap helpers for modals/drawers
@@ -114,6 +136,26 @@ async function api(path, options = {}) {
     return body;
 }
 
+let productsLoadPromise = null;
+async function ensureProductsLoaded() {
+    if (!Array.isArray(appState.products)) appState.products = [];
+    if (appState.products.length > 0) return appState.products;
+    if (productsLoadPromise) return productsLoadPromise;
+    productsLoadPromise = api("/api/products")
+        .then((data) => {
+            if (data && data.products) appState.products = data.products;
+            return appState.products;
+        })
+        .catch((err) => {
+            console.warn("Failed to load products for UI:", err);
+            return appState.products;
+        })
+        .finally(() => {
+            productsLoadPromise = null;
+        });
+    return productsLoadPromise;
+}
+
 async function initGlobal() {
     // 1. Fetch current logged in user details
     try {
@@ -126,7 +168,7 @@ async function initGlobal() {
                 const wishData = await api("/api/wishlist");
                 if (wishData && wishData.wishlist) {
                     appState.wishlist = wishData.wishlist.map(p => p.id);
-                    localStorage.setItem("shibani_wishlist", JSON.stringify(appState.wishlist));
+                    setStorageItem("shibani_wishlist", JSON.stringify(appState.wishlist));
                 }
             } catch (wErr) {
                 console.warn("Failed to sync wishlist from database:", wErr);
@@ -135,21 +177,186 @@ async function initGlobal() {
     } catch (err) {
         console.warn("Session check failed, running as guest.");
     }
-    
-    // NOTE: User dropdown, mobile menu, search toggle, logout handlers, search form,
-    // cart drawer, and dark mode toggle are initialized by global-init.js (modular system).
-    // Keeping them here would create duplicate event listeners with conflicting toggle
-    // classes (hidden vs open). The modular initGlobal() in static/js/utils/global-init.js
-    // handles these with the .open class that matches the CSS design system.
-    
+
+    initUserDropdown();
+    initMobileMenu();
+    initSearchForms();
+    initLogout();
+    initCartDrawer();
+    initMobileNav();
+    initThemeToggle();
+    initHeaderScroll();
+    applyTheme();
+
     // 7. Update Cart & Wishlist badges
     updateBadges();
     
-    // 8. Initialize mini cart (complementary to cart drawer in global-init.js)
+    // 8. Initialize legacy mini cart (if present)
     initMiniCart();
     
     // 9. Initialize search suggestions (not yet migrated to modular system)
     initSearchSuggestions();
+}
+
+function initUserDropdown() {
+    const trigger = document.getElementById("userDropdownTrigger");
+    const menu = document.getElementById("userDropdownMenu");
+    if (!trigger || !menu) return;
+    trigger.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menu.classList.toggle("open");
+        const isOpen = menu.classList.contains("open");
+        trigger.setAttribute("aria-expanded", isOpen);
+        const chevron = trigger.querySelector(".fa-chevron-down");
+        if (chevron) chevron.style.transform = isOpen ? "rotate(180deg)" : "rotate(0deg)";
+    });
+    document.addEventListener("click", (e) => {
+        if (!menu.contains(e.target) && !trigger.contains(e.target)) {
+            menu.classList.remove("open");
+            trigger.setAttribute("aria-expanded", "false");
+            const chevron = trigger.querySelector(".fa-chevron-down");
+            if (chevron) chevron.style.transform = "rotate(0deg)";
+        }
+    });
+}
+
+function initMobileMenu() {
+    const btn = document.getElementById("mobileMenuToggle");
+    const nav = document.getElementById("mobileNavMenu");
+    if (!btn || !nav) return;
+    btn.addEventListener("click", () => {
+        const hidden = nav.classList.toggle("hidden");
+        btn.setAttribute("aria-expanded", !hidden);
+        const icon = btn.querySelector("i");
+        if (icon) icon.className = hidden ? "fa-solid fa-bars text-lg" : "fa-solid fa-xmark text-lg";
+    });
+    const searchBtn = document.getElementById("mobileSearchToggle");
+    const searchEl = document.getElementById("mobileSearchContainer");
+    if (searchBtn && searchEl) {
+        searchBtn.addEventListener("click", () => {
+            searchEl.classList.toggle("hidden");
+            searchEl.querySelector("input")?.focus();
+        });
+    }
+}
+
+function initSearchForms() {
+    const submitSearch = (input) => {
+        if (input?.value?.trim()) window.location.href = `/shop?q=${encodeURIComponent(input.value.trim())}`;
+    };
+    const form = document.getElementById("globalSearchForm");
+    const input = document.getElementById("globalSearchInput");
+    if (form && input) form.addEventListener("submit", (e) => { e.preventDefault(); submitSearch(input); });
+    const mForm = document.getElementById("mobileSearchForm");
+    const mInput = document.getElementById("mobileSearchInput");
+    if (mForm && mInput) mForm.addEventListener("submit", (e) => { e.preventDefault(); submitSearch(mInput); });
+}
+
+function initLogout() {
+    const handle = async () => {
+        try {
+            await api("/api/logout", { method: "POST" });
+            appState.user = null;
+            appState.wishlist = [];
+            appState.cart = [];
+            appState.compareList = [];
+            setStorageItem("shibani_wishlist", JSON.stringify(appState.wishlist));
+            setStorageItem("shibani_cart", JSON.stringify(appState.cart));
+            setStorageItem("shibani_compare", JSON.stringify(appState.compareList));
+            updateBadges();
+            window.location.href = "/";
+        } catch (_) { /* ignore */ }
+    };
+    ["globalLogoutBtn", "adminLogoutBtn", "adminMobileLogoutBtn"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener("click", handle);
+    });
+}
+
+function initMobileNav() {
+    const profileBtn = document.getElementById("mobileProfileBtn");
+    if (profileBtn) {
+        profileBtn.addEventListener("click", () => {
+            window.location.href = "/profile";
+        });
+    }
+
+    let lastScroll = 0;
+    const nav = document.getElementById("mobileBottomNav");
+    if (!nav) return;
+
+    window.addEventListener("scroll", () => {
+        const current = window.scrollY;
+        if (current > lastScroll && current > 100) {
+            nav.classList.add("hidden-nav");
+        } else {
+            nav.classList.remove("hidden-nav");
+        }
+        lastScroll = current;
+    }, { passive: true });
+}
+
+function initThemeToggle() {
+    const btn = document.getElementById("themeToggle");
+    const icon = document.getElementById("themeIcon");
+    if (!btn) return;
+
+    btn.addEventListener("click", () => {
+        const current = document.documentElement.getAttribute("data-theme") ||
+                        document.body.getAttribute("data-theme") || "light";
+        const next = current === "dark" ? "light" : "dark";
+        setTheme(next);
+        if (icon) {
+            icon.className = next === "dark"
+                ? "fa-regular fa-sun text-base"
+                : "fa-regular fa-moon text-base";
+        }
+    });
+}
+
+function setTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    document.body.setAttribute("data-theme", theme);
+    setStorageItem("shibani-theme", theme);
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.content = theme === "dark" ? "#0a0a0a" : "#ffffff";
+}
+
+function applyTheme() {
+    const stored = getStorageItem("shibani-theme");
+    const serverTheme = document.body.getAttribute("data-theme");
+    const theme = stored === "dark" || stored === "light"
+        ? stored
+        : (serverTheme === "dark" || serverTheme === "light" ? serverTheme : "light");
+    setTheme(theme);
+    const icon = document.getElementById("themeIcon");
+    if (icon) {
+        icon.className = theme === "dark"
+            ? "fa-regular fa-sun text-base"
+            : "fa-regular fa-moon text-base";
+    }
+}
+
+function initHeaderScroll() {
+    const header = document.getElementById("mainHeader");
+    if (!header) return;
+    let ticking = false;
+
+    window.addEventListener("scroll", () => {
+        if (!ticking) {
+            window.requestAnimationFrame(() => {
+                if (window.scrollY > 20) {
+                    header.style.borderBottomColor = "rgba(10,10,10,0.08)";
+                    header.style.boxShadow = "0 4px 20px rgba(10,10,10,0.06)";
+                } else {
+                    header.style.borderBottomColor = "rgba(10,10,10,0.06)";
+                    header.style.boxShadow = "none";
+                }
+                ticking = false;
+            });
+            ticking = true;
+        }
+    }, { passive: true });
 }
 
 // --- SEARCH SUGGESTIONS ---
@@ -163,8 +370,13 @@ function initSearchSuggestions() {
     let debounceTimer;
     const handler = (value) => {
         clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
+        debounceTimer = setTimeout(async () => {
             const dropdown = input === document.activeElement ? desktopDrop : mobileDrop;
+            if (!value || !value.trim()) {
+                renderSuggestions(value, dropdown || desktopDrop);
+                return;
+            }
+            await ensureProductsLoaded();
             renderSuggestions(value, dropdown || desktopDrop);
         }, 250);
     };
@@ -184,6 +396,7 @@ function initSearchSuggestions() {
 }
 
 function renderSuggestions(query, dropdown) {
+    if (!dropdown) return;
     if (!query || !query.trim()) { dropdown.classList.add("hidden"); return; }
     const q = query.trim().toLowerCase();
     const products = appState.products || [];
@@ -219,6 +432,7 @@ function renderSuggestions(query, dropdown) {
 }
 
 function handleSearchKeydown(e, dropdown, input) {
+    if (!dropdown) return;
     const items = dropdown.querySelectorAll(".search-suggestion");
     if (items.length === 0) return;
     let idx = Array.from(items).findIndex(el => el.classList.contains("active"));
@@ -242,8 +456,163 @@ function handleSearchKeydown(e, dropdown, input) {
 }
 
 
+// --- CART DRAWER ---
+let cartDrawerOpen = false;
+function initCartDrawer() {
+    const drawer = document.getElementById("cartDrawer");
+    const panel = document.getElementById("cartDrawerPanel");
+    const backdrop = document.getElementById("cartDrawerBackdrop");
+    const closeBtn = document.getElementById("cartDrawerCloseBtn");
+    const shopBtn = document.getElementById("cartDrawerShopBtn");
+    if (!drawer || !panel) return;
+
+    const open = async () => {
+        drawer.classList.remove("hidden");
+        requestAnimationFrame(() => {
+            backdrop?.classList.add("open");
+            panel.classList.add("open");
+        });
+        document.body.style.overflow = "hidden";
+        cartDrawerOpen = true;
+        await ensureProductsLoaded();
+        renderCartDrawer();
+        trapFocus(drawer);
+    };
+
+    const close = () => {
+        backdrop?.classList.remove("open");
+        panel.classList.remove("open");
+        document.body.style.overflow = "";
+        setTimeout(() => { drawer.classList.add("hidden"); }, 400);
+        cartDrawerOpen = false;
+        releaseFocus(drawer);
+    };
+
+    window.openCartDrawer = open;
+    window.closeCartDrawer = close;
+
+    const cartBtn = document.getElementById("cartIconBtn");
+    if (cartBtn) cartBtn.addEventListener("click", (e) => { e.preventDefault(); open(); });
+    const mobileCartBtn = document.getElementById("mobileCartBtn");
+    if (mobileCartBtn) mobileCartBtn.addEventListener("click", (e) => { e.preventDefault(); open(); });
+    if (closeBtn) closeBtn.addEventListener("click", close);
+    if (backdrop) backdrop.addEventListener("click", close);
+    if (shopBtn) shopBtn.addEventListener("click", () => { close(); window.location.href = "/shop"; });
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && cartDrawerOpen) close();
+    });
+}
+
+function renderCartDrawer() {
+    const items = Array.isArray(appState.cart) ? appState.cart : [];
+    const itemsEl = document.getElementById("cartDrawerItems");
+    const emptyEl = document.getElementById("cartDrawerEmpty");
+    const footerEl = document.getElementById("cartDrawerFooter");
+    const countEl = document.getElementById("cartDrawerCount");
+    const subtotalEl = document.getElementById("cartDrawerSubtotal");
+    if (!itemsEl) return;
+
+    if (!items.length) {
+        itemsEl.innerHTML = "";
+        if (emptyEl) emptyEl.classList.remove("hidden");
+        if (footerEl) footerEl.classList.add("hidden");
+        if (countEl) countEl.textContent = "0";
+        if (subtotalEl) subtotalEl.textContent = "Rs. 0";
+        updateShippingProgress(0);
+        return;
+    }
+
+    if (emptyEl) emptyEl.classList.add("hidden");
+    if (footerEl) footerEl.classList.remove("hidden");
+
+    let html = "";
+    let total = 0;
+    let totalQty = 0;
+    items.forEach((item, idx) => {
+        const product = appState.products.find(p => p.id === item.product_id);
+        const name = product?.name || item.name || "Product";
+        const price = Number(product?.price ?? item.price ?? 0);
+        const safePrice = Number.isFinite(price) ? price : 0;
+        const qty = Number(item.quantity || 1);
+        const parsedImages = product ? parseProductImages(product.image, product.images) : [];
+        const image = parsedImages[0] || item.image || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=100";
+        const lineTotal = safePrice * qty;
+        total += lineTotal;
+        totalQty += qty;
+        html += `
+          <div class="flex gap-4 py-4 border-b border-[var(--neutral-50)] group">
+            <div class="w-16 h-20 bg-[var(--neutral-50)] flex-shrink-0 overflow-hidden">
+              <img src="${image}" alt="${escapeHTML(name)}" class="w-full h-full object-cover object-top" loading="lazy" />
+            </div>
+            <div class="flex-grow min-w-0">
+              <h4 class="text-xs font-semibold uppercase tracking-wider text-[var(--neutral-800)] truncate">${escapeHTML(name)}</h4>
+              <p class="text-[10px] text-[var(--neutral-400)] uppercase tracking-wider mt-0.5">Rs. ${safePrice.toLocaleString()}</p>
+              <div class="flex items-center gap-2 mt-2">
+                <div class="qty-selector">
+                  <button data-cart-dec="${idx}"><i class="fa-solid fa-minus"></i></button>
+                  <span>${qty}</span>
+                  <button data-cart-inc="${idx}"><i class="fa-solid fa-plus"></i></button>
+                </div>
+                <button data-cart-remove="${idx}" class="text-[var(--neutral-400)] hover:text-[var(--color-error)] transition text-xs ml-auto opacity-0 group-hover:opacity-100">
+                  <i class="fa-regular fa-trash-can"></i>
+                </button>
+              </div>
+            </div>
+            <div class="text-right flex-shrink-0">
+              <span class="text-xs font-bold text-[var(--neutral-900)]">Rs. ${lineTotal.toLocaleString()}</span>
+            </div>
+          </div>`;
+    });
+
+    itemsEl.innerHTML = html;
+    if (countEl) countEl.textContent = totalQty;
+    if (subtotalEl) subtotalEl.textContent = `Rs. ${total.toLocaleString()}`;
+
+    itemsEl.querySelectorAll("[data-cart-inc]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            adjustCartQty(parseInt(btn.dataset.cartInc, 10), 1);
+            renderCartDrawer();
+        });
+    });
+    itemsEl.querySelectorAll("[data-cart-dec]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            adjustCartQty(parseInt(btn.dataset.cartDec, 10), -1);
+            renderCartDrawer();
+        });
+    });
+    itemsEl.querySelectorAll("[data-cart-remove]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            adjustCartQty(parseInt(btn.dataset.cartRemove, 10), -999);
+            renderCartDrawer();
+        });
+    });
+
+    updateShippingProgress(total);
+}
+
+function updateShippingProgress(total) {
+    const threshold = Number(appState.settings.delivery_fee_threshold || 999);
+    const progressEl = document.getElementById("shippingProgressBar");
+    const textEl = document.getElementById("shippingProgressText");
+    const remainingEl = document.getElementById("shippingRemaining");
+    if (!progressEl) return;
+
+    if (threshold <= 0 || total >= threshold) {
+        progressEl.style.width = "100%";
+        if (textEl) textEl.textContent = "You've unlocked free shipping!";
+    } else {
+        const pct = (total / threshold) * 100;
+        progressEl.style.width = `${Math.min(pct, 99)}%`;
+        if (textEl) textEl.textContent = `Add Rs. ${Math.max(threshold - total, 0).toLocaleString()} more for free shipping`;
+        if (remainingEl) remainingEl.textContent = Math.max(threshold - total, 0).toLocaleString();
+    }
+}
+
 // --- MINI CART DRAWER ---
 function initMiniCart() {
+    const drawer = document.getElementById("miniCartDrawer");
+    if (!drawer) return;
     const cartBtn = document.getElementById("cartIconBtn");
     const closeBtn = document.getElementById("miniCartCloseBtn");
     const backdrop = document.getElementById("miniCartBackdrop");
@@ -262,7 +631,7 @@ function initMiniCart() {
     });
 }
 
-function openMiniCart() {
+async function openMiniCart() {
     const drawer = document.getElementById("miniCartDrawer");
     if (!drawer) return;
     drawer.classList.remove("hidden");
@@ -271,6 +640,7 @@ function openMiniCart() {
         panel.classList.remove("mini-cart-exit");
         panel.classList.add("mini-cart-enter");
     }
+    await ensureProductsLoaded();
     renderMiniCart();
     document.body.style.overflow = "hidden";
     trapFocus(drawer);
@@ -308,7 +678,7 @@ function renderMiniCart() {
     
     if (empty) empty.classList.add("hidden");
     if (footer) footer.classList.remove("hidden");
-    if (count) count.textContent = appState.cart.reduce((s, i) => s + i.quantity, 0);
+    if (count) count.textContent = appState.cart.reduce((s, i) => s + Number(i.quantity || 1), 0);
     
     let total = 0;
     container.innerHTML = appState.cart.map((item, idx) => {
@@ -346,10 +716,11 @@ function adjustMiniCartQty(index, amount) {
     if (item.quantity <= 0) {
         appState.cart.splice(index, 1);
     }
-    localStorage.setItem("shibani_cart", JSON.stringify(appState.cart));
+    setStorageItem("shibani_cart", JSON.stringify(appState.cart));
     renderCart();
     renderMiniCart();
     updateBadges();
+    if (cartDrawerOpen) renderCartDrawer();
 }
 window.adjustMiniCartQty = adjustMiniCartQty;
 
@@ -400,7 +771,7 @@ function loadRecommendations(currentProductId) {
     const heading = document.getElementById("recommendationsHeading");
     if (!section || !grid) return;
     
-    const recentIds = safeParseJSON(localStorage.getItem("shibani_recent_viewed"), []);
+    const recentIds = safeParseJSON(getStorageItem("shibani_recent_viewed"), []);
     const products = appState.products || [];
     
     // Gather categories from recently viewed items (excluding current product)
@@ -448,9 +819,12 @@ function loadRecommendations(currentProductId) {
 function updateBadges() {
     const cartBadge = document.getElementById("cartBadge");
     const wishlistBadge = document.getElementById("wishlistBadge");
+    const mobileCartBadge = document.getElementById("mobileCartBadge");
+    const cartItems = Array.isArray(appState.cart) ? appState.cart : [];
+    const wishlistItems = Array.isArray(appState.wishlist) ? appState.wishlist : [];
     
     if (cartBadge) {
-        const cartQty = appState.cart.reduce((sum, item) => sum + item.quantity, 0);
+        const cartQty = cartItems.reduce((sum, item) => sum + Number(item.quantity || 1), 0);
         cartBadge.textContent = cartQty;
         if (cartQty > 0) {
             cartBadge.classList.remove("scale-0");
@@ -462,7 +836,7 @@ function updateBadges() {
     }
     
     if (wishlistBadge) {
-        const wishQty = appState.wishlist.length;
+        const wishQty = wishlistItems.length;
         wishlistBadge.textContent = wishQty;
         if (wishQty > 0) {
             wishlistBadge.classList.remove("scale-0");
@@ -472,10 +846,23 @@ function updateBadges() {
             wishlistBadge.classList.add("scale-0");
         }
     }
+
+    if (mobileCartBadge) {
+        const cartQty = cartItems.reduce((sum, item) => sum + Number(item.quantity || 1), 0);
+        mobileCartBadge.textContent = cartQty;
+        if (cartQty > 0) {
+            mobileCartBadge.classList.remove("scale-0");
+            mobileCartBadge.classList.add("scale-100");
+        } else {
+            mobileCartBadge.classList.remove("scale-100");
+            mobileCartBadge.classList.add("scale-0");
+        }
+    }
 }
 
 // Global Cart and Wishlist triggers
 function toggleWishlistItem(productId) {
+    if (!Array.isArray(appState.wishlist)) appState.wishlist = [];
     const idx = appState.wishlist.indexOf(Number(productId));
     if (idx > -1) {
         appState.wishlist.splice(idx, 1);
@@ -484,7 +871,7 @@ function toggleWishlistItem(productId) {
         appState.wishlist.push(Number(productId));
         showToast("Added to wishlist!");
     }
-    localStorage.setItem("shibani_wishlist", JSON.stringify(appState.wishlist));
+    setStorageItem("shibani_wishlist", JSON.stringify(appState.wishlist));
     updateBadges();
     
     // Sync with database if logged in
@@ -508,15 +895,17 @@ function toggleWishlistItem(productId) {
 }
 
 function addToCart(productId, quantity = 1, size = "M", color = "Default") {
+    if (!Array.isArray(appState.cart)) appState.cart = [];
     const existing = appState.cart.find(item => item.product_id === Number(productId) && item.size === size && item.color === color);
     if (existing) {
         existing.quantity += quantity;
     } else {
         appState.cart.push({ product_id: Number(productId), quantity, size, color });
     }
-    localStorage.setItem("shibani_cart", JSON.stringify(appState.cart));
+    setStorageItem("shibani_cart", JSON.stringify(appState.cart));
     showToast("Added to shopping bag!");
     updateBadges();
+    if (cartDrawerOpen) renderCartDrawer();
 }
 
 
@@ -677,7 +1066,7 @@ function attachCardEvents(container) {
                 const idx = appState.compareList.indexOf(pId);
                 if (idx > -1) appState.compareList.splice(idx, 1);
             }
-            localStorage.setItem("shibani_compare", JSON.stringify(appState.compareList));
+            setStorageItem("shibani_compare", JSON.stringify(appState.compareList));
             updateCompareDrawer();
         });
     });
@@ -960,7 +1349,7 @@ function removeCompareItem(productId) {
     const idx = appState.compareList.indexOf(productId);
     if (idx > -1) {
         appState.compareList.splice(idx, 1);
-        localStorage.setItem("shibani_compare", JSON.stringify(appState.compareList));
+        setStorageItem("shibani_compare", JSON.stringify(appState.compareList));
         updateCompareDrawer();
         
         // Uncheck matching checkboxes on screen
@@ -1094,6 +1483,7 @@ function openQuickView(productId) {
     
     // Show modal
     modal.classList.remove("hidden");
+    trapFocus(modal);
 }
 
 function closeQuickView() {
@@ -1131,7 +1521,6 @@ function initQuickViewModal() {
             const selectedSizeEl = document.querySelector("#qvSizes .qv-size-btn.border-neutral-900") || document.querySelector("#qvSizes .qv-size-btn");
             const size = selectedSizeEl ? selectedSizeEl.dataset.size : "M";
             addToCart(pid, 1, size, "Default");
-            showToast("Added to shopping bag!", "success");
         });
     }
     
@@ -1369,13 +1758,13 @@ async function loadProductReviews(productId) {
 
 
 function trackRecentlyViewed(productId) {
-    let recent = safeParseJSON(localStorage.getItem("shibani_recent_viewed"), []);
+    let recent = safeParseJSON(getStorageItem("shibani_recent_viewed"), []);
     recent = recent.filter(id => id !== productId);
     recent.unshift(productId);
     if (recent.length > 6) {
         recent = recent.slice(0, 6);
     }
-    localStorage.setItem("shibani_recent_viewed", JSON.stringify(recent));
+    setStorageItem("shibani_recent_viewed", JSON.stringify(recent));
 }
 
 async function loadRelatedAndRecentlyViewed(currentProductId) {
@@ -1409,7 +1798,7 @@ async function loadRelatedAndRecentlyViewed(currentProductId) {
         const recentSection = document.getElementById("recentlyViewedSection");
         const recentGrid = document.getElementById("recentlyViewedGrid");
         if (recentSection && recentGrid) {
-            const recentIds = safeParseJSON(localStorage.getItem("shibani_recent_viewed"), [])
+            const recentIds = safeParseJSON(getStorageItem("shibani_recent_viewed"), [])
                 .filter(id => id !== currentProductId);
 
             const recentProducts = recentIds
@@ -1531,13 +1920,13 @@ function renderCart() {
     
     if (appState.cart.length === 0) {
         container.innerHTML = "";
-        summaryPanel.classList.add("hidden");
-        emptyState.classList.remove("hidden");
+        summaryPanel?.classList.add("hidden");
+        emptyState?.classList.remove("hidden");
         return;
     }
     
-    emptyState.classList.add("hidden");
-    summaryPanel.classList.remove("hidden");
+    emptyState?.classList.add("hidden");
+    summaryPanel?.classList.remove("hidden");
     
     container.innerHTML = appState.cart.map((item, idx) => {
         const product = appState.products.find(p => p.id === item.product_id);
@@ -1594,9 +1983,10 @@ function adjustCartQty(index, amount) {
         showToast("Quantity updated.");
     }
     
-    localStorage.setItem("shibani_cart", JSON.stringify(appState.cart));
+    setStorageItem("shibani_cart", JSON.stringify(appState.cart));
     renderCart();
     updateBadges();
+    if (cartDrawerOpen) renderCartDrawer();
 }
 
 
@@ -1604,23 +1994,24 @@ function saveForLater(index) {
     const item = appState.cart[index];
     if (!item) return;
 
-    let saved = safeParseJSON(localStorage.getItem("shibani_saved_later"), []);
+    let saved = safeParseJSON(getStorageItem("shibani_saved_later"), []);
     const existing = saved.find(s => s.product_id === item.product_id && s.size === item.size && s.color === item.color);
     if (!existing) {
         saved.push(item);
     }
-    localStorage.setItem("shibani_saved_later", JSON.stringify(saved));
+    setStorageItem("shibani_saved_later", JSON.stringify(saved));
     
     appState.cart.splice(index, 1);
-    localStorage.setItem("shibani_cart", JSON.stringify(appState.cart));
+    setStorageItem("shibani_cart", JSON.stringify(appState.cart));
     
     showToast("Outfit moved to Save for Later.");
     renderCart();
     updateBadges();
+    if (cartDrawerOpen) renderCartDrawer();
 }
 
 function moveToCart(index) {
-    let saved = safeParseJSON(localStorage.getItem("shibani_saved_later"), []);
+    let saved = safeParseJSON(getStorageItem("shibani_saved_later"), []);
     const item = saved[index];
     if (!item) return;
 
@@ -1630,20 +2021,21 @@ function moveToCart(index) {
     } else {
         appState.cart.push(item);
     }
-    localStorage.setItem("shibani_cart", JSON.stringify(appState.cart));
+    setStorageItem("shibani_cart", JSON.stringify(appState.cart));
     
     saved.splice(index, 1);
-    localStorage.setItem("shibani_saved_later", JSON.stringify(saved));
+    setStorageItem("shibani_saved_later", JSON.stringify(saved));
     
     showToast("Outfit moved to shopping bag.");
     renderCart();
     updateBadges();
+    if (cartDrawerOpen) renderCartDrawer();
 }
 
 function removeSavedLater(index) {
-    let saved = safeParseJSON(localStorage.getItem("shibani_saved_later"), []);
+    let saved = safeParseJSON(getStorageItem("shibani_saved_later"), []);
     saved.splice(index, 1);
-    localStorage.setItem("shibani_saved_later", JSON.stringify(saved));
+    setStorageItem("shibani_saved_later", JSON.stringify(saved));
     
     showToast("Saved outfit removed.");
     renderSaveForLater();
@@ -1654,7 +2046,7 @@ function renderSaveForLater() {
     const list = document.getElementById("saveForLaterList");
     if (!section || !list) return;
 
-    const saved = safeParseJSON(localStorage.getItem("shibani_saved_later"), []);
+    const saved = safeParseJSON(getStorageItem("shibani_saved_later"), []);
     if (saved.length === 0) {
         section.classList.add("hidden");
         list.innerHTML = "";
@@ -1822,7 +2214,7 @@ async function handleCheckoutSubmit(e) {
             });
             hideLoading();
             showToast(`🎉 Order #${data.order_id} placed successfully!`);
-            localStorage.removeItem("shibani_cart");
+            removeStorageItem("shibani_cart");
             setTimeout(() => window.location.href = "/order-confirmation?order_id=" + data.order_id, 1500);
         } catch (err) {
             hideLoading();
@@ -1877,7 +2269,7 @@ async function handleCheckoutSubmit(e) {
                     });
                     hideLoading();
                     showToast(`🎉 Order #${data.order_id} placed successfully!`);
-                    localStorage.removeItem("shibani_cart");
+                    removeStorageItem("shibani_cart");
                     setTimeout(() => window.location.href = "/order-confirmation?order_id=" + data.order_id, 1500);
                 } catch (err) {
                     hideLoading();
@@ -1939,7 +2331,7 @@ async function initWishlist() {
     }
     
     // Compare trigger binding
-    if (compareBtn) {
+    if (compareBtn && !boundCompareButtons.has(compareBtn.id || compareBtn)) {
         compareBtn.addEventListener("click", () => {
             const drawer = document.getElementById("compareDrawer");
             if (drawer) {
@@ -1947,6 +2339,7 @@ async function initWishlist() {
                 setTimeout(() => drawer.classList.remove("translate-y-full"), 10);
             }
         });
+        boundCompareButtons.add(compareBtn.id || compareBtn);
     }
 }
 
