@@ -60,7 +60,7 @@ DB_NAME = os.getenv("MYSQL_DATABASE") or os.getenv("SHIBANI_DB_NAME", "shibani_s
 DB_HOST = os.getenv("MYSQL_HOST")
 DB_USER = os.getenv("MYSQL_USER") or os.getenv("SHIBANI_DB_USER", "root")
 DB_PASSWORD = os.getenv("MYSQL_PASSWORD") or os.getenv("SHIBANI_DB_PASSWORD", "")
-DB_PORT = int(os.getenv("MYSQL_PORT"))
+DB_PORT = int(os.getenv("MYSQL_PORT") or 3306)
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY") or os.getenv("SHIBANI_SECRET_KEY", secrets.token_hex(32))
@@ -287,14 +287,18 @@ def send_email(subject, recipient, body_html):
                 msg.attach(MIMEText(body_html, "html"))
                 
                 port = int(smtp_port)
-                if port == 465:
-                    server = smtplib.SMTP_SSL(smtp_host, port)
-                else:
-                    server = smtplib.SMTP(smtp_host, port)
-                    server.starttls()
-                server.login(smtp_user, smtp_pass)
-                server.sendmail(sender, [recipient], msg.as_string())
-                server.quit()
+                server = None
+                try:
+                    if port == 465:
+                        server = smtplib.SMTP_SSL(smtp_host, port)
+                    else:
+                        server = smtplib.SMTP(smtp_host, port)
+                        server.starttls()
+                    server.login(smtp_user, smtp_pass)
+                    server.sendmail(sender, [recipient], msg.as_string())
+                finally:
+                    if server is not None:
+                        server.quit()
             except Exception as ex:
                 logger.error("SMTP email fail to %s: %s", recipient, ex)
                 
@@ -1175,7 +1179,7 @@ def create_user_session(user, remember=False, username=None):
         "username": username or user.get("username"),
         "role": user["role"],
         "full_name": user["full_name"],
-        "email_verified": int(user.get("email_verified", 0))
+        "email_verified": int(user.get("email_verified") or 0)
     }
     if user.get("saved_name") is not None:
         session["saved_name"] = user["saved_name"]
@@ -1228,7 +1232,7 @@ def product_page(product_id):
         product = next((p for p in memory_products if p["id"] == product_id), None)
     
     if not product:
-        return "Product not found", 404
+        return jsonify({"error": "Product not found"}), 404
         
     images_list = parse_images(product.get("images"), product.get("image") or "")
     product["images_list"] = images_list
@@ -1390,7 +1394,7 @@ def login():
 
             return jsonify({"user": session["user"]})
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
     else:
         # Secure fallback passwords using hash matching
         fallback_users = {
@@ -1502,7 +1506,7 @@ def google_login():
         return jsonify({"user": session["user"]})
 
     except Exception as exc:
-        return jsonify({"error": f"Google authentication failed: {str(exc)}"}), 401
+        return jsonify({"error": "Google authentication failed"}), 401
 
 
 @app.post("/api/register")
@@ -1559,7 +1563,7 @@ def register():
             create_user_session(new_user)
             return jsonify({"user": session["user"]})
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
     else:
         fallback_users = {"admin", "customer"}
         if username in memory_users or username in fallback_users:
@@ -1625,7 +1629,7 @@ def forgot_password_api():
             send_reset_password_email(user["full_name"], recipient, token)
             return jsonify({"ok": True, "message": "If the account exists, a reset link has been sent."})
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
     else:
         # Fallback check
         user = memory_users.get(email_or_username)
@@ -1678,7 +1682,7 @@ def reset_password_api():
                     connection.commit()
             return jsonify({"ok": True, "message": "Password has been reset successfully."})
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
     else:
         user = next((u for u in memory_users.values() if u.get("reset_token") == token), None)
         if not user:
@@ -1719,7 +1723,7 @@ def verify_email():
                 
             return render_template("verify_email.html", success=True)
         except Exception as exc:
-            return render_template("verify_email.html", success=False, error=f"Database error: {str(exc)}")
+            return render_template("verify_email.html", success=False, error="Database error")
     else:
         username = next((k for k, u in memory_users.items() if u.get("verification_token") == token), None)
         if not username:
@@ -1779,7 +1783,7 @@ def products():
                 "pages": (total + per_page - 1) // per_page
             })
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
 
     # Memory fallback: naive pagination
     total = len(memory_products)
@@ -1825,8 +1829,9 @@ def create_product():
                     )
                     connection.commit()
                     product["id"] = cursor.lastrowid
+                    product["created_at"] = datetime.now(UTC).isoformat()
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
     else:
         product["id"] = max([item["id"] for item in memory_products], default=0) + 1
         product["created_at"] = datetime.now(UTC).isoformat()
@@ -1869,8 +1874,10 @@ def update_product(product_id):
                         ),
                     )
                     connection.commit()
+                    if cursor.rowcount == 0:
+                        return jsonify({"error": "Product not found"}), 404
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
     else:
         found = False
         for index, existing in enumerate(memory_products):
@@ -1893,7 +1900,7 @@ def delete_product(product_id):
                     cursor.execute("DELETE FROM products WHERE id = %s", (product_id,))
                     connection.commit()
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
     else:
         memory_products[:] = [product for product in memory_products if product["id"] != product_id]
     return jsonify({"ok": True})
@@ -1917,10 +1924,10 @@ def update_settings():
         return jsonify({"error": "Admin access required"}), 403
     
     data = json_payload()
-    gst_rate = str(max(0.0, float(data.get("gst_rate", 5.0))))
-    delivery_fee_standard = str(max(0.0, float(data.get("delivery_fee_standard", 99.0))))
-    delivery_fee_threshold = str(max(0.0, float(data.get("delivery_fee_threshold", 999.0))))
-    other_charges = str(max(0.0, float(data.get("other_charges", 0.0))))
+    gst_rate = str(max(0.0, safe_float(data.get("gst_rate"), 5.0)))
+    delivery_fee_standard = str(max(0.0, safe_float(data.get("delivery_fee_standard"), 99.0)))
+    delivery_fee_threshold = str(max(0.0, safe_float(data.get("delivery_fee_threshold"), 999.0)))
+    other_charges = str(max(0.0, safe_float(data.get("other_charges"), 0.0)))
     
     if check_db_health():
         try:
@@ -1938,7 +1945,7 @@ def update_settings():
                         )
                     connection.commit()
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
     else:
         memory_settings["gst_rate"] = gst_rate
         memory_settings["delivery_fee_standard"] = delivery_fee_standard
@@ -1968,7 +1975,7 @@ def get_active_coupons():
                             r["expires_at"] = str(r["expires_at"])
                     return jsonify({"coupons": rows})
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
     else:
         active = [dict(c) for c in memory_coupons if c["active"] == 1]
         for c in active:
@@ -1995,7 +2002,7 @@ def get_all_coupons():
                             r["expires_at"] = str(r["expires_at"])
                     return jsonify(rows)
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
     else:
         all_c = [dict(c) for c in memory_coupons]
         all_c.reverse()
@@ -2013,8 +2020,8 @@ def create_coupon():
     data = json_payload()
     code = (data.get("code") or "").strip().upper()
     discount_type = data.get("discount_type")
-    discount_value = float(data.get("discount_value", 0.0))
-    min_subtotal = float(data.get("min_subtotal", 0.0))
+    discount_value = safe_float(data.get("discount_value"), 0.0)
+    min_subtotal = safe_float(data.get("min_subtotal"), 0.0)
     active = 1 if data.get("active") else 0
     
     expires_at = data.get("expires_at")
@@ -2027,7 +2034,7 @@ def create_coupon():
     else:
         try:
             usage_limit = int(usage_limit)
-        except ValueError:
+        except (ValueError, TypeError):
             return jsonify({"error": "Usage limit must be an integer"}), 400
 
     if not code:
@@ -2065,7 +2072,7 @@ def create_coupon():
                 "usage_count": 0
             })
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
     else:
         if any(c["code"] == code for c in memory_coupons):
             return jsonify({"error": f"Coupon code '{code}' already exists"}), 400
@@ -2093,8 +2100,8 @@ def update_coupon(coupon_id):
     data = json_payload()
     code = (data.get("code") or "").strip().upper()
     discount_type = data.get("discount_type")
-    discount_value = float(data.get("discount_value", 0.0))
-    min_subtotal = float(data.get("min_subtotal", 0.0))
+    discount_value = safe_float(data.get("discount_value"), 0.0)
+    min_subtotal = safe_float(data.get("min_subtotal"), 0.0)
     active = 1 if data.get("active") else 0
     
     expires_at = data.get("expires_at")
@@ -2107,7 +2114,7 @@ def update_coupon(coupon_id):
     else:
         try:
             usage_limit = int(usage_limit)
-        except ValueError:
+        except (ValueError, TypeError):
             return jsonify({"error": "Usage limit must be an integer"}), 400
 
     if not code:
@@ -2152,7 +2159,7 @@ def update_coupon(coupon_id):
                 "usage_count": usage_count
             })
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
     else:
         if any(c["code"] == code and c["id"] != coupon_id for c in memory_coupons):
             return jsonify({"error": f"Coupon code '{code}' already exists"}), 400
@@ -2184,7 +2191,7 @@ def delete_coupon(coupon_id):
                     connection.commit()
             return jsonify({"ok": True})
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
     else:
         global memory_coupons
         memory_coupons = [c for c in memory_coupons if c["id"] != coupon_id]
@@ -2210,7 +2217,7 @@ def orders():
                         order["created_at"] = str(order["created_at"])
             return jsonify({"orders": rows})
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
 
     return jsonify({"orders": memory_orders})
 
@@ -2230,8 +2237,10 @@ def update_order_status(order_id):
                 with connection.cursor() as cursor:
                     cursor.execute("UPDATE orders SET status = %s WHERE id = %s", (status, order_id))
                     connection.commit()
+                    if cursor.rowcount == 0:
+                        return jsonify({"error": "Order not found"}), 404
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
     else:
         found = False
         for order in memory_orders:
@@ -2260,7 +2269,7 @@ def admin_get_customers():
                     rows = cursor.fetchall()
                     return jsonify({"customers": rows})
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
     
     customers = []
     default_cust_saved_name = memory_users.get("customer", {}).get("saved_name") or ""
@@ -2312,7 +2321,7 @@ def get_profile():
                     "saved_address": profile["saved_address"] or ""
                 })
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
     
     username = user["username"]
     mem_user = memory_users.get(username) or {}
@@ -2350,7 +2359,7 @@ def update_profile():
                     connection.commit()
             return jsonify({"ok": True, "saved_name": saved_name, "saved_phone": saved_phone, "saved_address": saved_address})
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
             
     session["saved_name"] = saved_name
     session["saved_phone"] = saved_phone
@@ -2386,7 +2395,7 @@ def my_orders():
                         order["created_at"] = str(order["created_at"])
             return jsonify({"orders": rows})
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
             
     # For transient fallback, match orders based on logged in user's username
     username = user["username"]
@@ -2427,7 +2436,7 @@ def cancel_order(order_id):
                     connection.commit()
             return jsonify({"ok": True, "status": "Cancelled"})
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
     else:
         # Memory fallback
         found_order = None
@@ -2530,7 +2539,7 @@ def get_reviews():
                     rows = cursor.fetchall()
             return jsonify({"reviews": rows})
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
             
     # In-memory fallback
     prod_reviews = [r for r in memory_reviews if r["product_id"] == product_id and r["status"] == "approved"]
@@ -2576,7 +2585,7 @@ def create_review():
             update_quest_progress(user["id"], "write_review")
             return jsonify({"ok": True, "review": {"id": review_id, "user_id": user["id"], "username": user["username"], "product_id": product_id, "rating": rating, "comment": comment, "sizing_fit": sizing_fit, "status": "approved"}})
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
             
     # In-memory fallback
     existing_review = next((r for r in memory_reviews if r["user_id"] == user["id"] and r["product_id"] == product_id), None)
@@ -2609,7 +2618,7 @@ def admin_get_reviews():
                     rows = cursor.fetchall()
             return jsonify({"reviews": rows})
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
             
     # In-memory fallback
     rows = []
@@ -2636,7 +2645,7 @@ def admin_patch_review(review_id):
                     connection.commit()
             return jsonify({"ok": True})
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
             
     # In-memory fallback
     for r in memory_reviews:
@@ -2656,7 +2665,7 @@ def admin_delete_review(review_id):
                     connection.commit()
             return jsonify({"ok": True})
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
             
     # In-memory fallback
     global memory_reviews
@@ -2679,7 +2688,7 @@ def get_wishlist():
                     rows = cursor.fetchall()
             return jsonify({"wishlist": [product_row_to_dict(row) for row in rows]})
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
             
     # In-memory fallback
     wish_p_ids = [w["product_id"] for w in memory_wishlists if w["user_id"] == user["id"]]
@@ -2710,7 +2719,7 @@ def toggle_wishlist():
                     connection.commit()
             return jsonify({"ok": True, "added": added})
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
             
     # In-memory fallback
     global memory_wishlists
@@ -2797,7 +2806,7 @@ def get_analytics():
                 "weekly_sales": weekly_sales
             })
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
             
     total_orders = len(memory_orders)
     total_revenue = sum(float(o.get("total", 0.0)) for o in memory_orders)
@@ -2854,7 +2863,7 @@ def get_analytics():
 def create_order():
     data = json_payload()
     items = data.get("items", [])
-    if not items:
+    if not isinstance(items, list) or not items:
         return jsonify({"error": "Cart is empty"}), 400
 
     user = session["user"]
@@ -3039,7 +3048,7 @@ def create_order():
                     
                     connection.commit()
         except Exception as exc:
-            return jsonify({"error": f"Database error: {str(exc)}"}), 500
+            return jsonify({"error": "Database error"}), 500
     else:
         if save_profile:
             session["saved_name"] = customer_name

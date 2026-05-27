@@ -50,7 +50,7 @@ def product_row_to_dict(row):
         "id": row["id"],
         "name": row["name"],
         "category": row["category"],
-        "price": float(row["price"]),
+        "price": float(row["price"] or 0),
         "old_price": float(row["old_price"] or 0),
         "size": row["size"],
         "color": row["color"],

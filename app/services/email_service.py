@@ -39,14 +39,18 @@ def send_email(subject, recipient, body_html, smtp_config=None):
                 msg["To"] = recipient
                 msg.attach(MIMEText(body_html, "html"))
                 port_int = int(port)
-                if port_int == 465:
-                    server = smtplib.SMTP_SSL(host, port_int)
-                else:
-                    server = smtplib.SMTP(host, port_int)
-                    server.starttls()
-                server.login(user, pwd)
-                server.sendmail(sender, [recipient], msg.as_string())
-                server.quit()
+                server = None
+                try:
+                    if port_int == 465:
+                        server = smtplib.SMTP_SSL(host, port_int)
+                    else:
+                        server = smtplib.SMTP(host, port_int)
+                        server.starttls()
+                    server.login(user, pwd)
+                    server.sendmail(sender, [recipient], msg.as_string())
+                finally:
+                    if server is not None:
+                        server.quit()
             except Exception as ex:
                 logger.error("SMTP email fail to %s: %s", recipient, ex)
 

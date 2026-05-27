@@ -53,8 +53,11 @@
         h1, h2, h3, h4, h5, h6, .font-display {
             font-family: 'Outfit', sans-serif;
         }
-        /* Dark mode transition */
-        body, * {
+        /* Dark mode transition — scoped to themed components only */
+        body, .glass, .card, .product-card, .dropdown-menu, .modal-overlay,
+        .modal-content, .cart-drawer, .cart-drawer-backdrop, .btn-primary,
+        .btn-secondary, .badge, .size-pill, .qty-selector, .mobile-bottom-nav,
+        .toast, .shipping-progress-bar, .stat-card, .responsive-table td {
             transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
         }
     </style>
@@ -65,7 +68,7 @@
       data-theme="{{ session.get('theme', 'light') }}">
 
     <!-- Skip to main content (accessibility) -->
-    <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[9999] focus:px-4 focus:py-2 focus:bg-white focus:text-black focus:border focus:border-black">
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[9999] focus:px-4 focus:py-2 focus:bg-[var(--color-white)] focus:text-[var(--neutral-900)] focus:border focus:border-black">
         Skip to main content
     </a>
 
@@ -94,9 +97,10 @@
                             <i class="fa-regular fa-magnifying-glass"></i>
                         </span>
                     </form>
-                    <div id="searchSuggestions"
-                         class="absolute top-full left-0 right-0 bg-white border border-[var(--neutral-100)] shadow-xl z-[var(--z-dropdown)] max-h-80 overflow-y-auto hidden"
-                         role="listbox" aria-label="Search suggestions"></div>
+                     <div id="searchSuggestions"
+                          class="absolute top-full left-0 right-0 bg-[var(--color-white)] border border-[var(--neutral-100)] shadow-xl z-[var(--z-dropdown)] max-h-80 overflow-y-auto hidden"
+                          role="listbox" aria-label="Search suggestions"></div>
+
                 </div>
 
                 <!-- Desktop Navigation -->
@@ -123,14 +127,14 @@
                     <a href="/wishlist" class="p-2 text-[var(--neutral-500)] hover:text-[var(--neutral-900)] relative transition" aria-label="Wishlist">
                         <i class="fa-regular fa-heart text-lg"></i>
                         <span id="wishlistBadge"
-                              class="absolute -top-0.5 -right-0.5 bg-[var(--neutral-900)] text-white text-[9px] font-bold rounded-full w-[18px] h-[18px] flex items-center justify-center border-2 border-white scale-0 transition-transform duration-300">0</span>
+                              class="absolute -top-0.5 -right-0.5 bg-[var(--neutral-900)] text-[var(--color-white)] text-[9px] font-bold rounded-full w-[18px] h-[18px] flex items-center justify-center border-2 border-[var(--color-white)] scale-0 transition-transform duration-300">0</span>
                     </a>
 
                     <!-- Cart -->
                     <button type="button" id="cartIconBtn" class="p-2 text-[var(--neutral-500)] hover:text-[var(--neutral-900)] relative transition" aria-label="Shopping cart">
                         <i class="fa-solid fa-bag-shopping text-lg"></i>
                         <span id="cartBadge"
-                              class="absolute -top-0.5 -right-0.5 bg-[var(--neutral-900)] text-white text-[9px] font-bold rounded-full w-[18px] h-[18px] flex items-center justify-center border-2 border-white scale-0 transition-transform duration-300">0</span>
+                              class="absolute -top-0.5 -right-0.5 bg-[var(--neutral-900)] text-[var(--color-white)] text-[9px] font-bold rounded-full w-[18px] h-[18px] flex items-center justify-center border-2 border-[var(--color-white)] scale-0 transition-transform duration-300">0</span>
                     </button>
 
                     <!-- User Menu -->
@@ -139,7 +143,7 @@
                             <button id="userDropdownTrigger"
                                     class="flex items-center gap-2 p-1 bg-transparent hover:bg-[var(--neutral-50)] border border-[var(--neutral-200)] rounded-full transition pr-3 focus:outline-none"
                                     aria-haspopup="true" aria-expanded="false">
-                                <span class="w-7 h-7 rounded-full bg-[var(--neutral-900)] text-white font-bold flex items-center justify-center text-[10px] uppercase">
+                                <span class="w-7 h-7 rounded-full bg-[var(--neutral-900)] text-[var(--color-white)] font-bold flex items-center justify-center text-[10px] uppercase">
                                     {{ session['user']['full_name'][:2] | upper }}
                                 </span>
                                 <span class="hidden sm:inline text-xs font-semibold text-[var(--neutral-600)] max-w-[80px] truncate uppercase tracking-wider">
@@ -169,17 +173,19 @@
                                     </a>
                                 {% endif %}
                                 <div class="border-t border-[var(--neutral-100)] my-1"></div>
-                                <button id="globalLogoutBtn"
-                                        class="w-full flex items-center gap-3 px-4 py-2.5 text-[var(--color-error)] hover:bg-red-50 text-left text-xs font-bold uppercase tracking-wider transition"
-                                        role="menuitem">
-                                    <i class="fa-solid fa-arrow-right-from-bracket text-sm w-4"></i> Sign Out
-                                </button>
+                                 <button id="globalLogoutBtn"
+                                         class="w-full flex items-center gap-3 px-4 py-2.5 text-[var(--color-error)] hover:bg-rose-50 text-left text-xs font-bold uppercase tracking-wider transition"
+                                         role="menuitem">
+                                     <i class="fa-solid fa-arrow-right-from-bracket text-sm w-4"></i> Sign Out
+                                 </button>
+
                             </div>
                         {% else %}
-                            <a href="/login"
-                               class="px-5 py-2 bg-[var(--neutral-900)] hover:bg-[var(--neutral-700)] text-white font-bold text-xs uppercase tracking-widest transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 block">
-                                Sign In
-                            </a>
+                                 <a href="/login"
+                                    class="px-5 py-2 bg-[var(--neutral-900)] hover:bg-[var(--neutral-700)] text-[var(--neutral-50)] font-bold text-xs uppercase tracking-widest transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 block">
+                                    Sign In
+                                </a>
+
                         {% endif %}
                     </div>
 
@@ -191,26 +197,29 @@
                 </div>
             </div>
 
-            <!-- Mobile Search -->
-            <div id="mobileSearchContainer" class="hidden pb-4 md:hidden relative">
-                <form id="mobileSearchForm" class="relative">
-                    <input type="text" id="mobileSearchInput"
-                           placeholder="Search collections..."
-                           autocomplete="off"
-                           class="w-full bg-[var(--neutral-50)] border border-[var(--neutral-200)] px-4 py-2.5 pl-10 text-xs tracking-wider uppercase focus:outline-none focus:border-[var(--neutral-900)] transition" />
-                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--neutral-400)] text-xs">
-                        <i class="fa-regular fa-magnifying-glass"></i>
-                    </span>
-                </form>
-                <div id="mobileSearchSuggestions"
-                     class="absolute top-full left-0 right-0 bg-white border border-[var(--neutral-100)] shadow-xl z-[var(--z-dropdown)] max-h-64 overflow-y-auto hidden"></div>
-            </div>
+     <!-- Mobile Search -->
+     <div id="mobileSearchContainer" class="hidden pb-4 md:hidden relative">
+         <form id="mobileSearchForm" class="relative">
+             <input type="text" id="mobileSearchInput"
+                    placeholder="Search collections..."
+                    autocomplete="off"
+                    class="w-full bg-[var(--neutral-50)] border border-[var(--neutral-200)] px-4 py-2.5 pl-10 text-xs tracking-wider uppercase focus:outline-none focus:border-[var(--neutral-900)] transition" />
+             <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--neutral-400)] text-xs">
+                 <i class="fa-regular fa-magnifying-glass"></i>
+             </span>
+         </form>
+         <div id="mobileSearchSuggestions"
+              class="absolute top-full left-0 right-0 bg-[var(--color-white)] border border-[var(--neutral-100)] shadow-xl z-[var(--z-dropdown)] max-h-64 overflow-y-auto hidden"></div>
+     </div>
+
         </div>
 
-        <!-- Mobile Nav Drawer -->
-        <div id="mobileNavMenu"
-             class="hidden lg:hidden border-t border-[var(--neutral-100)] bg-white shadow-lg overflow-hidden transition-all duration-300"
-             aria-label="Mobile navigation">
+     <!-- Mobile Nav Drawer -->
+     <div id="mobileNavMenu"
+          class="hidden lg:hidden border-t border-[var(--neutral-100)] bg-[var(--color-white)] shadow-lg overflow-hidden transition-all duration-300"
+          aria-label="Mobile navigation">
+
+
             <div class="py-4 px-6 space-y-1">
                 <a href="/" class="flex items-center gap-3 py-3 text-xs font-bold uppercase tracking-widest text-[var(--neutral-600)] hover:text-[var(--neutral-900)] transition border-b border-[var(--neutral-50)]">
                     <i class="fa-regular fa-house w-4"></i> Home
@@ -231,15 +240,16 @@
         </div>
     </header>
 
-    <!-- Email Verification Banner -->
-    {% if session.get('user') and session['user']['email_verified'] == 0 %}
-    <div class="bg-amber-50 border-b border-amber-200/60 py-2.5 px-4 text-center">
-        <p class="text-xs font-semibold text-amber-700 flex items-center justify-center gap-2">
-            <i class="fa-solid fa-triangle-exclamation"></i>
-            Please verify your email to unlock checkout. Check your inbox for the activation link.
-        </p>
-    </div>
-    {% endif %}
+     <!-- Email Verification Banner -->
+     {% if session.get('user') and session['user']['email_verified'] == 0 %}
+     <div class="bg-[var(--color-warning-light)] border-b border-[var(--color-warning-light)]/60 py-2.5 px-4 text-center">
+         <p class="text-xs font-semibold text-[var(--color-warning)] flex items-center justify-center gap-2">
+             <i class="fa-solid fa-triangle-exclamation"></i>
+             Please verify your email to unlock checkout. Check your inbox for the activation link.
+         </p>
+     </div>
+     {% endif %}
+
 
     <!-- Main Content -->
     <main id="main-content" class="flex-grow">
@@ -275,15 +285,16 @@
     <!-- Global Toast Container -->
     <div id="toastContainer" class="toast-container" aria-live="polite" aria-label="Notifications"></div>
 
-    <!-- Loading Overlay -->
-    <div id="globalLoadingOverlay"
-         class="fixed inset-0 z-[var(--z-modal)] bg-black/20 backdrop-blur-sm flex items-center justify-center hidden transition-all duration-300"
-         role="alert" aria-label="Loading">
-        <div class="bg-white px-8 py-10 flex flex-col items-center gap-4 max-w-xs w-full mx-4 shadow-2xl">
-            <div class="w-8 h-8 border-2 border-[var(--neutral-200)] border-t-[var(--neutral-900)] rounded-full animate-spin"></div>
-            <p id="loadingOverlayMessage" class="text-sm font-semibold text-[var(--neutral-600)] text-center">Loading...</p>
-        </div>
-    </div>
+     <!-- Loading Overlay -->
+     <div id="globalLoadingOverlay"
+          class="fixed inset-0 z-[var(--z-modal)] bg-black/20 backdrop-blur-sm flex items-center justify-center hidden transition-all duration-300"
+          role="alert" aria-label="Loading">
+         <div class="bg-[var(--color-white)] px-8 py-10 flex flex-col items-center gap-4 max-w-xs w-full mx-4 shadow-2xl">
+             <div class="w-8 h-8 border-2 border-[var(--neutral-200)] border-t-[var(--neutral-900)] rounded-full animate-spin"></div>
+             <p id="loadingOverlayMessage" class="text-sm font-semibold text-[var(--neutral-600)] text-center">Loading...</p>
+         </div>
+     </div>
+
 
     <!-- Cart Drawer -->
     <div id="cartDrawer" class="hidden" role="dialog" aria-modal="true" aria-label="Shopping cart">
@@ -319,7 +330,7 @@
                 <p class="text-xs font-bold uppercase tracking-wider text-[var(--neutral-600)]">Your bag is empty</p>
                 <p class="text-[10px] text-[var(--neutral-400)] uppercase tracking-wider">Explore our collections and add items you love.</p>
                 <button type="button" id="cartDrawerShopBtn"
-                        class="px-6 py-2.5 bg-[var(--neutral-900)] hover:bg-[var(--neutral-700)] text-white text-[10px] font-bold uppercase tracking-widest transition hover:shadow-lg">
+                        class="px-6 py-2.5 bg-[var(--neutral-900)] hover:bg-[var(--neutral-700)] text-[var(--color-white)] text-[10px] font-bold uppercase tracking-widest transition hover:shadow-lg">
                     Shop Now
                 </button>
             </div>
@@ -330,7 +341,7 @@
                     <span id="cartDrawerSubtotal" class="font-semibold">Rs. 0</span>
                 </div>
                 <a href="/cart"
-                   class="block w-full py-3.5 bg-[var(--neutral-900)] hover:bg-[var(--neutral-700)] text-white font-bold text-xs uppercase tracking-widest text-center transition hover:shadow-lg hover:-translate-y-0.5">
+                   class="block w-full py-3.5 bg-[var(--neutral-900)] hover:bg-[var(--neutral-700)] text-[var(--color-white)] font-bold text-xs uppercase tracking-widest text-center transition hover:shadow-lg hover:-translate-y-0.5">
                     View Bag & Checkout
                 </a>
             </div>
@@ -339,7 +350,7 @@
 
     <!-- Quick View Modal -->
     <div id="quickViewModal"
-         class="modal-overlay hidden"
+         class="modal-overlay"
          role="dialog" aria-modal="true" aria-label="Product quick view">
         <div class="modal-content">
             <div class="relative p-4 sm:p-8">
@@ -397,57 +408,59 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
                 <!-- Brand -->
                 <div class="space-y-5">
-                    <a href="/" class="font-display font-light text-xl tracking-[0.25em] text-white uppercase">SHIBANI</a>
+                    <a href="/" class="font-display font-light text-xl tracking-[0.25em] text-[var(--color-white)] uppercase">SHIBANI</a>
                     <p class="text-xs leading-relaxed text-[var(--neutral-500)] max-w-xs">
                         Premium fashion destination. Curated collections of traditional and contemporary apparel, crafted for the discerning wardrobe.
                     </p>
                     <div class="flex gap-3 pt-1">
-                        <a href="#" class="w-9 h-9 flex items-center justify-center border border-[var(--neutral-800)] hover:bg-white hover:text-black text-[var(--neutral-400)] transition-all duration-300" aria-label="Facebook">
-                            <i class="fa-brands fa-facebook-f text-xs"></i>
-                        </a>
-                        <a href="#" class="w-9 h-9 flex items-center justify-center border border-[var(--neutral-800)] hover:bg-white hover:text-black text-[var(--neutral-400)] transition-all duration-300" aria-label="Instagram">
-                            <i class="fa-brands fa-instagram text-xs"></i>
-                        </a>
-                        <a href="#" class="w-9 h-9 flex items-center justify-center border border-[var(--neutral-800)] hover:bg-white hover:text-black text-[var(--neutral-400)] transition-all duration-300" aria-label="Twitter">
-                            <i class="fa-brands fa-x-twitter text-xs"></i>
-                        </a>
-                    </div>
+                                                <a href="#" class="w-9 h-9 flex items-center justify-center border border-[var(--neutral-800)] hover:bg-[var(--color-white)] hover:text-[var(--neutral-900)] text-[var(--neutral-400)] transition-all duration-300" aria-label="Facebook">
+                                                    <i class="fa-brands fa-facebook-f text-xs"></i>
+                                                </a>
+                                                <a href="#" class="w-9 h-9 flex items-center justify-center border border-[var(--neutral-800)] hover:bg-[var(--color-white)] hover:text-[var(--neutral-900)] text-[var(--neutral-400)] transition-all duration-300" aria-label="Instagram">
+                                                    <i class="fa-brands fa-instagram text-xs"></i>
+                                                </a>
+                                                <a href="#" class="w-9 h-9 flex items-center justify-center border border-[var(--neutral-800)] hover:bg-[var(--color-white)] hover:text-[var(--neutral-900)] text-[var(--neutral-400)] transition-all duration-300" aria-label="Twitter">
+                                                    <i class="fa-brands fa-x-twitter text-xs"></i>
+                                                </a>
+                                            </div>
+
                 </div>
 
                 <!-- Quick Links -->
                 <div>
-                    <h3 class="text-white font-bold text-[10px] tracking-widest uppercase mb-6">Quick Links</h3>
+                    <h3 class="text-[var(--color-white)] font-bold text-[10px] tracking-widest uppercase mb-6">Quick Links</h3>
                     <ul class="space-y-3.5 text-xs tracking-wider uppercase">
-                        <li><a href="/shop" class="hover:text-white transition">All Collections</a></li>
-                        <li><a href="/about" class="hover:text-white transition">Our Story</a></li>
-                        <li><a href="/contact" class="hover:text-white transition">Contact & Help</a></li>
-                        <li><a href="#" class="hover:text-white transition">Size Guide</a></li>
+                        <li><a href="/shop" class="hover:text-[var(--color-white)] transition">All Collections</a></li>
+                        <li><a href="/about" class="hover:text-[var(--color-white)] transition">Our Story</a></li>
+                        <li><a href="/contact" class="hover:text-[var(--color-white)] transition">Contact & Help</a></li>
+                        <li><a href="#" class="hover:text-[var(--color-white)] transition">Size Guide</a></li>
                     </ul>
                 </div>
 
                 <!-- Customer Care -->
                 <div>
-                    <h3 class="text-white font-bold text-[10px] tracking-widest uppercase mb-6">Customer Care</h3>
+                    <h3 class="text-[var(--color-white)] font-bold text-[10px] tracking-widest uppercase mb-6">Customer Care</h3>
                     <ul class="space-y-3.5 text-xs tracking-wider uppercase">
-                        <li><a href="/orders" class="hover:text-white transition">Track Order</a></li>
-                        <li><a href="/cart" class="hover:text-white transition">Shopping Bag</a></li>
-                        <li><a href="/profile" class="hover:text-white transition">My Addresses</a></li>
-                        <li><a href="#" class="hover:text-white transition">Returns & Exchanges</a></li>
-                        <li><a href="#" class="hover:text-white transition">Privacy Policy</a></li>
+                        <li><a href="/orders" class="hover:text-[var(--color-white)] transition">Track Order</a></li>
+                        <li><a href="/cart" class="hover:text-[var(--color-white)] transition">Shopping Bag</a></li>
+                        <li><a href="/profile" class="hover:text-[var(--color-white)] transition">My Addresses</a></li>
+                        <li><a href="#" class="hover:text-[var(--color-white)] transition">Returns & Exchanges</a></li>
+                        <li><a href="#" class="hover:text-[var(--color-white)] transition">Privacy Policy</a></li>
                     </ul>
                 </div>
 
                 <!-- Newsletter -->
                 <div class="space-y-4">
-                    <h3 class="text-white font-bold text-[10px] tracking-widest uppercase">Newsletter</h3>
+                    <h3 class="text-[var(--color-white)] font-bold text-[10px] tracking-widest uppercase">Newsletter</h3>
                     <p class="text-xs text-[var(--neutral-500)]">Subscribe for early access to new drops and exclusive offers.</p>
                     <form id="newsletterForm" class="flex flex-col gap-2">
-                        <input type="email" placeholder="Your email address" required
-                               class="newsletter-input text-white placeholder-[var(--neutral-600)] border-[var(--neutral-800)]" />
-                        <button type="submit"
-                                class="w-full py-2.5 bg-white hover:bg-[var(--neutral-200)] text-[var(--neutral-900)] font-bold text-xs uppercase tracking-widest transition duration-300">
-                            Subscribe
-                        </button>
+                                    <input type="email" placeholder="Your email address" required
+                                           class="newsletter-input text-[var(--neutral-50)] placeholder-[var(--neutral-600)] border-[var(--neutral-800)]" />
+                                    <button type="submit"
+                                            class="w-full py-2.5 bg-[var(--color-white)] hover:bg-[var(--neutral-200)] text-[var(--neutral-900)] font-bold text-xs uppercase tracking-widest transition duration-300">
+                                        Subscribe
+                                    </button>
+
                     </form>
                 </div>
             </div>
