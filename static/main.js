@@ -14,9 +14,17 @@ async function ensureProductsLoaded() {
     }
     return false;
 }
+function safeParseJSON(val, fallback) {
     if (val == null) return fallback;
     try { const r = JSON.parse(val); return r !== null ? r : fallback; } catch { return fallback; }
 }
+
+function formatPrice(amount) {
+    const num = typeof amount === "string" ? parseFloat(amount) : Number(amount);
+    if (isNaN(num)) return "Rs. 0";
+    return "Rs. " + num.toLocaleString("en-IN");
+}
+
 const appState = {
     user: null,
     products: [],
