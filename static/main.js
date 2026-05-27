@@ -464,29 +464,6 @@ async function initGlobal() {
         });
     }
 }
-            } catch (wErr) {
-                console.warn("Failed to sync wishlist from database:", wErr);
-            }
-        }
-    } catch (err) {
-        console.warn("Session check failed, running as guest.");
-    }
-    
-    // NOTE: User dropdown, mobile menu, search toggle, logout handlers, search form,
-    // cart drawer, and dark mode toggle are initialized by global-init.js (modular system).
-    // Keeping them here would create duplicate event listeners with conflicting toggle
-    // classes (hidden vs open). The modular initGlobal() in static/js/utils/global-init.js
-    // handles these with the .open class that matches the CSS design system.
-    
-    // 7. Update Cart & Wishlist badges
-    updateBadges();
-    
-    // 8. Initialize mini cart (complementary to cart drawer in global-init.js)
-    initMiniCart();
-    
-    // 9. Initialize search suggestions (not yet migrated to modular system)
-    initSearchSuggestions();
-}
 
 // --- SEARCH SUGGESTIONS ---
 function initSearchSuggestions() {
