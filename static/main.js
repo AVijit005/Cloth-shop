@@ -426,20 +426,6 @@ function _initHeaderScroll() {
 }
 
 async function initGlobal() {
-    try {
-        const data = await api("/api/me");
-        if (data && data.user) {
-            appState.user = data.user;
-            try {
-                const wishData = await api("/api/wishlist");
-                if (wishData && wishData.wishlist) {
-                    appState.wishlist = wishData.wishlist.map(p => p.id);
-                    localStorage.setItem("shibani_wishlist", JSON.stringify(appState.wishlist));
-                }
-            } catch (_) {}
-        }
-    } catch (_) {}
-
     _initUserDropdown();
     _initMobileMenu();
     _initSearchSubmit();
@@ -466,6 +452,20 @@ async function initGlobal() {
             newsForm.reset();
         });
     }
+
+    try {
+        const data = await api("/api/me");
+        if (data && data.user) {
+            appState.user = data.user;
+            try {
+                const wishData = await api("/api/wishlist");
+                if (wishData && wishData.wishlist) {
+                    appState.wishlist = wishData.wishlist.map(p => p.id);
+                    localStorage.setItem("shibani_wishlist", JSON.stringify(appState.wishlist));
+                }
+            } catch (_) {}
+        }
+    } catch (_) {}
 }
 
 // --- SEARCH SUGGESTIONS ---
@@ -1300,115 +1300,6 @@ function closeQuickView() {
         releaseFocus(modal);
     }
 }
-    
-    // Badge
-    const badge = document.getElementById("qvBadge");
-    if (badge) {
-        if (product.badge) {
-            badge.textContent = product.badge;
-            badge.classList.remove("hidden");
-        } else {
-            badge.classList.add("hidden");
-        }
-    }
-    
-    // Thumbnails
-    const thumbContainer = document.getElementById("qvThumbnails");
-    if (thumbContainer) {
-        if (parsedImages.length > 1) {
-            thumbContainer.innerHTML = parsedImages.map((img, i) => `
-                <button type="button" class="qv-thumb w-14 h-16 overflow-hidden border ${i === 0 ? 'border-neutral-900' : 'border-neutral-200'} bg-white flex-shrink-0" data-img="${img}">
-                    <img src="${img}" alt="" class="w-full h-full object-cover object-top" />
-                </button>
-            `).join("");
-            // Thumbnail click
-            thumbContainer.querySelectorAll(".qv-thumb").forEach(btn => {
-                btn.addEventListener("click", () => {
-                    thumbContainer.querySelectorAll(".qv-thumb").forEach(b => b.classList.replace("border-neutral-900", "border-neutral-200"));
-                    btn.classList.replace("border-neutral-200", "border-neutral-900");
-                    if (mainImg) mainImg.src = btn.dataset.img;
-                });
-            });
-        } else {
-            thumbContainer.innerHTML = "";
-        }
-    }
-    
-    // Category
-    const cat = document.getElementById("qvCategory");
-    if (cat) cat.textContent = `COLLECTION / ${product.category || ''}`;
-    
-    // Name
-    const name = document.getElementById("qvName");
-    if (name) name.textContent = product.name || '';
-    
-    // Price
-    const price = document.getElementById("qvPrice");
-    if (price) price.textContent = formatPrice(product.price);
-    
-    // Old price / save badge
-    const oldPrice = document.getElementById("qvOldPrice");
-    const saveBadge = document.getElementById("qvSaveBadge");
-    if (oldPrice && saveBadge) {
-        if (product.old_price && Number(product.old_price) > Number(product.price)) {
-            oldPrice.textContent = formatPrice(product.old_price);
-            oldPrice.classList.remove("hidden");
-            const pct = Math.round((1 - Number(product.price) / Number(product.old_price)) * 100);
-            saveBadge.textContent = `Save ${pct}%`;
-            saveBadge.classList.remove("hidden");
-        } else {
-            oldPrice.classList.add("hidden");
-            saveBadge.classList.add("hidden");
-        }
-    }
-    
-    // Description
-    const desc = document.getElementById("qvDescription");
-    if (desc) desc.textContent = product.description || 'Premium quality apparel. Carefully chosen fabric tailored with style and care.';
-    
-    // Stock
-    const stock = document.getElementById("qvStock");
-    if (stock) {
-        const isOut = (product.stock || '').toLowerCase() === 'out of stock';
-        const isLimited = (product.stock || '').toLowerCase() === 'limited stock';
-        stock.textContent = product.stock || 'In stock';
-        stock.className = `inline-block px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${
-            isOut ? 'bg-rose-50 text-rose-600' : isLimited ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'
-        }`;
-    }
-    
-    // Sizes
-    const sizesContainer = document.getElementById("qvSizes");
-    if (sizesContainer) {
-        const sizes = (product.size || "").split(",").map(s => s.trim()).filter(Boolean);
-        sizesContainer.innerHTML = sizes.map((sz, i) => `
-            <button type="button" class="qv-size-btn px-4 py-2 border text-[10px] tracking-widest uppercase transition duration-200 ${
-                i === 0 ? 'border-neutral-900 bg-neutral-900 text-white font-bold' : 'border-neutral-200 text-neutral-800 hover:border-neutral-900'
-            }" data-size="${sz}">${sz}</button>
-        `).join("");
-        sizesContainer.querySelectorAll(".qv-size-btn").forEach(btn => {
-            btn.addEventListener("click", () => {
-                sizesContainer.querySelectorAll(".qv-size-btn").forEach(b => {
-                    b.classList.remove("border-neutral-900", "bg-neutral-900", "text-white", "font-bold");
-                    b.classList.add("border-neutral-200", "text-neutral-800");
-                });
-                btn.classList.add("border-neutral-900", "bg-neutral-900", "text-white", "font-bold");
-                btn.classList.remove("border-neutral-200", "text-neutral-800");
-            });
-        });
-    }
-    
-    // Store product data on modal for add to cart/wishlist
-    modal.dataset.productId = productId;
-    
-    // Set full details link
-    const fullLink = document.getElementById("qvFullDetails");
-    if (fullLink) fullLink.href = `/product/${productId}`;
-    
-    // Show modal
-    modal.classList.add("open");
-    trapFocus(modal);
-}
 
 // Wire quick view modal events (called once on DOM ready)
 function initQuickViewModal() {
@@ -1499,140 +1390,6 @@ async function initProductDetail() {
             const selectedSize = selectedSizeEl ? selectedSizeEl.dataset.size : "M";
             addToCart(productId, 1, selectedSize, "Default");
         });
-    }
-    
-    // 4. Add to Wishlist submit
-    const addToWishlistBtn = document.getElementById("detailAddToWishlistBtn");
-    if (addToWishlistBtn) {
-        addToWishlistBtn.addEventListener("click", () => {
-            toggleWishlistItem(productId);
-        });
-    }
-    
-    // 5. Fit Finder Modal controls
-    const fitFinderModal = document.getElementById("sizeFinderModal");
-    const triggerFitBtn = document.getElementById("triggerFitFinderBtn");
-    const closeFitBtn = document.getElementById("closeFitFinderBtn");
-    
-    if (fitFinderModal && triggerFitBtn) {
-        triggerFitBtn.addEventListener("click", () => {
-            fitFinderModal.classList.remove("hidden");
-            fitFinderModal.classList.add("open");
-            calculateFitRecommendation();
-        });
-        
-        if (closeFitBtn) {
-            closeFitBtn.addEventListener("click", () => {
-                fitFinderModal.classList.remove("open");
-                fitFinderModal.classList.add("hidden");
-            });
-        }
-        
-        // Close on clicking the background overlay
-        fitFinderModal.addEventListener("click", (e) => {
-            if (e.target === fitFinderModal) {
-                fitFinderModal.classList.remove("open");
-                fitFinderModal.classList.add("hidden");
-            }
-        });
-        
-        // Close on Escape keypress
-        const handleEscapeKey = (e) => {
-            if (e.key === "Escape" && !fitFinderModal.classList.contains("hidden")) {
-                fitFinderModal.classList.remove("open");
-                fitFinderModal.classList.add("hidden");
-            }
-        };
-        document.addEventListener("keydown", handleEscapeKey);
-        
-        // Modal range sliders events
-        const heightSlider = document.getElementById("sfHeight");
-        const weightSlider = document.getElementById("sfWeight");
-        const fitSelect = document.getElementById("sfFit");
-        
-        if (heightSlider) heightSlider.addEventListener("input", calculateFitRecommendation);
-        if (weightSlider) weightSlider.addEventListener("input", calculateFitRecommendation);
-        if (fitSelect) fitSelect.addEventListener("change", calculateFitRecommendation);
-        
-        const applyFitBtn = document.getElementById("applyFitFinderSizeBtn");
-        if (applyFitBtn) {
-            applyFitBtn.addEventListener("click", () => {
-                const recSize = document.getElementById("sfResultSize")?.textContent || "M";
-                const targetPill = Array.from(document.querySelectorAll(".size-pill")).find(pill => pill.dataset.size.toUpperCase() === recSize.toUpperCase());
-                if (targetPill) {
-                    targetPill.classList.add("active");
-                    targetPill.classList.remove("border-neutral-200", "text-slate-600");
-                    targetPill.classList.add("border-neutral-900", "bg-neutral-50", "text-neutral-900", "font-bold");
-                }
-            });
-        }
-    }
-    
-    // 4. Add to Wishlist submit
-    const addToWishlistBtn = document.getElementById("detailAddToWishlistBtn");
-    if (addToWishlistBtn) {
-        addToWishlistBtn.addEventListener("click", () => {
-            toggleWishlistItem(productId);
-        });
-    }
-    
-    // 5. Fit Finder Modal controls
-    const fitFinderModal = document.getElementById("sizeFinderModal");
-    const triggerFitBtn = document.getElementById("triggerFitFinderBtn");
-    const closeFitBtn = document.getElementById("closeFitFinderBtn");
-    
-    if (fitFinderModal && triggerFitBtn) {
-        triggerFitBtn.addEventListener("click", () => {
-            fitFinderModal.classList.remove("hidden");
-            fitFinderModal.classList.add("open");
-            calculateFitRecommendation();
-        });
-        
-        if (closeFitBtn) {
-            closeFitBtn.addEventListener("click", () => {
-                fitFinderModal.classList.remove("open");
-                fitFinderModal.classList.add("hidden");
-            });
-        }
-        
-        // Close on clicking the background overlay
-        fitFinderModal.addEventListener("click", (e) => {
-            if (e.target === fitFinderModal) {
-                fitFinderModal.classList.remove("open");
-                fitFinderModal.classList.add("hidden");
-            }
-        });
-        
-        // Close on Escape keypress
-        const handleEscapeKey = (e) => {
-            if (e.key === "Escape" && !fitFinderModal.classList.contains("hidden")) {
-                fitFinderModal.classList.remove("open");
-                fitFinderModal.classList.add("hidden");
-            }
-        };
-        document.addEventListener("keydown", handleEscapeKey);
-        
-        // Modal range sliders events
-        const heightSlider = document.getElementById("sfHeight");
-        const weightSlider = document.getElementById("sfWeight");
-        const fitSelect = document.getElementById("sfFit");
-        
-        if (heightSlider) heightSlider.addEventListener("input", calculateFitRecommendation);
-        if (weightSlider) weightSlider.addEventListener("input", calculateFitRecommendation);
-        if (fitSelect) fitSelect.addEventListener("change", calculateFitRecommendation);
-        
-        const applyFitBtn = document.getElementById("applyFitFinderSizeBtn");
-        if (applyFitBtn) {
-            applyFitBtn.addEventListener("click", () => {
-                const recSize = document.getElementById("sfResultSize")?.textContent || "M";
-                const targetPill = Array.from(document.querySelectorAll(".size-pill")).find(pill => pill.dataset.size.toUpperCase() === recSize.toUpperCase());
-                if (targetPill) {
-                    targetPill.classList.add("active");
-                    targetPill.classList.remove("border-neutral-200", "text-slate-600");
-                    targetPill.classList.add("border-neutral-900", "bg-neutral-50", "text-neutral-900", "font-bold");
-                }
-            });
-        }
     }
     
     // 4. Add to Wishlist submit
@@ -2603,7 +2360,7 @@ async function initProfile() {
         try {
             await api("/api/profile", {
                 method: "PUT",
-                body: JSON.stringify({ full_name: fullName, saved_phone: phone })
+                body: JSON.stringify({ saved_name: fullName, saved_phone: phone })
             });
             showToast("Profile details updated successfully!");
         } catch (err) {
@@ -3069,8 +2826,9 @@ async function loadAdminOrders(statusFilter = "all", searchQuery = "") {
                 <td class="py-4 px-6">
                     <select onchange="updateAdminOrderStatus(${o.id}, this.value)" class="bg-slate-100 border-none rounded-xl px-2 py-1.5 text-xs font-bold text-slate-700 focus:outline-none">
                         <option value="New" ${o.status === 'New' ? 'selected' : ''}>New</option>
-                        <option value="Processing" ${o.status === 'Processing' ? 'selected' : ''}>Processing</option>
-                        <option value="Shipped" ${o.status === 'Shipped' ? 'selected' : ''}>Shipped</option>
+                        <option value="Confirmed" ${o.status === 'Confirmed' ? 'selected' : ''}>Confirmed</option>
+                        <option value="Packed" ${o.status === 'Packed' ? 'selected' : ''}>Packed</option>
+                        <option value="Out for delivery" ${o.status === 'Out for delivery' ? 'selected' : ''}>Out for delivery</option>
                         <option value="Delivered" ${o.status === 'Delivered' ? 'selected' : ''}>Delivered</option>
                         <option value="Cancelled" ${o.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
                     </select>
