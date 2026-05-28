@@ -419,9 +419,32 @@ function _updateShippingProgress(total) {
 
 function _initCartIconTrigger() {
     console.log("[DEBUG] _initCartIconTrigger called");
+    // BODY CLICK TRAP
+    document.body.addEventListener('click', function(e) {
+        console.log("[DEBUG] BODY CLICK on:", (e.target.id || e.target.className || e.target.tagName), "| path:", e.composedPath().map(function(el) {
+            if (!el || el === document) return 'document';
+            return el.id || (el.className && typeof el.className === 'string' ? el.className.slice(0,30) : el.tagName);
+        }).slice(0,4).join(' > '));
+    }, true);
     const cartBtn = document.getElementById("cartIconBtn");
     console.log("[DEBUG] cartIconBtn found:", !!cartBtn);
-    if (cartBtn) cartBtn.addEventListener("click", () => { console.log("[DEBUG] cartIconBtn CLICKED"); if (window.openCartDrawer) { console.log("[DEBUG] calling openCartDrawer"); window.openCartDrawer(); } else { console.log("[DEBUG] openCartDrawer NOT DEFINED"); } });
+    // Check globalLoadingOverlay
+    var lo = document.getElementById("globalLoadingOverlay");
+    if (lo) {
+        var cs = window.getComputedStyle(lo);
+        console.log("[DEBUG] overlay display:", cs.display, "zIndex:", cs.zIndex, "pe:", cs.pointerEvents);
+        lo.addEventListener("click", function(e) { console.log("[DEBUG] OVERLAY CLICKED", e.target.id || e.target.tagName); e.stopPropagation(); }, true);
+    }
+    // Check quickViewModal
+    var qv = document.getElementById("quickViewModal");
+    if (qv) {
+        var cs2 = window.getComputedStyle(qv);
+        console.log("[DEBUG] quickView display:", cs2.display, "zIndex:", cs2.zIndex, "pe:", cs2.pointerEvents);
+    }
+    if (cartBtn) cartBtn.addEventListener("click", function() {
+        console.log("[DEBUG] cartIconBtn CLICKED");
+        if (window.openCartDrawer) { console.log("[DEBUG] calling openCartDrawer"); window.openCartDrawer(); }
+    });
     const mobileCartBtn = document.getElementById("mobileCartBtn");
     if (mobileCartBtn) mobileCartBtn.addEventListener("click", () => { if (window.openCartDrawer) window.openCartDrawer(); });
 }
