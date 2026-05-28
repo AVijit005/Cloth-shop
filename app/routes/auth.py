@@ -11,6 +11,8 @@ from werkzeug.security import check_password_hash, generate_password_hash
 import secrets
 import re
 
+from app import user_by_username, create_user
+from app.config import SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_SENDER, LOGS_FOLDER
 from app.middleware.security import (
     is_blocked, track_failed_login, clear_failed_logins,
     validate_password_strength, create_user_session
@@ -33,8 +35,6 @@ def login():
     if blocked:
         return jsonify({"error": block_msg}), 429
 
-    # This would use the DB service instead of inline imports
-    from app import user_by_username  # placeholder
     user = user_by_username(username)
 
     if not user or not check_password_hash(user["password_hash"], password):
@@ -58,7 +58,7 @@ def register():
     if not username or not password or not full_name or not email:
         return jsonify({"error": "All fields are required"}), 400
 
-    if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+    if not re.match(r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$", email):
         return jsonify({"error": "Invalid email address"}), 400
 
     strength_err = validate_password_strength(password)
@@ -68,14 +68,10 @@ def register():
     verification_token = secrets.token_urlsafe(32)
     p_hash = generate_password_hash(password)
 
-    # Use DB service
-    from app import create_user  # placeholder
     user_id = create_user(username, p_hash, full_name, email, verification_token)
     if user_id is None:
         return jsonify({"error": "Username or email already taken"}), 400
 
-    # Get config for email
-    from app.config import SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_SENDER, LOGS_FOLDER
     smtp_config = {
         "host": SMTP_HOST, "port": SMTP_PORT, "user": SMTP_USER,
         "password": SMTP_PASS, "sender": SMTP_SENDER, "logs_folder": LOGS_FOLDER

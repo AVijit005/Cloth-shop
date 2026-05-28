@@ -11,7 +11,7 @@
     <nav class="flex text-[10px] tracking-widest text-[var(--neutral-400)] font-semibold mb-8 gap-2 uppercase flex-wrap">
         <a href="/" class="hover:text-[var(--neutral-900)] transition">Home</a>
         <span class="text-[var(--neutral-200)]">/</span>
-        <a href="/shop?category={{ product.category }}" class="hover:text-[var(--neutral-900)] transition">{{ product.category }}</a>
+        <a href="/shop?category={{ product.category | urlencode }}" class="hover:text-[var(--neutral-900)] transition">{{ product.category }}</a>
         <span class="text-[var(--neutral-200)]">/</span>
         <span class="text-[var(--neutral-600)] truncate max-w-[200px]">{{ product.name }}</span>
     </nav>
@@ -28,7 +28,7 @@
                      src="{{ product.images_list[0] if product.images_list else 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800' }}"
                      alt="{{ product.name }}"
                      class="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
-                     loading="eager" />
+                     loading="eager" onerror="this.style.display='none'" />
 
                 {% if product.badge %}
                 <span class="badge badge-primary absolute top-4 left-4">{{ product.badge }}</span>
@@ -47,7 +47,7 @@
                 {% for img in product.images_list %}
                 <button class="gallery-thumb w-16 h-20 flex-shrink-0 {% if loop.first %}active{% endif %}"
                         data-img-src="{{ img }}">
-                    <img src="{{ img }}" alt="View {{ loop.index }}" class="w-full h-full object-cover object-top" loading="lazy" />
+                    <img src="{{ img }}" alt="Product thumbnail" class="w-full h-full object-cover object-top" loading="lazy" onerror="this.style.display='none'" />
                 </button>
                 {% endfor %}
             </div>
@@ -208,7 +208,7 @@
 
                 <!-- Review Form -->
                 {% if session.get('user') %}
-                <form id="submitReviewForm" class="border border-[var(--neutral-100)] p-8 space-y-4">
+                <form id="submitReviewForm" method="POST" class="border border-[var(--neutral-100)] p-8 space-y-4">
                     <input type="hidden" name="csrf_token" value="{{ session.get('csrf_token', '') }}">
                     <h4 class="font-bold text-xs tracking-widest uppercase text-[var(--neutral-900)]">Write a Review</h4>
                     <div>

@@ -1,6 +1,5 @@
 Flask==3.0.0
 mysql-connector-python==9.7.0
 waitress==3.0.0
-python-dotenv
-gunicorn
-firebase-admin
+python-dotenv==1.0.1
+firebase-admin==6.6.0

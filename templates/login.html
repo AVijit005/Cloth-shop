@@ -33,7 +33,7 @@
                 </p>
             </div>
 
-            <form id="loginForm" class="space-y-5">
+            <form id="loginForm" method="POST" class="space-y-5">
                 <input type="hidden" name="csrf_token" value="{{ session.get('csrf_token', '') }}">
                 <div>
                     <label for="usernameInput" class="block mb-2 text-[10px] font-bold tracking-[0.2em] text-[var(--neutral-500)] uppercase">Username</label>

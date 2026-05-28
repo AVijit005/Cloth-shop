@@ -127,7 +127,7 @@
             </div>
 
             <!-- Shipping Form -->
-            <form id="checkoutForm" class="space-y-4">
+            <form id="checkoutForm" method="POST" class="space-y-4">
                 <input type="hidden" name="csrf_token" value="{{ session.get('csrf_token', '') }}">
                 <h4 class="font-bold text-[10px] tracking-widest uppercase text-[var(--neutral-900)]">Shipping Details</h4>
 

@@ -8,7 +8,7 @@ import secrets
 import time
 import uuid
 from datetime import datetime, UTC, timedelta
-from functools import cache, wraps
+from functools import wraps
 from html import escape
 import threading
 
@@ -241,6 +241,27 @@ memory_wishlists_lock = threading.Lock()
 memory_coupons_lock = threading.Lock()
 memory_settings_lock = threading.Lock()
 
+# Simple in-memory rate limiter (per-IP, sliding window)
+_rate_limit_store = {}
+_rate_limit_lock = threading.Lock()
+
+def rate_limit(max_requests=5, window_seconds=60):
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            ip = request.remote_addr or "unknown"
+            now = time.time()
+            with _rate_limit_lock:
+                window = _rate_limit_store.setdefault(ip, [])
+                cutoff = now - window_seconds
+                _rate_limit_store[ip] = [t for t in window if t > cutoff]
+                if len(_rate_limit_store[ip]) >= max_requests:
+                    return jsonify({"error": f"Too many requests. Try again in {window_seconds} seconds."}), 429
+                _rate_limit_store[ip].append(now)
+            return fn(*args, **kwargs)
+        return wrapper
+    return decorator
+
 def is_blocked(username, ip):
     now = datetime.now()
     with login_attempts_lock:
@@ -279,6 +300,12 @@ def clear_failed_logins(username, ip):
         if ip:
             login_attempts.pop(f"ip:{ip}", None)
 
+def _sanitize_email_header(value):
+    """Strip control characters from email header values to prevent header injection."""
+    if value is None:
+        return ""
+    return re.sub(r"[\x00-\x1f\x7f]", "", str(value))
+
 # Async Transactional Mail System (Dev logging + SMTP Support)
 def send_email(subject, recipient, body_html):
     smtp_host = os.getenv("SMTP_HOST")
@@ -287,9 +314,12 @@ def send_email(subject, recipient, body_html):
     smtp_pass = os.getenv("SMTP_PASS")
     sender = os.getenv("SMTP_SENDER", "noreply@shibanifashion.com")
     
+    # Sanitize ALL header fields before any use (prevents SMTP header injection)
+    safe_subject = _sanitize_email_header(subject)
+    safe_recipient = _sanitize_email_header(recipient)
+    safe_sender = _sanitize_email_header(sender)
+    
     # Dev/test logging
-    safe_recipient = recipient.replace("\n", "").replace("\r", "")
-    safe_subject = subject.replace("\n", "").replace("\r", "")
     log_line = f"To: {safe_recipient} | Subject: {safe_subject}\nHTML Body:\n{body_html}\n{'='*80}\n"
     try:
         log_file = os.path.join(LOGS_FOLDER, "email_log.txt")
@@ -306,9 +336,9 @@ def send_email(subject, recipient, body_html):
         def _send():
             try:
                 msg = MIMEMultipart("alternative")
-                msg["Subject"] = subject
-                msg["From"] = sender
-                msg["To"] = recipient
+                msg["Subject"] = safe_subject
+                msg["From"] = safe_sender
+                msg["To"] = safe_recipient
                 msg.attach(MIMEText(body_html, "html"))
                 
                 port = int(smtp_port)
@@ -319,15 +349,19 @@ def send_email(subject, recipient, body_html):
                     else:
                         server = smtplib.SMTP(smtp_host, port, timeout=10)
                         server.starttls()
-                    server.login(smtp_user, smtp_pass)
-                    server.sendmail(sender, [recipient], msg.as_string())
+                    if smtp_user and smtp_pass:
+                        server.login(smtp_user, smtp_pass)
+                    server.sendmail(safe_sender, [safe_recipient], msg.as_string())
                 finally:
                     if server is not None:
                         server.quit()
             except Exception as ex:
-                logger.error("SMTP email fail to %s: %s", recipient, ex)
+                logger.error("SMTP email fail to %s: %s", safe_recipient, ex)
                 
-        threading.Thread(target=_send, daemon=True).start()
+        import atexit
+        thread = threading.Thread(target=_send, daemon=True)
+        thread.start()
+        atexit.register(thread.join, timeout=2)
 
 def send_verification_email(username, email, token, url_root=None):
     url = f"{(url_root or request.url_root).rstrip('/')}/verify-email?token={token}"
@@ -494,11 +528,14 @@ memory_settings = {
     "other_charges": "0.0"
 }
 
+_ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", secrets.token_hex(16))
+_CUSTOMER_PASSWORD = os.getenv("CUSTOMER_PASSWORD", secrets.token_hex(16))
+
 def _admin_hash():
-    return generate_password_hash("admin123")
+    return generate_password_hash(_ADMIN_PASSWORD)
 
 def _customer_hash():
-    return generate_password_hash("customer123")
+    return generate_password_hash(_CUSTOMER_PASSWORD)
 
 memory_coupons = [
     {
@@ -548,8 +585,8 @@ def get_settings_dict():
                     rows = cursor.fetchall()
                     for row in rows:
                         res[row["setting_key"]] = row["setting_value"]
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.error("Failed to fetch settings from DB: %s", exc)
     return res
 
 
@@ -566,6 +603,7 @@ def init_pool():
         port=DB_PORT,
         database=DB_NAME,
         autocommit=False,
+        pool_get_timeout=5,
     )
 
 
@@ -1092,8 +1130,8 @@ def init_mysql():
                 ensure_column(cursor, "coupons", "usage_limit", "INT DEFAULT NULL")
                 ensure_column(cursor, "coupons", "usage_count", "INT DEFAULT 0")
 
-                seed_user(cursor, "admin", "admin123", "admin", "Shibani Admin")
-                seed_user(cursor, "customer", "customer123", "customer", "Shibani Customer")
+                seed_user(cursor, "admin", _ADMIN_PASSWORD, "admin", "Shibani Admin")
+                seed_user(cursor, "customer", _CUSTOMER_PASSWORD, "customer", "Shibani Customer")
                 cursor.execute("SELECT COUNT(*) FROM products")
                 if cursor.fetchone()[0] == 0:
                     for product in starter_products:
@@ -1593,6 +1631,7 @@ def google_login():
 
 
 @app.post("/api/register")
+@rate_limit(max_requests=5, window_seconds=300)
 def register():
     data = json_payload()
     username = (data.get("username") or "").strip()
@@ -1684,6 +1723,7 @@ def logout():
 
 
 @app.post("/api/forgot-password")
+@rate_limit(max_requests=3, window_seconds=120)
 def forgot_password_api():
     data = json_payload()
     email_or_username = (data.get("email") or "").strip()
@@ -1734,6 +1774,7 @@ def forgot_password_api():
 
 
 @app.post("/api/reset-password")
+@rate_limit(max_requests=5, window_seconds=300)
 def reset_password_api():
     data = json_payload()
     token = (data.get("token") or "").strip()
@@ -1919,9 +1960,10 @@ def create_product():
         except Exception as exc:
             return jsonify({"error": "Database error"}), 500
     else:
-        product["id"] = max([item["id"] for item in memory_products], default=0) + 1
-        product["created_at"] = datetime.now(UTC).isoformat()
-        memory_products.insert(0, product)
+        with memory_products_lock:
+            product["id"] = max([item["id"] for item in memory_products], default=0) + 1
+            product["created_at"] = datetime.now(UTC).isoformat()
+            memory_products.insert(0, product)
 
     return jsonify({"product": product}), 201
 
@@ -1966,15 +2008,16 @@ def update_product(product_id):
         except Exception as exc:
             return jsonify({"error": "Database error"}), 500
     else:
-        found = False
-        for index, existing in enumerate(memory_products):
-            if existing["id"] == product_id:
-                memory_products[index] = {**existing, **product, "id": product_id}
-                found = True
-                break
-        if not found:
-            return jsonify({"error": "Product not found"}), 404
-        product = memory_products[index]
+        with memory_products_lock:
+            found = False
+            for index, existing in enumerate(memory_products):
+                if existing["id"] == product_id:
+                    memory_products[index] = {**existing, **product, "id": product_id}
+                    found = True
+                    break
+            if not found:
+                return jsonify({"error": "Product not found"}), 404
+            product = memory_products[index]
     return jsonify({"product": product})
 
 
@@ -1992,12 +2035,28 @@ def delete_product(product_id):
         except Exception as exc:
             return jsonify({"error": "Database error"}), 500
     else:
-        found = any(p["id"] == product_id for p in memory_products)
-        if not found:
-            return jsonify({"error": "Product not found"}), 404
-        memory_products[:] = [product for product in memory_products if product["id"] != product_id]
+        with memory_products_lock:
+            found = any(p["id"] == product_id for p in memory_products)
+            if not found:
+                return jsonify({"error": "Product not found"}), 404
+            memory_products[:] = [product for product in memory_products if product["id"] != product_id]
     return jsonify({"ok": True})
 
+
+@app.get("/api/qr")
+def qr_proxy():
+    import urllib.request
+    data = request.args.get("data", "")
+    if not data or len(data) > 500:
+        return jsonify({"error": "Invalid QR data"}), 400
+    try:
+        qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=160x160&data={urllib.parse.quote(data)}"
+        req = urllib.request.Request(qr_url, headers={"User-Agent": "ShibaniFashion/1.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return resp.read(), 200, {"Content-Type": "image/png", "Cache-Control": "no-cache"}
+    except Exception as exc:
+        logger.error("QR proxy failed: %s", exc)
+        return jsonify({"error": "QR generation failed"}), 502
 
 @app.get("/api/settings")
 def get_settings():
@@ -3046,8 +3105,8 @@ def create_order():
                     with connection.cursor(dictionary=True) as cursor:
                         cursor.execute("SELECT * FROM coupons WHERE code = %s LIMIT 1", (coupon_code,))
                         coupon_match = cursor.fetchone()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.error("Failed to fetch coupon %s from DB: %s", coupon_code, exc)
         else:
             coupon_match = next((c for c in memory_coupons if c["code"].upper() == coupon_code), None)
 
@@ -3097,7 +3156,7 @@ def create_order():
     gst_rate = float(settings.get("gst_rate", 5.0)) / 100.0
     other_charges = float(settings.get("other_charges", 0.0))
 
-    delivery = 0 if (subtotal >= delivery_threshold or (coupon_match and (coupon_match.get("free_delivery") or coupon_match.get("code") == "FREEDELIVERY"))) else delivery_standard
+    delivery = 0 if (subtotal >= delivery_threshold or (coupon_match and coupon_match.get("free_delivery"))) else delivery_standard
 
     tax = (subtotal - discount) * gst_rate
     if tax < 0:

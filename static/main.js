@@ -317,21 +317,21 @@ if (itemsEl) itemsEl.classList.remove("hidden");
     if (countEl) countEl.textContent = items.length;
     if (subtotalEl) subtotalEl.textContent = "Rs. " + total.toLocaleString("en-IN");
 
-    itemsEl?.querySelectorAll("[data-cart-inc]").forEach(btn => {
+    itemsEl?.querySelectorAll("[data-cart-inc]")?.forEach(btn => {
         btn.addEventListener("click", async () => {
             const idx = parseInt(btn.dataset.cartInc);
             const item = appState.cart[idx];
             if (item) { item.quantity++; localStorage.setItem("shibani_cart", JSON.stringify(appState.cart)); await _renderCartDrawer(); updateBadges(); }
         });
     });
-    itemsEl?.querySelectorAll("[data-cart-dec]").forEach(btn => {
+    itemsEl?.querySelectorAll("[data-cart-dec]")?.forEach(btn => {
         btn.addEventListener("click", async () => {
             const idx = parseInt(btn.dataset.cartDec);
             const item = appState.cart[idx];
             if (item) { item.quantity--; if (item.quantity <= 0) appState.cart.splice(idx, 1); localStorage.setItem("shibani_cart", JSON.stringify(appState.cart)); await _renderCartDrawer(); updateBadges(); }
         });
     });
-    itemsEl?.querySelectorAll("[data-cart-remove]").forEach(btn => {
+    itemsEl?.querySelectorAll("[data-cart-remove]")?.forEach(btn => {
         btn.addEventListener("click", async () => {
             const idx = parseInt(btn.dataset.cartRemove);
             appState.cart.splice(idx, 1);
@@ -530,7 +530,7 @@ function renderSuggestions(query, dropdown) {
                 <img src="${escapeHTML((parseProductImages(p.image, p.images)[0]) || '')}" class="w-9 h-11 object-cover rounded flex-shrink-0" onerror="this.style.display='none'" />
                 <div class="flex-grow min-w-0">
                     <p class="text-xs font-semibold text-neutral-800 truncate uppercase tracking-wider">${escapeHTML(p.name)}</p>
-                    <p class="text-[10px] text-neutral-400 uppercase tracking-wider">${p.category} — ${formatPrice(p.price)}</p>
+                    <p class="text-[10px] text-neutral-400 uppercase tracking-wider">${escapeHTML(p.category)} — ${formatPrice(p.price)}</p>
                 </div>
             </div>
         `).join("");
@@ -783,7 +783,7 @@ function renderProductCard(product) {
             
             ${product.badge ? `
             <span class="absolute top-4 left-4 bg-neutral-900 text-white font-light text-[9px] px-2.5 py-1 uppercase tracking-widest z-10">
-                ${product.badge}
+                ${escapeHTML(product.badge)}
             </span>` : ''}
         </div>
         
@@ -791,8 +791,8 @@ function renderProductCard(product) {
         <div class="p-4 sm:p-5 space-y-3 flex-grow flex flex-col justify-between">
             <div class="space-y-1">
                 <div class="flex justify-between items-center text-[10px] font-light text-neutral-400 uppercase tracking-widest">
-                    <span>${product.category}</span>
-                    <span class="text-neutral-500 flex items-center gap-1"><i class="fa-solid fa-star text-[9px]"></i> ${product.rating}</span>
+                    <span>${escapeHTML(product.category)}</span>
+                    <span class="text-neutral-500 flex items-center gap-1"><i class="fa-solid fa-star text-[9px]"></i> ${escapeHTML(String(product.rating))}</span>
                 </div>
                 <h3 class="font-medium text-neutral-900 text-xs uppercase tracking-wider group-hover:text-neutral-600 transition duration-300 line-clamp-1 cursor-pointer" onclick="window.location.href='/product/${Number(product.id)}'">
                     ${escapeHTML(product.name)}
@@ -849,8 +849,8 @@ function populateColorFilters(products) {
         if (c) colorSet.add(c);
     });
     const colors = Array.from(colorSet).sort();
-    if (colors.length === 0) { container.parentElement.classList.add("hidden"); return; }
-    container.parentElement.classList.remove("hidden");
+    if (colors.length === 0) { if (container.parentElement) container.parentElement.classList.add("hidden"); return; }
+    if (container.parentElement) container.parentElement.classList.remove("hidden");
     container.innerHTML = colors.map(c => `
         <button type="button" class="color-filter-btn border border-neutral-200 text-neutral-800 text-[10px] tracking-widest px-3 py-1.5 uppercase hover:border-neutral-900 transition duration-200" data-color="${escapeHTML(c)}">${escapeHTML(c)}</button>
     `).join("");
@@ -1162,11 +1162,11 @@ function updateCompareDrawer() {
                     <h4 class="font-bold text-slate-800 line-clamp-2 leading-tight">${escapeHTML(p.name)}</h4>
                 </div>
                 <div class="py-2 border-b border-slate-50 text-indigo-600 font-extrabold">${formatPrice(p.price)}</div>
-                <div class="py-2 border-b border-slate-50 uppercase">${p.category}</div>
-                <div class="py-2 border-b border-slate-50 text-amber-500"><i class="fa-solid fa-star"></i> ${p.rating}</div>
+                <div class="py-2 border-b border-slate-50 uppercase">${escapeHTML(p.category)}</div>
+                <div class="py-2 border-b border-slate-50 text-amber-500"><i class="fa-solid fa-star"></i> ${escapeHTML(String(p.rating))}</div>
                 <div class="py-2 border-b border-slate-50 truncate">${escapeHTML(p.color)}</div>
                 <div class="py-2 border-b border-slate-50 truncate">${escapeHTML(p.size)}</div>
-                <div class="py-2 font-bold ${p.stock === 'In stock' ? 'text-emerald-500' : 'text-amber-500'}">${p.stock}</div>
+                <div class="py-2 font-bold ${p.stock === 'In stock' ? 'text-emerald-500' : 'text-amber-500'}">${escapeHTML(p.stock)}</div>
             </div>`;
         }).join("")}
     </div>`;
@@ -1220,8 +1220,8 @@ function openQuickView(productId) {
     if (thumbContainer) {
         if (parsedImages.length > 1) {
             thumbContainer.innerHTML = parsedImages.map((img, i) => `
-                <button type="button" class="qv-thumb w-14 h-16 overflow-hidden border ${i === 0 ? 'border-neutral-900' : 'border-neutral-200'} bg-white flex-shrink-0" data-img="${img}">
-                    <img src="${img}" alt="" class="w-full h-full object-cover object-top" />
+                <button type="button" class="qv-thumb w-14 h-16 overflow-hidden border ${i === 0 ? 'border-neutral-900' : 'border-neutral-200'} bg-white flex-shrink-0" data-img="${escapeHTML(img)}">
+                    <img src="${escapeHTML(img)}" alt="Product thumbnail" class="w-full h-full object-cover object-top" />
                 </button>
             `).join("");
             // Thumbnail click
@@ -1677,7 +1677,8 @@ async function initCart() {
             
             // Populate address selector book dropdown
             const addrSelect = document.getElementById("checkoutAddressSelector");
-            const savedAddrList = JSON.parse(profileData.profile.saved_address || "[]");
+            let savedAddrList = [];
+            try { savedAddrList = JSON.parse(profileData.profile.saved_address || "[]"); } catch (e) {} 
             
             if (savedAddrList.length > 0 && addrSelect) {
                 savedAddrList.forEach((addr, idx) => {
@@ -1762,9 +1763,9 @@ async function renderCart() {
     
     container.innerHTML = appState.cart.map((item, idx) => {
         const product = appState.products.find(p => String(p.id) === String(item.product_id));
-        if (!product) return;
+        if (!product) return null;
         const price = Number(product.price) || 0;
-        const qty = item.quantity != null ? item.quantity : 1;
+        const parsedImages = parseProductImages(product.image, product.images);
         return `
         <div class="bg-white border border-slate-100 rounded-3xl p-4 sm:p-6 shadow-sm flex gap-4 sm:gap-6 items-center">
             <img src="${escapeHTML(parsedImages[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=100')}" class="w-20 h-20 rounded-2xl object-cover flex-shrink-0" />
@@ -1790,7 +1791,7 @@ async function renderCart() {
                 </div>
             </div>
         </div>`;
-    }).join("");
+    }).filter(Boolean).join("");
     
     // Render Saved for Later
     renderSaveForLater();
@@ -1929,8 +1930,8 @@ function calculateBillingTotals() {
     
     // 1. Compute subtotal
     const subtotal = appState.cart.reduce((sum, item) => {
-        const p = appState.products.find(prod => prod.id === item.product_id);
-        return sum + (p ? p.price * item.quantity : 0);
+        const p = appState.products.find(prod => String(prod.id) === String(item.product_id));
+        return sum + (p ? (Number(p.price) || 0) * item.quantity : 0);
     }, 0);
     
     subtotalLabel.textContent = formatPrice(subtotal);
@@ -2065,7 +2066,7 @@ async function handleCheckoutSubmit(e) {
             
             // Build dynamic UPI URI link and render QR Code image
             const upiUri = `upi://pay?pa=shibani@upi&pn=ShibaniFashion&am=${appState.checkoutTotal}&cu=INR`;
-            upiQr.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(upiUri)}`;
+            upiQr.src = `/api/qr?data=${encodeURIComponent(upiUri)}`;
             
             upiModal.classList.remove("hidden");
             upiModal.classList.add("open");
@@ -2476,7 +2477,8 @@ async function handleAddAddressSubmit(e) {
     // Fetch current address list, push new item
     try {
         const data = await api("/api/profile");
-        const list = JSON.parse(data.profile.saved_address || "[]");
+        let list = [];
+        try { list = JSON.parse(data.profile.saved_address || "[]"); } catch (e) {}
         list.push({ label, name, phone, address });
         
         // Update profile
@@ -2498,7 +2500,8 @@ async function deleteProfileAddress(index) {
     if (!confirm("Are you sure you want to delete this address?")) return;
     try {
         const data = await api("/api/profile");
-        const list = JSON.parse(data.profile.saved_address || "[]");
+        let list = [];
+        try { list = JSON.parse(data.profile.saved_address || "[]"); } catch (e) {}
         list.splice(index, 1);
         
         await api("/api/profile", {
@@ -2717,7 +2720,7 @@ async function editAdminProduct(productId) {
         const parsedImages = parseProductImages(p.image, p.images);
         const preview = document.getElementById("photoPreview");
         if (preview && parsedImages.length > 0) {
-            preview.innerHTML = `<img src="${parsedImages[0]}" class="w-full h-full object-cover" />`;
+            preview.innerHTML = `<img src="${escapeHTML(parsedImages[0])}" class="w-full h-full object-cover" />`;
         }
         
         document.getElementById("productFormTitle").textContent = "Edit Cloth Details";

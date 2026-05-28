@@ -67,7 +67,7 @@ def product_row_to_dict(row):
 
 def save_base64_image(base64_str, upload_folder):
     if not base64_str or not isinstance(base64_str, str):
-        return base64_str
+        return ""
     if base64_str.startswith("data:image/"):
         try:
             header, encoded = base64_str.split(",", 1)
@@ -75,19 +75,19 @@ def save_base64_image(base64_str, upload_folder):
             ext = match.group(1).lower() if match else "png"
             if ext not in ALLOWED_IMAGE_TYPES:
                 logger.warning("Rejected image upload with type: %s", ext)
-                return base64_str
+                return ""
             if ext == "jpeg":
                 ext = "jpg"
             data = base64.b64decode(encoded)
             if len(data) > MAX_IMAGE_SIZE:
                 logger.warning("Rejected image upload exceeding %d bytes", MAX_IMAGE_SIZE)
-                return base64_str
+                return ""
             is_valid = any(data.startswith(sig) for sig in [b"\xff\xd8\xff", b"\x89PNG", b"GIF87a", b"GIF89a"])
             if not is_valid:
                 is_valid = ext == "webp" and data.startswith(b"RIFF") and len(data) > 12 and data[8:12] == b"WEBP"
             if not is_valid:
                 logger.warning("Rejected upload: invalid image magic bytes")
-                return base64_str
+                return ""
             filename = f"{secrets.token_hex(16)}.{ext}"
             filepath = os.path.join(upload_folder, filename)
             with open(filepath, "wb") as f:

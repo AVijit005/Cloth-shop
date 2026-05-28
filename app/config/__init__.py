@@ -19,7 +19,7 @@ if _secret_key_env:
 else:
     _key_file = os.path.join(os.path.dirname(__file__), "..", "..", ".secret_key")
     if os.path.exists(_key_file):
-        with open(_key_file) as f:
+        with open(_key_file, "r") as f:
             SECRET_KEY = f.read().strip()
     else:
         SECRET_KEY = secrets.token_hex(32)

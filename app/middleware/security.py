@@ -92,7 +92,7 @@ def validate_password_strength(password):
         return "Password must contain at least one uppercase character."
     if not re.search(r"\d", password):
         return "Password must contain at least one number."
-    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>~`_\-=+\[\]\\;'/]", password):
         return "Password must contain at least one special character."
     return None
 
@@ -103,6 +103,7 @@ def validate_password_strength(password):
 
 def create_user_session(user, remember=False, username=None):
     """Create a Flask session for the given user dict."""
+    session.clear()
     session.permanent = bool(remember)
     session["user"] = {
         "id": user["id"],

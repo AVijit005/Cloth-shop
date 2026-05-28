@@ -19,15 +19,16 @@ services:
 
   web:
     build: .
+    restart: unless-stopped
     ports:
       - "5000:5000"
     environment:
       MYSQL_HOST: db
       MYSQL_PORT: 3306
-      MYSQL_USER: root
+      MYSQL_USER: ${MYSQL_USER:-shibani}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-rootpassword}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-shibani_store}
-      SECRET_KEY: ${SECRET_KEY:-please_change_in_production}
+      SECRET_KEY: ${SECRET_KEY:-}
       FLASK_ENV: ${FLASK_ENV:-production}
     depends_on:
       db:

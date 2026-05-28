@@ -49,7 +49,7 @@
                 <i class="fa-solid fa-sliders text-[var(--neutral-400)]"></i> Store Configuration
             </h3>
 
-            <form id="settingsForm" class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <form id="settingsForm" method="POST" class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <input type="hidden" name="csrf_token" value="{{ session.get('csrf_token', '') }}">
                 <div class="space-y-1.5">
                     <label for="settingsGst" class="block text-[9px] font-bold text-[var(--neutral-500)] uppercase tracking-wider">GST Rate (%)</label>
