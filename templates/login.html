@@ -85,7 +85,7 @@
                 </p>
             </div>
 
-            {% if config.get('FLASK_ENV') != 'production' %}
+            {% if not IS_PROD %}
             <div class="mt-10 border-t border-[var(--neutral-100)] pt-8">
                 <p class="text-[10px] text-[var(--neutral-400)] uppercase tracking-widest mb-4 text-center md:text-left">Quick Demo</p>
                 <div class="grid grid-cols-2 gap-4">

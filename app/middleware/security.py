@@ -22,17 +22,11 @@ def ensure_csrf_token():
 def validate_csrf(app_secret_key):
     """Validate CSRF token on state-changing requests (runs before_request)."""
     def wrapper():
-        if request.method in ["POST", "PUT", "DELETE"]:
-            bypass_key = request.headers.get("X-Bypass-CSRF")
-            if bypass_key and bypass_key == app_secret_key:
-                return
-            if os.getenv("FLASK_ENV") == "testing":
-                return
+        if request.method in ["POST", "PUT", "PATCH", "DELETE"]:
+            csrf_token = request.headers.get("X-CSRF-Token") or ""
+            session_csrf = session.get("csrf_token") or ""
 
-            csrf_token = request.headers.get("X-CSRF-Token")
-            session_csrf = session.get("csrf_token")
-
-            if not session_csrf or csrf_token != session_csrf:
+            if not session_csrf or not secrets.compare_digest(csrf_token, session_csrf):
                 return jsonify({"error": "Invalid or missing CSRF token"}), 400
     return wrapper
 

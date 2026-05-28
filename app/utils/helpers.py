@@ -2,6 +2,7 @@ import json
 import re
 import secrets
 import base64
+import binascii
 import os
 import logging
 
@@ -90,7 +91,7 @@ def save_base64_image(base64_str, upload_folder):
             with open(filepath, "wb") as f:
                 f.write(data)
             return f"/uploads/{filename}"
-        except (ValueError, TypeError, base64.binascii.Error) as exc:
+        except (ValueError, TypeError, binascii.Error) as exc:
             logger.error("Failed to save base64 image: %s", exc)
     return base64_str
 

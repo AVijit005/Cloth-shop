@@ -46,9 +46,9 @@ def send_email(subject, recipient, body_html, smtp_config=None):
                 server = None
                 try:
                     if port_int == 465:
-                        server = smtplib.SMTP_SSL(host, port_int)
+                        server = smtplib.SMTP_SSL(host, port_int, timeout=10)
                     else:
-                        server = smtplib.SMTP(host, port_int)
+                        server = smtplib.SMTP(host, port_int, timeout=10)
                         server.starttls()
                     server.login(user, pwd)
                     server.sendmail(sender, [recipient], msg.as_string())

@@ -19,6 +19,7 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-12 sm:gap-16 items-start">
         <!-- Contact form -->
         <form class="space-y-4 bg-[var(--color-white)] border border-neutral-200 p-8" id="contactUsForm">
+            <input type="hidden" name="csrf_token" value="{{ session.get('csrf_token', '') }}">
             <h3 class="font-medium text-neutral-900 text-xs uppercase tracking-widest mb-4">Send Message</h3>
             <div>
                 <label for="contactName" class="block text-[10px] font-medium uppercase tracking-widest text-neutral-500 mb-1">Your Name</label>

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Agent(general-purpose)",
+      "Bash(git clone *)"
+    ]
+  },
+  "$version": 4
+}

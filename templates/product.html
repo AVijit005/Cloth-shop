@@ -118,7 +118,7 @@
                     </button>
                 </div>
                 <div class="flex flex-wrap gap-2" id="detailSizesContainer">
-                    {% for sz in product.size.split(',') %}
+                    {% for sz in (product.size or '').split(',') %}
                     {% set sz_trimmed = sz.strip() %}
                     {% if sz_trimmed %}
                     <button class="size-pill {% if loop.first %}active{% endif %}"

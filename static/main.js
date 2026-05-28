@@ -103,7 +103,8 @@ function showToast(message, type = "success") {
     }
 
     const icon = type === "error" ? "fa-circle-exclamation text-rose-500" : "fa-circle-check text-emerald-600";
-    el.innerHTML = `<i class="fa-solid ${icon} text-sm mt-0.5 flex-shrink-0"></i><span class="flex-grow">${escapeHTML(message)}</span><button class="text-neutral-400 hover:text-neutral-600 transition flex-shrink-0" onclick="removeToast(this.parentElement)" aria-label="Dismiss">&times;</button>`;
+    el.innerHTML = `<i class="fa-solid ${icon} text-sm mt-0.5 flex-shrink-0"></i><span class="flex-grow">${escapeHTML(message)}</span><button class="dismiss-btn text-neutral-400 hover:text-neutral-600 transition flex-shrink-0" aria-label="Dismiss">&times;</button>`;
+    el.querySelector(".dismiss-btn")?.addEventListener("click", () => removeToast(el));
     container.appendChild(el);
     activeToasts.add(el);
     setTimeout(() => removeToast(el), 4000);
@@ -143,7 +144,12 @@ async function api(path, options = {}) {
         try { const errBody = await response.json(); errorText = errBody.error || errorText; } catch (_) {}
         throw new Error(errorText);
     }
-    return await response.json();
+    const text = await response.text();
+    try {
+        return text ? JSON.parse(text) : null;
+    } catch {
+        return null;
+    }
 }
 
 function _logoutHandler() {
@@ -215,13 +221,18 @@ function _initCartDrawer() {
     const shopBtn = document.getElementById("cartDrawerShopBtn");
     if (!drawer || !panel) return;
 
+    let closeTimer = null;
+
     const open = async () => {
-        drawer.classList.remove("hidden");
-        requestAnimationFrame(() => {
-            backdrop?.classList.add("open");
-            panel.classList.add("open");
-        });
+        if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
+        backdrop?.classList.remove("hidden");
+        backdrop?.classList.add("open");
+        panel.classList.remove("hidden");
+        panel.classList.add("open");
         document.body.style.overflow = "hidden";
+        document.getElementById("cartDrawerItems")?.classList.add("hidden");
+        document.getElementById("cartDrawerEmpty")?.classList.add("hidden");
+        document.getElementById("cartDrawerFooter")?.classList.add("hidden");
         await _renderCartDrawer();
     };
 
@@ -229,7 +240,7 @@ function _initCartDrawer() {
         backdrop?.classList.remove("open");
         panel.classList.remove("open");
         document.body.style.overflow = "";
-        setTimeout(() => { drawer.classList.add("hidden"); }, 400);
+        closeTimer = setTimeout(() => { drawer.classList.add("hidden"); }, 400);
     };
 
     window.openCartDrawer = open;
@@ -254,17 +265,18 @@ async function _renderCartDrawer() {
     const subtotalEl = document.getElementById("cartDrawerSubtotal");
 
     if (!items || items.length === 0) {
-        if (itemsEl) itemsEl.innerHTML = "";
-        if (emptyEl) emptyEl.classList.remove("hidden");
-        if (footerEl) footerEl.classList.add("hidden");
-        if (countEl) countEl.textContent = "0";
-        if (subtotalEl) subtotalEl.textContent = "Rs. 0";
-        _updateShippingProgress(0);
-        return;
-    }
+    if (itemsEl) itemsEl.innerHTML = "";
+    if (emptyEl) emptyEl.classList.remove("hidden");
+    if (footerEl) footerEl.classList.add("hidden");
+    if (countEl) countEl.textContent = "0";
+    if (subtotalEl) subtotalEl.textContent = "Rs. 0";
+    _updateShippingProgress(0);
+    return;
+}
 
-    if (emptyEl) emptyEl.classList.add("hidden");
-    if (footerEl) footerEl.classList.remove("hidden");
+if (emptyEl) emptyEl.classList.add("hidden");
+if (footerEl) footerEl.classList.remove("hidden");
+if (itemsEl) itemsEl.classList.remove("hidden");
 
     let html = "";
     let total = 0;
@@ -272,18 +284,18 @@ async function _renderCartDrawer() {
         const product = appState.products.find(p => p.id === item.product_id);
         if (!product) return;
         const price = Number(product.price) || 0;
-        const qty = item.quantity || 1;
+        const qty = item.quantity != null ? item.quantity : 1;
         const lineTotal = price * qty;
         total += lineTotal;
         const parsedImages = product.image ? [product.image] : (product.images || []);
         html += `
             <div class="flex gap-4 py-4 border-b border-[var(--neutral-50)] group">
                 <div class="w-16 h-20 bg-[var(--neutral-50)] flex-shrink-0 overflow-hidden">
-                    <img src="${parsedImages[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=100'}" alt="${escapeHTML(product.name || 'Product')}" class="w-full h-full object-cover object-top" loading="lazy" />
+                    <img src="${escapeHTML(parsedImages[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=100')}" alt="${escapeHTML(product.name || 'Product')}" class="w-full h-full object-cover object-top" loading="lazy" />
                 </div>
                 <div class="flex-grow min-w-0">
                     <h4 class="text-xs font-semibold uppercase tracking-wider text-[var(--neutral-800)] truncate">${escapeHTML(product.name || 'Product')}</h4>
-                    <p class="text-[10px] text-[var(--neutral-400)] uppercase tracking-wider mt-0.5">Rs. ${price.toLocaleString()}</p>
+                    <p class="text-[10px] text-[var(--neutral-400)] uppercase tracking-wider mt-0.5">Rs. ${price.toLocaleString("en-IN")}</p>
                     <div class="flex items-center gap-2 mt-2">
                         <div class="qty-selector">
                             <button data-cart-dec="${idx}"><i class="fa-solid fa-minus"></i></button>
@@ -296,14 +308,14 @@ async function _renderCartDrawer() {
                     </div>
                 </div>
                 <div class="text-right flex-shrink-0">
-                    <span class="text-xs font-bold text-[var(--neutral-900)]">Rs. ${lineTotal.toLocaleString()}</span>
+                    <span class="text-xs font-bold text-[var(--neutral-900)]">Rs. ${lineTotal.toLocaleString("en-IN")}</span>
                 </div>
             </div>`;
     });
 
     if (itemsEl) itemsEl.innerHTML = html;
     if (countEl) countEl.textContent = items.length;
-    if (subtotalEl) subtotalEl.textContent = "Rs. " + total.toLocaleString();
+    if (subtotalEl) subtotalEl.textContent = "Rs. " + total.toLocaleString("en-IN");
 
     itemsEl?.querySelectorAll("[data-cart-inc]").forEach(btn => {
         btn.addEventListener("click", async () => {
@@ -343,7 +355,7 @@ function _updateShippingProgress(total) {
         if (textEl) textEl.textContent = "You've unlocked free shipping!";
     } else {
         progressEl.style.width = Math.min((total / threshold) * 100, 99) + "%";
-        if (remainingEl) remainingEl.textContent = (threshold - total).toLocaleString();
+        if (remainingEl) remainingEl.textContent = (threshold - total).toLocaleString("en-IN");
     }
 }
 
@@ -515,7 +527,7 @@ function renderSuggestions(query, dropdown) {
     } else {
         dropdown.innerHTML = matches.map((p, i) => `
             <div class="search-suggestion flex items-center gap-3 px-4 py-2.5 border-b border-neutral-50 last:border-0" data-index="${i}" data-href="/product/${p.id}">
-                <img src="${(parseProductImages(p.image, p.images)[0]) || ''}" class="w-9 h-11 object-cover rounded flex-shrink-0" onerror="this.style.display='none'" />
+                <img src="${escapeHTML((parseProductImages(p.image, p.images)[0]) || '')}" class="w-9 h-11 object-cover rounded flex-shrink-0" onerror="this.style.display='none'" />
                 <div class="flex-grow min-w-0">
                     <p class="text-xs font-semibold text-neutral-800 truncate uppercase tracking-wider">${escapeHTML(p.name)}</p>
                     <p class="text-[10px] text-neutral-400 uppercase tracking-wider">${p.category} — ${formatPrice(p.price)}</p>
@@ -757,14 +769,14 @@ function renderProductCard(product) {
         </button>
         
         <!-- Aspect 3/4 Image Container with Double-Image Hover Swap -->
-        <div class="relative aspect-[3/4] overflow-hidden bg-neutral-50 cursor-pointer group/image" onclick="window.location.href='/product/${product.id}'">
+        <div class="relative aspect-[3/4] overflow-hidden bg-neutral-50 cursor-pointer group/image" onclick="window.location.href='/product/${Number(product.id)}'">
             <img src="${mainImg}" alt="${escapeHTML(product.name)}" loading="lazy" class="w-full h-full object-cover object-top transition duration-700 ease-in-out group-hover:scale-102" />
             ${secondaryImg ? `
             <img src="${secondaryImg}" alt="${escapeHTML(product.name)}" loading="lazy" class="absolute inset-0 w-full h-full object-cover object-top opacity-0 transition-opacity duration-700 ease-in-out group-hover:opacity-100 group-hover:scale-102" />
             ` : ''}
             <!-- Quick View overlay -->
             <div class="absolute inset-0 bg-black/0 group-hover/image:bg-black/20 transition-all duration-500 flex items-center justify-center opacity-0 group-hover/image:opacity-100 z-10" onclick="event.stopPropagation()">
-                <button type="button" class="quick-view-btn px-5 py-2.5 bg-white text-neutral-900 font-bold text-[10px] uppercase tracking-widest shadow-lg hover:bg-neutral-100 transition" data-quick-view-id="${product.id}" onclick="event.stopPropagation(); openQuickView(${product.id})">
+                <button type="button" class="quick-view-btn px-5 py-2.5 bg-white text-neutral-900 font-bold text-[10px] uppercase tracking-widest shadow-lg hover:bg-neutral-100 transition" data-quick-view-id="${product.id}" onclick="event.stopPropagation(); openQuickView(${Number(product.id)})">
                     <i class="fa-regular fa-eye mr-1.5"></i> Quick View
                 </button>
             </div>
@@ -782,7 +794,7 @@ function renderProductCard(product) {
                     <span>${product.category}</span>
                     <span class="text-neutral-500 flex items-center gap-1"><i class="fa-solid fa-star text-[9px]"></i> ${product.rating}</span>
                 </div>
-                <h3 class="font-medium text-neutral-900 text-xs uppercase tracking-wider group-hover:text-neutral-600 transition duration-300 line-clamp-1 cursor-pointer" onclick="window.location.href='/product/${product.id}'">
+                <h3 class="font-medium text-neutral-900 text-xs uppercase tracking-wider group-hover:text-neutral-600 transition duration-300 line-clamp-1 cursor-pointer" onclick="window.location.href='/product/${Number(product.id)}'">
                     ${escapeHTML(product.name)}
                 </h3>
             </div>
@@ -815,9 +827,13 @@ function renderProductCard(product) {
 
 function parseProductImages(fallbackImg, imagesJson) {
     let list = [];
-    try {
-        list = JSON.parse(imagesJson || "[]");
-    } catch (e) {}
+    if (Array.isArray(imagesJson)) {
+        list = imagesJson;
+    } else {
+        try {
+            list = JSON.parse(imagesJson || "[]");
+        } catch (e) {}
+    }
     if (fallbackImg && Array.isArray(list) && !list.includes(fallbackImg)) {
         list.unshift(fallbackImg);
     }
@@ -893,7 +909,7 @@ async function initShop() {
     
     // Set checkbox checked based on URL
     if (categoryVal) {
-        document.querySelectorAll(`input[name="categoryFilter"][value="${escapeHTML(categoryVal)}"]`).forEach(cb => cb.checked = true);
+        document.querySelectorAll(`input[name="categoryFilter"][value="${CSS.escape(categoryVal)}"]`).forEach(cb => cb.checked = true);
     }
     
     // 2. Fetch products
@@ -1040,8 +1056,8 @@ function filterAndRenderShop(searchQuery = "") {
     // Filter by color
     if (selectedColors.length > 0) {
         filtered = filtered.filter(p => {
-            const pColor = (p.color || "").trim().toLowerCase();
-            return selectedColors.some(c => pColor.includes(c.toLowerCase()));
+            const pColors = (p.color || "").toLowerCase().split(/[,;\/]/).map(s => s.trim()).filter(Boolean);
+            return selectedColors.some(c => pColors.some(pc => pc === c.toLowerCase()));
         });
     }
     
@@ -1080,6 +1096,8 @@ function filterAndRenderShop(searchQuery = "") {
 }
 
 // Comparison Drawer and side-by-side Table logic
+let _compareTimer = null;
+
 function updateCompareDrawer() {
     const drawer = document.getElementById("compareDrawer");
     const countLabel = document.getElementById("compareCountLabel");
@@ -1089,7 +1107,7 @@ function updateCompareDrawer() {
     if (!drawer || !body) return;
     
     const count = appState.compareList.length;
-    countLabel.textContent = `${count}/3`;
+    if (countLabel) countLabel.textContent = `${count}/3`;
     
     if (wishlistCompareBtn) {
         wishlistCompareBtn.textContent = `Compare Selected (${count}/3)`;
@@ -1098,10 +1116,11 @@ function updateCompareDrawer() {
     
     if (count === 0) {
         drawer.classList.add("translate-y-full", "opacity-0");
-        setTimeout(() => { drawer.classList.add("hidden"); drawer.classList.remove("opacity-0"); }, 300);
+        _compareTimer = setTimeout(() => { drawer.classList.add("hidden"); drawer.classList.remove("opacity-0"); }, 300);
         return;
     }
     
+    if (_compareTimer) { clearTimeout(_compareTimer); _compareTimer = null; }
     drawer.classList.remove("hidden");
     setTimeout(() => drawer.classList.remove("translate-y-full"), 10);
     
@@ -1139,7 +1158,7 @@ function updateCompareDrawer() {
                 <!-- Quick Remove -->
                 <button onclick="removeCompareItem(${p.id})" class="absolute top-0 right-0 p-1 text-slate-400 hover:text-rose-500 transition"><i class="fa-solid fa-circle-xmark"></i></button>
                 <div class="h-40 flex flex-col justify-end gap-2">
-                    <img src="${parsedImages[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=100'}" class="w-16 h-16 rounded-xl object-cover" />
+                    <img src="${escapeHTML(parsedImages[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=100')}" class="w-16 h-16 rounded-xl object-cover" />
                     <h4 class="font-bold text-slate-800 line-clamp-2 leading-tight">${escapeHTML(p.name)}</h4>
                 </div>
                 <div class="py-2 border-b border-slate-50 text-indigo-600 font-extrabold">${formatPrice(p.price)}</div>
@@ -1298,7 +1317,7 @@ function closeQuickView() {
     const modal = document.getElementById("quickViewModal");
     if (modal) {
         modal.classList.remove("open");
-        modal.classList.add("hidden");
+        setTimeout(() => { modal.classList.add("hidden"); }, 300);
         releaseFocus(modal);
     }
 }
@@ -1409,30 +1428,37 @@ async function initProductDetail() {
     
     if (fitFinderModal && triggerFitBtn) {
         triggerFitBtn.addEventListener("click", () => {
+            fitFinderModal.classList.remove("hidden");
             fitFinderModal.classList.add("open");
             calculateFitRecommendation();
         });
         
+        const closeFitFinder = () => {
+            fitFinderModal.classList.remove("open");
+            fitFinderModal.classList.add("hidden");
+        };
+
         if (closeFitBtn) {
-            closeFitBtn.addEventListener("click", () => {
-                fitFinderModal.classList.remove("open");
-            });
+            closeFitBtn.addEventListener("click", closeFitFinder);
         }
 
         // Close on clicking the background overlay
         fitFinderModal.addEventListener("click", (e) => {
             if (e.target === fitFinderModal) {
-                fitFinderModal.classList.remove("open");
+                closeFitFinder();
             }
         });
 
         // Close on Escape keypress
-        const handleEscapeKey = (e) => {
+        if (fitFinderModal._escapeHandler) {
+            document.removeEventListener("keydown", fitFinderModal._escapeHandler);
+        }
+        fitFinderModal._escapeHandler = (e) => {
             if (e.key === "Escape" && fitFinderModal.classList.contains("open")) {
-                fitFinderModal.classList.remove("open");
+                closeFitFinder();
             }
         };
-        document.addEventListener("keydown", handleEscapeKey);
+        document.addEventListener("keydown", fitFinderModal._escapeHandler);
         
         // Modal range sliders events
         const heightSlider = document.getElementById("sfHeight");
@@ -1447,14 +1473,14 @@ async function initProductDetail() {
         if (applyFitBtn) {
             applyFitBtn.addEventListener("click", () => {
                 const recSize = document.getElementById("sfResultSize")?.textContent || "M";
-                const targetPill = Array.from(document.querySelectorAll(".size-pill-detail")).find(pill => pill.dataset.size.toUpperCase() === recSize.toUpperCase());
+                const targetPill = Array.from(document.querySelectorAll(".size-pill")).find(pill => pill.dataset.size.toUpperCase() === recSize.toUpperCase());
                 if (targetPill) {
                     targetPill.click();
                     showToast(`Applied size ${recSize}!`);
                 } else {
                     showToast(`Recommended size ${recSize} not in stock.`, "error");
                 }
-                fitFinderModal.classList.add("hidden");
+                closeFitFinder();
             });
         }
     }
@@ -1725,13 +1751,13 @@ async function renderCart() {
     
     if (appState.cart.length === 0) {
         container.innerHTML = "";
-        summaryPanel.classList.add("hidden");
-        emptyState.classList.remove("hidden");
+        if (summaryPanel) summaryPanel.classList.add("hidden");
+        if (emptyState) emptyState.classList.remove("hidden");
         return;
     }
     
-    emptyState.classList.add("hidden");
-    summaryPanel.classList.remove("hidden");
+    if (emptyState) emptyState.classList.add("hidden");
+    if (summaryPanel) summaryPanel.classList.remove("hidden");
     
     container.innerHTML = appState.cart.map((item, idx) => {
         const product = appState.products.find(p => p.id === item.product_id);
@@ -1741,7 +1767,7 @@ async function renderCart() {
         
         return `
         <div class="bg-white border border-slate-100 rounded-3xl p-4 sm:p-6 shadow-sm flex gap-4 sm:gap-6 items-center">
-            <img src="${parsedImages[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=100'}" class="w-20 h-20 rounded-2xl object-cover flex-shrink-0" />
+            <img src="${escapeHTML(parsedImages[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=100')}" class="w-20 h-20 rounded-2xl object-cover flex-shrink-0" />
             <div class="flex-grow space-y-1">
                 <h4 class="font-extrabold text-slate-800 text-sm sm:text-base leading-tight">${escapeHTML(product.name)}</h4>
                 <div class="flex flex-wrap gap-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">
@@ -1776,7 +1802,9 @@ async function renderCart() {
     renderMiniCart();
 }
 
-function renderMiniCart() {}
+function renderMiniCart() {
+    if (typeof _renderCartDrawer === "function") _renderCartDrawer();
+}
 
 async function adjustCartQty(index, amount) {
     const item = appState.cart[index];
@@ -1866,7 +1894,7 @@ function renderSaveForLater() {
 
         return `
         <div class="bg-white border border-neutral-200 p-4 sm:p-5 flex gap-4 sm:gap-6 items-center">
-            <img src="${parsedImages[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=100'}" class="w-16 h-20 object-cover flex-shrink-0 opacity-90" />
+            <img src="${escapeHTML(parsedImages[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=100')}" class="w-16 h-20 object-cover flex-shrink-0 opacity-90" />
             <div class="flex-grow space-y-1">
                 <h4 class="font-medium text-neutral-900 text-xs uppercase tracking-wider leading-tight">${escapeHTML(product.name)}</h4>
                 <div class="flex flex-wrap gap-3 text-[10px] font-light text-neutral-400 uppercase tracking-widest">
@@ -1897,6 +1925,7 @@ function calculateBillingTotals() {
     const gstLabel = document.getElementById("billGst");
     const deliveryLabel = document.getElementById("billDelivery");
     const totalLabel = document.getElementById("billTotal");
+    if (!subtotalLabel || !gstLabel || !deliveryLabel || !totalLabel) return;
     
     // 1. Compute subtotal
     const subtotal = appState.cart.reduce((sum, item) => {
@@ -2063,7 +2092,17 @@ async function handleCheckoutSubmit(e) {
             const confirmBtn = document.getElementById("upiConfirmBtn");
             const cancelBtn = document.getElementById("upiCancelBtn");
             
-            confirmBtn.addEventListener("click", async () => {
+            if (!confirmBtn || !cancelBtn) return;
+            
+            // Remove old listeners to prevent accumulation
+            if (confirmBtn._upiHandler) {
+                confirmBtn.removeEventListener("click", confirmBtn._upiHandler);
+            }
+            if (cancelBtn._upiHandler) {
+                cancelBtn.removeEventListener("click", cancelBtn._upiHandler);
+            }
+            
+            confirmBtn._upiHandler = async () => {
                 clearInterval(upiInterval);
                 upiModal.classList.remove("open");
                 upiModal.classList.add("hidden");
@@ -2082,13 +2121,16 @@ async function handleCheckoutSubmit(e) {
                     hideLoading();
                     showToast(err.message || "Failed to place order.", "error");
                 }
-            });
+            };
             
-            cancelBtn.addEventListener("click", () => {
+            cancelBtn._upiHandler = () => {
                 clearInterval(upiInterval);
                 upiModal.classList.remove("open");
                 upiModal.classList.add("hidden");
-            });
+            };
+            
+            confirmBtn.addEventListener("click", confirmBtn._upiHandler);
+            cancelBtn.addEventListener("click", cancelBtn._upiHandler);
         }
     }
 }
@@ -2255,7 +2297,7 @@ async function triggerReceiptView(orderId) {
         }
         
         const gstRate = 5;
-        const total = Number(order.total);
+        const total = Number(order.total) || 0;
         const subtotal = total / (1 + (gstRate / 100));
         const gst = total - subtotal;
         
@@ -2308,6 +2350,7 @@ async function triggerReceiptView(orderId) {
         
         // Print action binding
         const printBtn = document.getElementById("printReceiptBtn");
+        if (!printBtn) return;
         printBtn.onclick = () => {
             const printWindow = window.open('', '_blank');
             if (!printWindow) { showToast("Please allow pop-ups to print.", "error"); return; }
@@ -2327,9 +2370,12 @@ async function triggerReceiptView(orderId) {
         };
         
         const closeBtn = document.getElementById("closeReceiptBtn");
-        closeBtn.addEventListener("click", () => {
-            modal.classList.add("hidden");
-        });
+        if (closeBtn && !closeBtn._receiptHandler) {
+            closeBtn._receiptHandler = () => {
+                modal.classList.add("hidden");
+            };
+            closeBtn.addEventListener("click", closeBtn._receiptHandler);
+        }
     } catch (err) {
         body.innerHTML = `<p class="text-center py-6 text-rose-500">Error rendering invoice.</p>`;
     }
@@ -2358,22 +2404,25 @@ async function initProfile() {
         console.error("Profile load failure:", err);
     }
     
-    // 2. Submit Profile info form
-    profileForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const fullName = document.getElementById("profileFullName").value.trim();
-        const phone = document.getElementById("profilePhone").value.trim();
-        
-        try {
-            await api("/api/profile", {
-                method: "PUT",
-                body: JSON.stringify({ saved_name: fullName, saved_phone: phone })
-            });
-            showToast("Profile details updated successfully!");
-        } catch (err) {
-            showToast(err.message || "Failed to update profile.", "error");
-        }
-    });
+    // 2. Submit Profile info form (only once)
+    if (!profileForm._initSubmit) {
+        profileForm._initSubmit = true;
+        profileForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const fullName = document.getElementById("profileFullName").value.trim();
+            const phone = document.getElementById("profilePhone").value.trim();
+            
+            try {
+                await api("/api/profile", {
+                    method: "PUT",
+                    body: JSON.stringify({ saved_name: fullName, saved_phone: phone })
+                });
+                showToast("Profile details updated successfully!");
+            } catch (err) {
+                showToast(err.message || "Failed to update profile.", "error");
+            }
+        });
+    }
     
     // 3. Address Modal overlays
     const addressModal = document.getElementById("addressModal");
@@ -2381,11 +2430,14 @@ async function initProfile() {
     const closeAddrBtn = document.getElementById("closeAddressModalBtn");
     
     if (addressModal && addAddrBtn) {
-        addAddrBtn.addEventListener("click", () => addressModal.classList.remove("hidden"));
-        if (closeAddrBtn) closeAddrBtn.addEventListener("click", () => addressModal.classList.add("hidden"));
-        
-        const addressForm = document.getElementById("addressForm");
-        addressForm.addEventListener("submit", handleAddAddressSubmit);
+        if (!addressModal._initAddr) {
+            addressModal._initAddr = true;
+            addAddrBtn.addEventListener("click", () => addressModal.classList.remove("hidden"));
+            if (closeAddrBtn) closeAddrBtn.addEventListener("click", () => addressModal.classList.add("hidden"));
+            
+            const addressForm = document.getElementById("addressForm");
+            addressForm.addEventListener("submit", handleAddAddressSubmit);
+        }
     }
 }
 
@@ -2574,7 +2626,7 @@ async function initAdminProducts() {
         
         const closeModal = () => modal.classList.add("hidden");
         closeBtn.addEventListener("click", closeModal);
-        cancelBtn.addEventListener("click", closeModal);
+        if (cancelBtn) cancelBtn.addEventListener("click", closeModal);
     }
     
     // 3. Submit Product creation form
@@ -2615,7 +2667,7 @@ async function loadAdminCatalog(filterQuery = "") {
             <tr class="hover:bg-slate-50 transition border-b border-slate-100">
                 <td class="py-4 px-6 text-xs text-slate-400 whitespace-nowrap">#${p.id}</td>
                 <td class="py-4 px-6 flex items-center gap-3">
-                    <img src="${parsedImages[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=100'}" class="w-12 h-12 rounded-xl object-cover shrink-0" />
+                    <img src="${escapeHTML(parsedImages[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=100')}" class="w-12 h-12 rounded-xl object-cover shrink-0" />
                     <span class="text-slate-800 font-bold line-clamp-1 whitespace-nowrap">${escapeHTML(p.name)}</span>
                 </td>
                 <td class="py-4 px-6 uppercase text-xs whitespace-nowrap">${p.category}</td>
@@ -3179,7 +3231,7 @@ function drawCategorySalesPieChart(categorySales) {
         legend.innerHTML += `
         <div class="flex items-center gap-2 text-xs font-semibold text-neutral-500">
             <span class="w-3.5 h-3.5 flex-shrink-0" style="background-color: ${color};"></span>
-            <span class="truncate uppercase flex-grow text-[10px] font-light tracking-wider">${category}</span>
+            <span class="truncate uppercase flex-grow text-[10px] font-light tracking-wider">${escapeHTML(category)}</span>
             <span class="text-neutral-900 font-medium text-[10px] tracking-wider">${percentage}%</span>
         </div>`;
     });
@@ -3254,6 +3306,16 @@ async function initLogin() {
             loginForm.dispatchEvent(new Event("submit"));
         });
     }
+}
+
+function initContact() {
+    const form = document.getElementById("contactUsForm");
+    if (!form) return;
+    form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        showToast("Thank you for your message! We will get back to you shortly.");
+        form.reset();
+    });
 }
 
 async function initSignup() {
@@ -3334,6 +3396,8 @@ document.addEventListener("DOMContentLoaded", () => {
         initWishlist();
     } else if (path === "/orders") {
         initOrders();
+    } else if (path === "/contact") {
+        initContact();
     } else if (path === "/profile") {
         initProfile();
     } else if (path === "/admin" || path === "/admin/") {

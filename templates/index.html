@@ -316,7 +316,7 @@
         <p class="text-sm text-[var(--neutral-400)] max-w-md mx-auto leading-relaxed font-light mb-8">
             Subscribe for early access to new collections, exclusive offers, and styling inspiration.
         </p>
-        <form class="max-w-md mx-auto flex gap-3">
+        <form id="homeNewsletterForm" class="max-w-md mx-auto flex gap-3" onsubmit="event.preventDefault(); showToast('Subscribed! Thank you.'); this.reset();">
             <input type="email" placeholder="Your email address" required
                    class="flex-grow px-4 py-3 bg-[var(--color-white)]/10 border border-[var(--color-white)]/20 text-[var(--color-white)] text-xs uppercase tracking-wider placeholder-[var(--neutral-500)] focus:outline-none focus:border-[var(--color-white)]/50 transition" />
             <button type="submit"

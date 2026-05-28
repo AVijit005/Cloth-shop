@@ -1,4 +1,5 @@
 import base64
+import binascii
 import json
 import logging
 import os
@@ -7,7 +8,7 @@ import secrets
 import time
 import uuid
 from datetime import datetime, UTC, timedelta
-from functools import wraps
+from functools import cache, wraps
 from html import escape
 import threading
 
@@ -57,6 +58,9 @@ os.makedirs(LOGS_FOLDER, exist_ok=True)
 load_dotenv()
 
 DB_NAME = os.getenv("MYSQL_DATABASE") or os.getenv("SHIBANI_DB_NAME", "shibani_store")
+if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_$]*$', DB_NAME):
+    DB_NAME = "shibani_store"
+    logger.warning("Invalid DB_NAME, defaulting to shibani_store")
 DB_HOST = os.getenv("MYSQL_HOST")
 DB_USER = os.getenv("MYSQL_USER") or os.getenv("SHIBANI_DB_USER", "root")
 DB_PASSWORD = os.getenv("MYSQL_PASSWORD") or os.getenv("SHIBANI_DB_PASSWORD", "")
@@ -70,7 +74,20 @@ if not DB_HOST:
     logger.warning("MYSQL_HOST is not set — will use in-memory store")
 
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY") or os.getenv("SHIBANI_SECRET_KEY", secrets.token_hex(32))
+_secret_key = os.getenv("SECRET_KEY") or os.getenv("SHIBANI_SECRET_KEY")
+if not _secret_key:
+    _key_file = os.path.join(os.path.dirname(__file__), ".secret_key")
+    if os.path.exists(_key_file):
+        with open(_key_file) as f:
+            _secret_key = f.read().strip()
+    else:
+        _secret_key = secrets.token_hex(32)
+        try:
+            with open(_key_file, "w") as f:
+                f.write(_secret_key)
+        except OSError:
+            pass
+app.secret_key = _secret_key
 
 IS_PROD = os.getenv("FLASK_ENV") == "production" or os.getenv("SHIBANI_ENV") == "production"
 app.config.update(
@@ -117,7 +134,7 @@ _PAGE_ID_MAP = {
 
 @app.context_processor
 def inject_page_id():
-    return {"page_id": _PAGE_ID_MAP.get(request.endpoint or "", "")}
+    return {"page_id": _PAGE_ID_MAP.get(request.endpoint or "", ""), "IS_PROD": IS_PROD}
 
 # Request ID middleware — tags every request with a traceable ID
 @app.before_request
@@ -175,15 +192,11 @@ def ensure_csrf_token():
 
 @app.before_request
 def validate_csrf():
-    if request.method in ["POST", "PUT", "DELETE"]:
-        # Bypass for local testing environment if configured
-        if os.getenv("FLASK_ENV") == "testing":
-            return
-
-        csrf_token = request.headers.get("X-CSRF-Token")
-        session_csrf = session.get("csrf_token")
+    if request.method in ["POST", "PUT", "PATCH", "DELETE"]:
+        csrf_token = request.headers.get("X-CSRF-Token") or ""
+        session_csrf = session.get("csrf_token") or ""
         
-        if not session_csrf or csrf_token != session_csrf:
+        if not session_csrf or not secrets.compare_digest(csrf_token, session_csrf):
             return jsonify({"error": "Invalid or missing CSRF token"}), 400
 
 # Quest/gamification handler (placeholder for future feature)
@@ -193,12 +206,12 @@ def update_quest_progress(user_id, quest_type):
             if check_db_health():
                 with db_connection() as connection:
                     with connection.cursor() as cursor:
-                        cursor.execute("SELECT quest_data FROM users WHERE id = %s", (user_id,))
+                        cursor.execute("SELECT 1 FROM users WHERE id = %s", (user_id,))
                         row = cursor.fetchone()
                         if row:
-                            pass  # Placeholder for quest tracking
+                            pass
         except Exception:
-            pass
+            logger.debug("update_quest_progress skipped")
 
 # Password Strength Rules
 def validate_password_strength(password):
@@ -210,7 +223,7 @@ def validate_password_strength(password):
         return "Password must contain at least one uppercase character."
     if not re.search(r"\d", password):
         return "Password must contain at least one number."
-    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>~`_\-=+\[\]\\;'/]", password):
         return "Password must contain at least one special character (!@#$%^&* etc)."
     return None
 
@@ -220,6 +233,13 @@ login_attempts_lock = threading.Lock()
 
 # Thread safety for in-memory product stock (prevents overselling)
 memory_products_lock = threading.Lock()
+memory_orders_lock = threading.Lock()
+memory_users_lock = threading.Lock()
+memory_user_id_counter_lock = threading.Lock()
+memory_reviews_lock = threading.Lock()
+memory_wishlists_lock = threading.Lock()
+memory_coupons_lock = threading.Lock()
+memory_settings_lock = threading.Lock()
 
 def is_blocked(username, ip):
     now = datetime.now()
@@ -268,7 +288,9 @@ def send_email(subject, recipient, body_html):
     sender = os.getenv("SMTP_SENDER", "noreply@shibanifashion.com")
     
     # Dev/test logging
-    log_line = f"To: {recipient} | Subject: {subject}\nHTML Body:\n{body_html}\n{'='*80}\n"
+    safe_recipient = recipient.replace("\n", "").replace("\r", "")
+    safe_subject = subject.replace("\n", "").replace("\r", "")
+    log_line = f"To: {safe_recipient} | Subject: {safe_subject}\nHTML Body:\n{body_html}\n{'='*80}\n"
     try:
         log_file = os.path.join(LOGS_FOLDER, "email_log.txt")
         with open(log_file, "a", encoding="utf-8") as f:
@@ -293,9 +315,9 @@ def send_email(subject, recipient, body_html):
                 server = None
                 try:
                     if port == 465:
-                        server = smtplib.SMTP_SSL(smtp_host, port)
+                        server = smtplib.SMTP_SSL(smtp_host, port, timeout=10)
                     else:
-                        server = smtplib.SMTP(smtp_host, port)
+                        server = smtplib.SMTP(smtp_host, port, timeout=10)
                         server.starttls()
                     server.login(smtp_user, smtp_pass)
                     server.sendmail(sender, [recipient], msg.as_string())
@@ -307,8 +329,8 @@ def send_email(subject, recipient, body_html):
                 
         threading.Thread(target=_send, daemon=True).start()
 
-def send_verification_email(username, email, token):
-    url = f"{request.url_root.rstrip('/')}/verify-email?token={token}"
+def send_verification_email(username, email, token, url_root=None):
+    url = f"{(url_root or request.url_root).rstrip('/')}/verify-email?token={token}"
     safe_name = escape(username)
     body = f"""
     <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #f0f0f0; border-radius: 12px; padding: 24px;">
@@ -404,7 +426,7 @@ def send_order_confirmation_email(user, customer_name, order_id, order_items, to
 
 def safe_float(value, default=0.0):
     try:
-        return float(value) if value is not None else default
+        return float(value)
     except (ValueError, TypeError):
         return default
 
@@ -438,16 +460,18 @@ def save_base64_image(base64_str):
                 logger.warning("Rejected image upload exceeding %d bytes", MAX_IMAGE_SIZE)
                 return base64_str
             # Validate decoded data starts with a valid image magic bytes
-            if not any(data.startswith(sig) for sig in [b"\xff\xd8\xff", b"\x89PNG", b"GIF87a", b"GIF89a", b"RIFF"]):
-                if ext != "webp":
-                    logger.warning("Rejected upload: invalid image magic bytes")
-                    return base64_str
+            is_valid = any(data.startswith(sig) for sig in [b"\xff\xd8\xff", b"\x89PNG", b"GIF87a", b"GIF89a"])
+            if not is_valid:
+                is_valid = ext == "webp" and data.startswith(b"RIFF") and data[8:12] == b"WEBP"
+            if not is_valid:
+                logger.warning("Rejected upload: invalid image magic bytes")
+                return base64_str
             filename = f"{secrets.token_hex(16)}.{ext}"
             filepath = os.path.join(UPLOAD_FOLDER, filename)
             with open(filepath, "wb") as f:
                 f.write(data)
             return f"/uploads/{filename}"
-        except (ValueError, TypeError, base64.binascii.Error) as exc:
+        except (ValueError, TypeError, binascii.Error) as exc:
             logger.error("Failed to save base64 image: %s", exc)
     return base64_str
 
@@ -456,6 +480,7 @@ def save_base64_image(base64_str):
 memory_products = []
 memory_orders = []
 memory_users = {}
+_memory_user_id_counter = 100
 memory_reviews = []
 memory_wishlists = []
 mysql_ready = False
@@ -469,8 +494,13 @@ memory_settings = {
     "other_charges": "0.0"
 }
 
-_ADMIN_HASH = generate_password_hash("admin123")
-_CUSTOMER_HASH = generate_password_hash("customer123")
+@cache
+def _admin_hash():
+    return generate_password_hash("admin123")
+
+@cache
+def _customer_hash():
+    return generate_password_hash("customer123")
 
 memory_coupons = [
     {
@@ -498,18 +528,20 @@ memory_coupons = [
     {
         "id": 3,
         "code": "FREEDELIVERY",
-        "discount_type": "fixed",
+        "discount_type": "percentage",
         "discount_value": 0.0,
         "min_subtotal": 0.0,
         "active": 1,
         "expires_at": None,
         "usage_limit": None,
-        "usage_count": 0
+        "usage_count": 0,
+        "free_delivery": 1
     }
 ]
 
 def get_settings_dict():
-    res = dict(memory_settings)
+    with memory_settings_lock:
+        res = dict(memory_settings)
     if check_db_health():
         try:
             with db_connection() as connection:
@@ -1113,10 +1145,12 @@ def json_payload():
 
 
 def ensure_column(cursor, table_name, column_name, definition):
-    cursor.execute(f"SHOW COLUMNS FROM `{table_name}` LIKE %s", (column_name,))
+    if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', table_name) or not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', column_name):
+        return
+    cursor.execute("SHOW COLUMNS FROM `{}` LIKE %s".format(table_name), (column_name,))
     if cursor.fetchone():
         return
-    cursor.execute(f"ALTER TABLE `{table_name}` ADD COLUMN `{column_name}` {definition}")
+    cursor.execute("ALTER TABLE `{}` ADD COLUMN `{}` {}".format(table_name, column_name, definition))
 
 
 def require_login(fn):
@@ -1152,7 +1186,7 @@ def product_row_to_dict(row):
         "category": row["category"],
         "price": float(row["price"]),
         "old_price": float(row["old_price"] or 0),
-        "size": row["size"],
+        "size": row["size"] or "",
         "color": row["color"],
         "stock": row["stock"],
         "rating": float(row["rating"] or 4.5),
@@ -1195,11 +1229,45 @@ def create_user_session(user, remember=False, username=None):
         session["saved_address"] = user.get("saved_address") or ""
 
 
+def user_by_username(username):
+    """Look up a user dict by username. Checks DB first, then in-memory store."""
+    if check_db_health():
+        try:
+            with db_connection() as connection:
+                with connection.cursor(dictionary=True) as cursor:
+                    cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+                    return cursor.fetchone()
+        except Exception:
+            pass
+    return memory_users.get(username)
+
+
+def create_user(username, password_hash, full_name, email, verification_token):
+    """Insert a new user row and return the new id, or None on conflict."""
+    if check_db_health():
+        try:
+            with db_connection() as connection:
+                with connection.cursor(dictionary=True) as cursor:
+                    cursor.execute("SELECT id FROM users WHERE username = %s OR email = %s", (username, email))
+                    if cursor.fetchone():
+                        return None
+                    cursor.execute(
+                        """INSERT INTO users (username, password_hash, role, full_name, email, verification_token, email_verified)
+                           VALUES (%s, %s, 'customer', %s, %s, %s, 0)""",
+                        (username, password_hash, full_name, email, verification_token),
+                    )
+                    connection.commit()
+                    return cursor.lastrowid
+        except Exception:
+            return None
+    return None
+
+
 def html_login_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
         if "user" not in session:
-            return redirect(url_for("login_page", next=request.path))
+            return redirect(url_for("login_page"))
         return fn(*args, **kwargs)
     return wrapper
 
@@ -1344,6 +1412,8 @@ def admin_analytics_page():
 def serve_upload(filename):
     response = send_from_directory(UPLOAD_FOLDER, filename)
     response.headers["Cache-Control"] = "public, max-age=604800, immutable"
+    response.headers["Content-Disposition"] = "inline"
+    response.headers["X-Content-Type-Options"] = "nosniff"
     return response
 
 
@@ -1356,7 +1426,7 @@ def status():
             "status": "healthy" if db_ok else "degraded",
             "mysql_ready": db_ok,
             "database": DB_NAME,
-            "mysql_error": mysql_error,
+            "mysql_error": bool(mysql_error),
 
         }
     )
@@ -1404,14 +1474,14 @@ def login():
         # Secure fallback passwords using hash matching
         fallback_users = {
             "admin": {
-                "password_hash": _ADMIN_HASH,
+                "password_hash": _admin_hash(),
                 "role": "admin",
                 "full_name": "Shibani Admin",
                 "id": 1,
                 "email_verified": 1
             },
             "customer": {
-                "password_hash": _CUSTOMER_HASH,
+                "password_hash": _customer_hash(),
                 "role": "customer",
                 "full_name": "Shibani Customer",
                 "id": 2,
@@ -1463,8 +1533,10 @@ def google_login():
 
                     if not user:
                         base_username = email.split("@")[0]
-                        cursor.execute("SELECT id FROM users WHERE username = %s", (base_username,))
-                        if cursor.fetchone():
+                        while True:
+                            cursor.execute("SELECT id FROM users WHERE username = %s", (base_username,))
+                            if not cursor.fetchone():
+                                break
                             base_username = f"{base_username}_{secrets.token_hex(2)}"
 
                         cursor.execute(
@@ -1481,30 +1553,34 @@ def google_login():
                             "email_verified": 1
                         }
         else:
-            existing = next((u for u in memory_users.values() if u.get("email") == email), None)
-            if existing:
-                user = existing
-                user["email_verified"] = 1
-            else:
-                base_username = email.split("@")[0]
-                if base_username in memory_users or base_username in {"admin", "customer"}:
-                    base_username = f"{base_username}_{secrets.token_hex(2)}"
-                user_id = len(memory_users) + 100
-                memory_users[base_username] = {
-                    "id": user_id,
-                    "password_hash": generate_password_hash(secrets.token_hex(32)),
-                    "role": "customer",
-                    "full_name": name,
-                    "email": email,
-                    "email_verified": 1
-                }
-                user = {
-                    "id": user_id,
-                    "username": base_username,
-                    "role": "customer",
-                    "full_name": name,
-                    "email_verified": 1
-                }
+            with memory_users_lock:
+                existing = next((u for u in memory_users.values() if u.get("email") == email), None)
+                if existing:
+                    user = existing
+                    user["email_verified"] = 1
+                else:
+                    base_username = email.split("@")[0]
+                    while base_username in memory_users or base_username in {"admin", "customer"}:
+                        base_username = f"{base_username}_{secrets.token_hex(2)}"
+                    global _memory_user_id_counter
+                    with memory_user_id_counter_lock:
+                        user_id = _memory_user_id_counter
+                        _memory_user_id_counter += 1
+                    memory_users[base_username] = {
+                        "id": user_id,
+                        "password_hash": generate_password_hash(secrets.token_hex(32)),
+                        "role": "customer",
+                        "full_name": name,
+                        "email": email,
+                        "email_verified": 1
+                    }
+                    user = {
+                        "id": user_id,
+                        "username": base_username,
+                        "role": "customer",
+                        "full_name": name,
+                        "email_verified": 1
+                    }
 
         create_user_session(user, remember=False)
 
@@ -1526,7 +1602,7 @@ def register():
         return jsonify({"error": "All fields are required"}), 400
 
     # 1. Email format check
-    if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+    if not re.match(r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$", email):
         return jsonify({"error": "Please enter a valid email address"}), 400
 
     # 2. Password Strength Check
@@ -1570,16 +1646,19 @@ def register():
         except Exception as exc:
             return jsonify({"error": "Database error"}), 500
     else:
-        fallback_users = {"admin", "customer"}
-        if username in memory_users or username in fallback_users:
-            return jsonify({"error": "Username already taken"}), 400
-        
-        # Verify duplicate email in memory
-        if any(u.get("email") == email for u in memory_users.values()):
-            return jsonify({"error": "Email already registered"}), 400
+        with memory_users_lock:
+            fallback_users = {"admin", "customer"}
+            if username in memory_users or username in fallback_users:
+                return jsonify({"error": "Username already taken"}), 400
+            
+            if any(u.get("email") == email for u in memory_users.values()):
+                return jsonify({"error": "Email already registered"}), 400
 
-        user_id = len(memory_users) + 100
-        memory_users[username] = {
+            global _memory_user_id_counter
+            with memory_user_id_counter_lock:
+                user_id = _memory_user_id_counter
+                _memory_user_id_counter += 1
+            memory_users[username] = {
             "id": user_id,
             "password_hash": generate_password_hash(password),
             "role": "customer",
@@ -1674,7 +1753,7 @@ def reset_password_api():
                 with connection.cursor(dictionary=True) as cursor:
                     cursor.execute("SELECT id, reset_token_expires FROM users WHERE reset_token = %s", (token,))
                     user = cursor.fetchone()
-                    if not user:
+                    if not user or not user.get("reset_token_expires"):
                         return jsonify({"error": "Invalid or expired token"}), 400
                     
                     if user["reset_token_expires"] < now:
@@ -1854,6 +1933,9 @@ def update_product(product_id):
         try:
             with db_connection() as connection:
                 with connection.cursor() as cursor:
+                    cursor.execute("SELECT id FROM products WHERE id = %s", (product_id,))
+                    if not cursor.fetchone():
+                        return jsonify({"error": "Product not found"}), 404
                     cursor.execute(
                         """
                         UPDATE products
@@ -1879,8 +1961,6 @@ def update_product(product_id):
                         ),
                     )
                     connection.commit()
-                    if cursor.rowcount == 0:
-                        return jsonify({"error": "Product not found"}), 404
         except Exception as exc:
             return jsonify({"error": "Database error"}), 500
     else:
@@ -1892,7 +1972,8 @@ def update_product(product_id):
                 break
         if not found:
             return jsonify({"error": "Product not found"}), 404
-    return jsonify({"product": {**product, "id": product_id}})
+        product = memory_products[index]
+    return jsonify({"product": product})
 
 
 @app.delete("/api/products/<int:product_id>")
@@ -1957,10 +2038,11 @@ def update_settings():
         except Exception as exc:
             return jsonify({"error": "Database error"}), 500
     else:
-        memory_settings["gst_rate"] = gst_rate
-        memory_settings["delivery_fee_standard"] = delivery_fee_standard
-        memory_settings["delivery_fee_threshold"] = delivery_fee_threshold
-        memory_settings["other_charges"] = other_charges
+        with memory_settings_lock:
+            memory_settings["gst_rate"] = gst_rate
+            memory_settings["delivery_fee_standard"] = delivery_fee_standard
+            memory_settings["delivery_fee_threshold"] = delivery_fee_threshold
+            memory_settings["other_charges"] = other_charges
         
     return jsonify({
         "gst_rate": float(gst_rate),
@@ -2204,7 +2286,8 @@ def delete_coupon(coupon_id):
             return jsonify({"error": "Database error"}), 500
     else:
         global memory_coupons
-        memory_coupons = [c for c in memory_coupons if c["id"] != coupon_id]
+        with memory_coupons_lock:
+            memory_coupons = [c for c in memory_coupons if c["id"] != coupon_id]
         return jsonify({"ok": True})
 
 
@@ -2217,16 +2300,21 @@ def orders():
                 with connection.cursor(dictionary=True) as cursor:
                     cursor.execute("SELECT * FROM orders ORDER BY id DESC")
                     rows = cursor.fetchall()
-                    for order in rows:
-                        cursor.execute("SELECT * FROM order_items WHERE order_id = %s", (order["id"],))
-                        items = cursor.fetchall()
-                        for item in items:
+                    order_ids = [o["id"] for o in rows]
+                    items_by_order = {}
+                    if order_ids:
+                        placeholders = ",".join(["%s"] * len(order_ids))
+                        cursor.execute(f"SELECT * FROM order_items WHERE order_id IN ({placeholders})", order_ids)
+                        all_items = cursor.fetchall()
+                        for item in all_items:
                             item["price"] = float(item["price"])
-                        order["items"] = items
+                            items_by_order.setdefault(item["order_id"], []).append(item)
+                    for order in rows:
+                        order["items"] = items_by_order.get(order["id"], [])
                         order["total"] = float(order["total"])
                         order["created_at"] = str(order["created_at"])
             return jsonify({"orders": rows})
-        except Exception as exc:
+        except Exception:
             return jsonify({"error": "Database error"}), 500
 
     return jsonify({"orders": memory_orders})
@@ -2245,11 +2333,12 @@ def update_order_status(order_id):
         try:
             with db_connection() as connection:
                 with connection.cursor() as cursor:
+                    cursor.execute("SELECT id FROM orders WHERE id = %s", (order_id,))
+                    if not cursor.fetchone():
+                        return jsonify({"error": "Order not found"}), 404
                     cursor.execute("UPDATE orders SET status = %s WHERE id = %s", (status, order_id))
                     connection.commit()
-                    if cursor.rowcount == 0:
-                        return jsonify({"error": "Order not found"}), 404
-        except Exception as exc:
+        except Exception:
             return jsonify({"error": "Database error"}), 500
     else:
         found = False
@@ -2376,10 +2465,11 @@ def update_profile():
     session["saved_address"] = saved_address
     
     username = user["username"]
-    if username in memory_users:
-        memory_users[username]["saved_name"] = saved_name
-        memory_users[username]["saved_phone"] = saved_phone
-        memory_users[username]["saved_address"] = saved_address
+    with memory_users_lock:
+        if username in memory_users:
+            memory_users[username]["saved_name"] = saved_name
+            memory_users[username]["saved_phone"] = saved_phone
+            memory_users[username]["saved_address"] = saved_address
         
     return jsonify({"ok": True, "saved_name": saved_name, "saved_phone": saved_phone, "saved_address": saved_address})
 
@@ -2394,17 +2484,22 @@ def my_orders():
                 with connection.cursor(dictionary=True) as cursor:
                     cursor.execute("SELECT * FROM orders WHERE user_id = %s ORDER BY id DESC", (user["id"],))
                     rows = cursor.fetchall()
-                    for order in rows:
-                        cursor.execute("SELECT * FROM order_items WHERE order_id = %s", (order["id"],))
-                        items = cursor.fetchall()
-                        for item in items:
+                    order_ids = [o["id"] for o in rows]
+                    items_by_order = {}
+                    if order_ids:
+                        placeholders = ",".join(["%s"] * len(order_ids))
+                        cursor.execute(f"SELECT * FROM order_items WHERE order_id IN ({placeholders})", order_ids)
+                        all_items = cursor.fetchall()
+                        for item in all_items:
                             item["price"] = float(item["price"])
                             item["size"] = item.get("size") or ""
-                        order["items"] = items
+                            items_by_order.setdefault(item["order_id"], []).append(item)
+                    for order in rows:
+                        order["items"] = items_by_order.get(order["id"], [])
                         order["total"] = float(order["total"])
                         order["created_at"] = str(order["created_at"])
             return jsonify({"orders": rows})
-        except Exception as exc:
+        except Exception:
             return jsonify({"error": "Database error"}), 500
             
     # For transient fallback, match orders based on logged in user's username
@@ -2613,7 +2708,8 @@ def create_review():
         "status": "approved",
         "created_at": datetime.now(UTC).isoformat()
     }
-    memory_reviews.append(new_review)
+    with memory_reviews_lock:
+        memory_reviews.append(new_review)
     update_quest_progress(user["id"], "write_review")
     return jsonify({"ok": True, "review": new_review})
 
@@ -2679,7 +2775,8 @@ def admin_delete_review(review_id):
             
     # In-memory fallback
     global memory_reviews
-    memory_reviews = [r for r in memory_reviews if r["id"] != review_id]
+    with memory_reviews_lock:
+        memory_reviews = [r for r in memory_reviews if r["id"] != review_id]
     return jsonify({"ok": True})
 
 # --- Wishlist & Registry API ---
@@ -2733,19 +2830,20 @@ def toggle_wishlist():
             
     # In-memory fallback
     global memory_wishlists
-    existing = next((w for w in memory_wishlists if w["user_id"] == user["id"] and w["product_id"] == product_id), None)
-    if existing:
-        memory_wishlists = [w for w in memory_wishlists if not (w["user_id"] == user["id"] and w["product_id"] == product_id)]
-        added = False
-    else:
-        new_id = max([w["id"] for w in memory_wishlists], default=0) + 1
-        memory_wishlists.append({
-            "id": new_id,
-            "user_id": user["id"],
-            "product_id": product_id,
-            "created_at": datetime.now(UTC).isoformat()
-        })
-        added = True
+    with memory_wishlists_lock:
+        existing = next((w for w in memory_wishlists if w["user_id"] == user["id"] and w["product_id"] == product_id), None)
+        if existing:
+            memory_wishlists = [w for w in memory_wishlists if not (w["user_id"] == user["id"] and w["product_id"] == product_id)]
+            added = False
+        else:
+            new_id = max([w["id"] for w in memory_wishlists], default=0) + 1
+            memory_wishlists.append({
+                "id": new_id,
+                "user_id": user["id"],
+                "product_id": product_id,
+                "created_at": datetime.now(UTC).isoformat()
+            })
+            added = True
     return jsonify({"ok": True, "added": added})
 
 
@@ -2885,8 +2983,6 @@ def create_order():
                     row = cursor.fetchone()
                     if row:
                         user["email_verified"] = int(row.get("email_verified") or 0)
-                        session["user"]["email_verified"] = user["email_verified"]
-                        session.modified = True
         except Exception:
             pass
 
@@ -2899,6 +2995,10 @@ def create_order():
     payment_mode = data.get("payment_mode", "Cash on delivery")
     if not phone or not address:
         return jsonify({"error": "Phone and address are required"}), 400
+    if len(phone) > 20 or not re.match(r"^[\d\+\-\(\)\s]+$", phone):
+        return jsonify({"error": "Invalid phone number"}), 400
+    if len(address) > 500:
+        return jsonify({"error": "Address is too long (max 500 characters)"}), 400
 
     product_map = {product["id"]: product for product in list_products_for_order()}
     total = 0
@@ -2964,7 +3064,7 @@ def create_order():
                     else:
                         expiry_dt = datetime.strptime(expires_at_val, '%Y-%m-%d')
                 except ValueError:
-                    expiry_dt = None
+                    return jsonify({"error": f"Coupon code '{coupon_code}' has an invalid expiry date"}), 400
             else:
                 expiry_dt = expires_at_val
             
@@ -2988,22 +3088,19 @@ def create_order():
         if disc_type == "percentage":
             discount = subtotal * (min(disc_val, 100.0) / 100.0)
         elif disc_type == "fixed":
-            discount = disc_val
+            discount = min(disc_val, subtotal)
 
     delivery_standard = float(settings.get("delivery_fee_standard", 99.0))
     delivery_threshold = float(settings.get("delivery_fee_threshold", 999.0))
     gst_rate = float(settings.get("gst_rate", 5.0)) / 100.0
     other_charges = float(settings.get("other_charges", 0.0))
 
-    delivery = 0 if (subtotal >= delivery_threshold or coupon_code == "FREEDELIVERY") else delivery_standard
+    delivery = 0 if (subtotal >= delivery_threshold or (coupon_match and (coupon_match.get("free_delivery") or coupon_match.get("code") == "FREEDELIVERY"))) else delivery_standard
 
-    # Loyalty points processing (purged)
-    points_discount = 0.0
-
-    tax = (subtotal - discount - points_discount) * gst_rate
+    tax = (subtotal - discount) * gst_rate
     if tax < 0:
         tax = 0.0
-    total = (subtotal - discount - points_discount) + delivery + tax + other_charges
+    total = (subtotal - discount) + delivery + tax + other_charges
     if total < 0:
         total = 0.0
 
@@ -3044,32 +3141,39 @@ def create_order():
                             """,
                             (order_id, item["product_id"], item["product_name"], item["quantity"], item["price"], item["size"]),
                         )
-                        cursor.execute("SELECT stock FROM products WHERE id = %s", (item["product_id"],))
+                        cursor.execute("SELECT stock FROM products WHERE id = %s FOR UPDATE", (item["product_id"],))
                         p_row = cursor.fetchone()
                         if p_row:
                             current_stock = p_row[0]
+                            if (current_stock or "").strip().lower() == "out of stock":
+                                raise ValueError(f"Product '{item.get('product_name', 'Unknown')}' is out of stock")
                             new_stock = decrement_stock_string(current_stock)
                             cursor.execute("UPDATE products SET stock = %s WHERE id = %s", (new_stock, item["product_id"]))
                     if coupon_code:
                         cursor.execute("UPDATE coupons SET usage_count = usage_count + 1 WHERE code = %s", (coupon_code,))
                     
                     connection.commit()
-        except Exception as exc:
+        except ValueError as verr:
+            connection.rollback()
+            return jsonify({"error": str(verr)}), 400
+        except Exception:
+            connection.rollback()
             return jsonify({"error": "Database error"}), 500
     else:
         if save_profile:
             session["saved_name"] = customer_name
             session["saved_phone"] = phone
             username = user["username"]
-            if username in memory_users:
-                current_saved = memory_users[username].get("saved_address") or ""
-                updated_address_book = update_user_address_book(current_saved, address, customer_name, phone)
-                memory_users[username]["saved_name"] = customer_name
-                memory_users[username]["saved_phone"] = phone
-                memory_users[username]["saved_address"] = updated_address_book
-                session["saved_address"] = updated_address_book
-            else:
-                session["saved_address"] = address
+            with memory_users_lock:
+                if username in memory_users:
+                    current_saved = memory_users[username].get("saved_address") or ""
+                    updated_address_book = update_user_address_book(current_saved, address, customer_name, phone)
+                    memory_users[username]["saved_name"] = customer_name
+                    memory_users[username]["saved_phone"] = phone
+                    memory_users[username]["saved_address"] = updated_address_book
+                    session["saved_address"] = updated_address_book
+                else:
+                    session["saved_address"] = address
                 
         with memory_products_lock:
             for item in order_items:
@@ -3080,30 +3184,30 @@ def create_order():
                             return jsonify({"error": f"Product '{item.get('product_name', 'Unknown')}' is out of stock"}), 400
                         p["stock"] = decrement_stock_string(p.get("stock", ""))
                         break
-                    
-        order_id = len(memory_orders) + 1
+            with memory_orders_lock:
+                order_id = len(memory_orders) + 1
+                memory_orders.insert(
+                    0,
+                    {
+                        "id": order_id,
+                        "user_id": user["id"],
+                        "username": user["username"],
+                        "customer_name": customer_name,
+                        "phone": phone,
+                        "address": address,
+                        "payment_mode": payment_mode,
+                        "total": total,
+                        "status": "New",
+                        "items": order_items,
+                        "created_at": datetime.now(UTC).isoformat(),
+                    },
+                )
         if coupon_code:
-            for c in memory_coupons:
-                if c["code"].upper() == coupon_code:
-                    c["usage_count"] = c.get("usage_count", 0) + 1
-                    break
-                    
-        memory_orders.insert(
-            0,
-            {
-                "id": order_id,
-                "user_id": user["id"],
-                "username": user["username"],
-                "customer_name": customer_name,
-                "phone": phone,
-                "address": address,
-                "payment_mode": payment_mode,
-                "total": total,
-                "status": "New",
-                "items": order_items,
-                "created_at": datetime.now(UTC).isoformat(),
-            },
-        )
+            with memory_coupons_lock:
+                for c in memory_coupons:
+                    if c["code"].upper() == coupon_code:
+                        c["usage_count"] = c.get("usage_count", 0) + 1
+                        break
 
     threading.Thread(target=send_order_confirmation_email, args=(
         user, customer_name, order_id, order_items, total, subtotal,
@@ -3173,17 +3277,23 @@ def normalize_product(data):
     old_price = max(0.0, min(9999999.99, safe_float(data.get("old_price"), 0.0)))
     rating = max(1.0, min(5.0, safe_float(data.get("rating"), 4.5)))
 
+    name = (data.get("name") or "").strip()[:160]
+    size = (data.get("size") or "").strip()[:50]
+    color = (data.get("color") or "").strip()[:50]
+    badge = (data.get("badge") or "").strip()[:100]
+    description = (data.get("description") or "").strip()[:5000]
+
     return {
-        "name": (data.get("name") or "").strip(),
+        "name": name,
         "category": category,
         "price": price,
         "old_price": old_price,
-        "size": (data.get("size") or "").strip(),
-        "color": (data.get("color") or "").strip(),
+        "size": size,
+        "color": color,
         "stock": stock,
         "rating": rating,
-        "badge": (data.get("badge") or "").strip(),
-        "description": (data.get("description") or "").strip(),
+        "badge": badge,
+        "description": description,
         "image": image,
         "images": images,
     }
