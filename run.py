@@ -1995,7 +1995,7 @@ def reset_password_page():
 
 
 
-@app.post("/api/me")
+@app.get("/api/me")
 def me():
     return jsonify({"user": session.get("user")})
 
