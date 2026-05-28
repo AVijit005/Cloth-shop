@@ -31,6 +31,10 @@ def send_email(subject, recipient, body_html, smtp_config=None):
         pwd = smtp_config.get("password")
         sender = smtp_config.get("sender", "noreply@shibanifashion.com")
 
+        if not port:
+            logger.warning("SMTP_PORT not configured, skipping email send")
+            return
+
         def _send():
             try:
                 msg = MIMEMultipart("alternative")

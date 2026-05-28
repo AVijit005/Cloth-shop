@@ -7,7 +7,11 @@ DB_NAME = os.getenv("MYSQL_DATABASE") or os.getenv("SHIBANI_DB_NAME", "shibani_s
 DB_HOST = os.getenv("MYSQL_HOST")
 DB_USER = os.getenv("MYSQL_USER") or os.getenv("SHIBANI_DB_USER", "root")
 DB_PASSWORD = os.getenv("MYSQL_PASSWORD") or os.getenv("SHIBANI_DB_PASSWORD", "")
-DB_PORT = int(os.getenv("MYSQL_PORT") or 3306)
+_raw_port = os.getenv("MYSQL_PORT")
+try:
+    DB_PORT = int(_raw_port) if _raw_port else 3306
+except (ValueError, TypeError):
+    DB_PORT = 3306
 SECRET_KEY = os.getenv("SECRET_KEY") or os.getenv("SHIBANI_SECRET_KEY")
 IS_PROD = os.getenv("FLASK_ENV") == "production" or os.getenv("SHIBANI_ENV") == "production"
 

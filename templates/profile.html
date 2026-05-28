@@ -14,13 +14,13 @@
         <!-- Left: Avatar card -->
         <div class="md:col-span-1 border border-[var(--neutral-100)] p-8 text-center space-y-5">
             <div class="flex justify-center">
-                <span class="w-20 h-20 bg-[var(--neutral-900)] text-white font-display font-light flex items-center justify-center text-2xl uppercase tracking-wider">
-                    {{ session['user']['full_name'][:2] | upper }}
+                <span class="w-20 h-20 bg-[var(--neutral-900)] text-[var(--color-white)] font-display font-light flex items-center justify-center text-2xl uppercase tracking-wider">
+                    {{ (session.get('user') or {}).get('full_name', '?')[:2] | upper }}
                 </span>
             </div>
             <div>
-                <h3 class="font-medium text-sm text-[var(--neutral-900)] uppercase tracking-wider">{{ session['user']['full_name'] }}</h3>
-                <span class="text-[10px] text-[var(--neutral-400)] uppercase tracking-widest block mt-1">{{ session['user']['role'] }}</span>
+                <h3 class="font-medium text-sm text-[var(--neutral-900)] uppercase tracking-wider">{{ (session.get('user') or {}).get('full_name', 'User') }}</h3>
+                <span class="text-[10px] text-[var(--neutral-400)] uppercase tracking-widest block mt-1">{{ (session.get('user') or {}).get('role', '') }}</span>
             </div>
         </div>
 
@@ -31,7 +31,7 @@
                 <h3 class="font-bold text-xs uppercase tracking-widest text-[var(--neutral-900)]">Account Information</h3>
                 <div>
                     <label for="profileFullName" class="block text-[10px] font-bold uppercase tracking-widest text-[var(--neutral-500)] mb-1">Full Name</label>
-                    <input type="text" id="profileFullName" required value="{{ session['user']['full_name'] }}"
+                    <input type="text" id="profileFullName" required value="{{ (session.get('user') or {}).get('full_name', '') }}"
                            class="w-full bg-[var(--neutral-50)] border border-[var(--neutral-100)] px-4 py-3 text-xs tracking-wider focus:outline-none focus:border-[var(--neutral-900)] transition" />
                 </div>
                 <div>

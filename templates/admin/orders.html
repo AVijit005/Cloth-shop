@@ -6,7 +6,7 @@
 {% block content %}
 <div class="space-y-6">
     <!-- Controls Header -->
-    <div class="bg-white border border-neutral-200 p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+    <div class="bg-[var(--color-white)] border border-neutral-200 p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
         <div class="relative w-full sm:max-w-xs">
             <input type="text" id="adminOrderSearchInput" placeholder="Search orders by customer or ID..." 
                    class="w-full bg-neutral-50 border border-neutral-200 px-4 py-2.5 pl-10 text-[10px] uppercase tracking-widest font-light placeholder-neutral-400 focus:outline-none focus:border-neutral-900 focus:ring-0" />
@@ -17,7 +17,7 @@
         
         <!-- Status Filter tabs -->
         <nav class="flex flex-wrap gap-2 w-full sm:w-auto animate-fade-in" id="orderTabs">
-            <button class="order-tab px-4 py-2 text-[10px] font-medium uppercase tracking-widest bg-neutral-900 text-white border border-neutral-900 transition duration-200" data-status="all">All</button>
+            <button class="order-tab px-4 py-2 text-[10px] font-medium uppercase tracking-widest bg-neutral-900 text-[var(--color-white)] border border-neutral-900 transition duration-200" data-status="all">All</button>
             <button class="order-tab px-4 py-2 text-[10px] font-medium uppercase tracking-widest bg-transparent hover:bg-neutral-50 text-neutral-500 border border-neutral-200 transition duration-200" data-status="New">New</button>
             <button class="order-tab px-4 py-2 text-[10px] font-medium uppercase tracking-widest bg-transparent hover:bg-neutral-50 text-neutral-500 border border-neutral-200 transition duration-200" data-status="Processing">Processing</button>
             <button class="order-tab px-4 py-2 text-[10px] font-medium uppercase tracking-widest bg-transparent hover:bg-neutral-50 text-neutral-500 border border-neutral-200 transition duration-200" data-status="Shipped">Shipped</button>
@@ -27,9 +27,11 @@
     </div>
     
     <!-- Orders Table Card -->
-    <div class="bg-white border border-neutral-200 overflow-hidden">
+    <div class="bg-[var(--color-white)] border border-neutral-200 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full min-w-[700px] text-left border-collapse">
+                <thead>
+                    <tr>
                         <th class="py-4 px-6">Order ID</th>
                         <th class="py-4 px-6">Customer Details</th>
                         <th class="py-4 px-6">Items Purchased</th>

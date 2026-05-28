@@ -26,7 +26,7 @@ function formatPrice(amount) {
 }
 
 function lsGet(key, fallback) {
-    try { const v = localStorage.getItem(key); return v !== null ? v : null; } catch { return null; }
+    try { const v = localStorage.getItem(key); return v !== null ? v : fallback; } catch { return fallback; }
 }
 const appState = {
     user: null,
@@ -123,7 +123,8 @@ function hideLoading() {
 
 async function api(path, options = {}) {
     const method = (options.method || "GET").toUpperCase();
-    const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+    const { headers: optHeaders, ...safeOptions } = options;
+    const headers = { "Content-Type": "application/json", ...(optHeaders || {}) };
     
     if (["POST", "PUT", "DELETE"].includes(method)) {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -135,13 +136,14 @@ async function api(path, options = {}) {
     const response = await fetch(path, {
         headers: headers,
         credentials: "same-origin",
-        ...options
+        ...safeOptions
     });
-    const body = await response.json();
     if (!response.ok) {
-        throw new Error(body.error || "Request failed");
+        let errorText = "Request failed";
+        try { const errBody = await response.json(); errorText = errBody.error || errorText; } catch (_) {}
+        throw new Error(errorText);
     }
-    return body;
+    return await response.json();
 }
 
 function _logoutHandler() {
@@ -331,7 +333,7 @@ async function _renderCartDrawer() {
 }
 
 function _updateShippingProgress(total) {
-    const threshold = 999;
+    const threshold = Number(appState.settings.delivery_fee_threshold) || 999;
     const progressEl = document.getElementById("shippingProgressBar");
     const textEl = document.getElementById("shippingProgressText");
     const remainingEl = document.getElementById("shippingRemaining");
@@ -891,7 +893,7 @@ async function initShop() {
     
     // Set checkbox checked based on URL
     if (categoryVal) {
-        document.querySelectorAll(`input[name="categoryFilter"][value="${categoryVal}"]`).forEach(cb => cb.checked = true);
+        document.querySelectorAll(`input[name="categoryFilter"][value="${escapeHTML(categoryVal)}"]`).forEach(cb => cb.checked = true);
     }
     
     // 2. Fetch products
@@ -1095,8 +1097,8 @@ function updateCompareDrawer() {
     }
     
     if (count === 0) {
-        drawer.classList.add("translate-y-full");
-        setTimeout(() => drawer.classList.add("hidden"), 300);
+        drawer.classList.add("translate-y-full", "opacity-0");
+        setTimeout(() => { drawer.classList.add("hidden"); drawer.classList.remove("opacity-0"); }, 300);
         return;
     }
     
@@ -1356,7 +1358,7 @@ async function initProductDetail() {
     const pIdEl = document.getElementById("currentProductId");
     if (!pIdEl) return;
     
-    const productId = Number(pIdEl.dataset.id);
+    const productId = Number(pIdEl.dataset.id) || 0;
     
     // Track recently viewed
     trackRecentlyViewed(productId);
@@ -1483,10 +1485,10 @@ async function initProductDetail() {
     loadProductReviews(productId);
     
     // 8. Track recently viewed products
-    trackRecentlyViewed(productId);
     
     // 9. Load related and recently viewed grids
     loadRelatedAndRecentlyViewed(productId);
+    loadRecommendations(productId);
 }
 
 function calculateFitRecommendation() {
@@ -1526,7 +1528,7 @@ async function loadProductReviews(productId) {
     try {
         const data = await api(`/api/reviews?product_id=${productId}`);
         const reviews = data.reviews || [];
-        countLabel.textContent = reviews.length;
+        if (countLabel) countLabel.textContent = reviews.length;
         
         if (reviews.length === 0) {
             list.innerHTML = `<p class="text-slate-400 font-semibold py-8 text-center text-sm">No reviews yet. Be the first to review this cloth!</p>`;
@@ -1561,7 +1563,7 @@ async function loadProductReviews(productId) {
 
 function trackRecentlyViewed(productId) {
     let recent = safeParseJSON(localStorage.getItem("shibani_recent_viewed"), []);
-    recent = recent.filter(id => id !== productId);
+    recent = recent.filter(id => id !== productId && typeof id === "number" && !isNaN(id));
     recent.unshift(productId);
     if (recent.length > 6) {
         recent = recent.slice(0, 6);
@@ -1773,6 +1775,8 @@ async function renderCart() {
     // Sync mini cart
     renderMiniCart();
 }
+
+function renderMiniCart() {}
 
 async function adjustCartQty(index, amount) {
     const item = appState.cart[index];
@@ -1992,7 +1996,7 @@ async function handleCheckoutSubmit(e) {
     const name = document.getElementById("checkoutName").value.trim();
     const phone = document.getElementById("checkoutPhone").value.trim();
     const address = document.getElementById("checkoutAddress").value.trim();
-    const paymentMode = document.querySelector('input[name="paymentMode"]:checked').value;
+    const paymentModeEl = document.querySelector('input[name="paymentMode"]:checked'); const paymentMode = paymentModeEl ? paymentModeEl.value : "COD";
     const couponCode = appState.appliedPromo ? appState.appliedPromo.code : "";
     
     const orderData = {
@@ -2059,7 +2063,7 @@ async function handleCheckoutSubmit(e) {
             const confirmBtn = document.getElementById("upiConfirmBtn");
             const cancelBtn = document.getElementById("upiCancelBtn");
             
-            confirmBtn.onclick = async () => {
+            confirmBtn.addEventListener("click", async () => {
                 clearInterval(upiInterval);
                 upiModal.classList.remove("open");
                 upiModal.classList.add("hidden");
@@ -2078,13 +2082,13 @@ async function handleCheckoutSubmit(e) {
                     hideLoading();
                     showToast(err.message || "Failed to place order.", "error");
                 }
-            };
+            });
             
-            cancelBtn.onclick = () => {
+            cancelBtn.addEventListener("click", () => {
                 clearInterval(upiInterval);
                 upiModal.classList.remove("open");
                 upiModal.classList.add("hidden");
-            };
+            });
         }
     }
 }
@@ -2134,8 +2138,8 @@ async function initWishlist() {
         grid.innerHTML = `<p class="col-span-full text-center text-slate-400 font-semibold py-8">Failed to load wishlist.</p>`;
     }
     
-    // Compare trigger binding
-    if (compareBtn) {
+    // Compare trigger binding (one-time setup via flag)
+    if (compareBtn && !compareBtn._listenerAttached) {
         compareBtn.addEventListener("click", () => {
             const drawer = document.getElementById("compareDrawer");
             if (drawer) {
@@ -2143,6 +2147,7 @@ async function initWishlist() {
                 setTimeout(() => drawer.classList.remove("translate-y-full"), 10);
             }
         });
+        compareBtn._listenerAttached = true;
     }
 }
 
@@ -2304,25 +2309,27 @@ async function triggerReceiptView(orderId) {
         // Print action binding
         const printBtn = document.getElementById("printReceiptBtn");
         printBtn.onclick = () => {
-            const printContent = body.innerHTML;
-            const originalContent = document.body.innerHTML;
-            document.body.innerHTML = `
-            <div style="padding: 40px; font-family: sans-serif; max-width: 500px; margin: 0 auto; line-height: 1.6;">
-                <div style="text-align: center; border-bottom: 2px dashed #ccc; padding-bottom: 20px; margin-bottom: 20px;">
-                    <h2>SHIBANI FASHION</h2>
-                    <p style="font-size: 12px; color: #666;">Official Purchase Receipt</p>
-                </div>
-                ${printContent}
-            </div>`;
-            window.print();
-            document.body.innerHTML = originalContent;
-            window.location.reload(); // reload to rebind js events cleanly
+            const printWindow = window.open('', '_blank');
+            if (!printWindow) { showToast("Please allow pop-ups to print.", "error"); return; }
+            printWindow.document.write(`
+            <html><head><title>Invoice #SHB-${order.id}</title>
+            <style>body{font-family:sans-serif;padding:40px;max-width:500px;margin:0 auto;line-height:1.6;}
+            table{width:100%;border-collapse:collapse;} th,td{padding:8px;text-align:left;border-bottom:1px solid #eee;}
+            .text-right{text-align:right;}</style></head><body>
+            <div style="text-align:center;border-bottom:2px dashed #ccc;padding-bottom:20px;margin-bottom:20px;">
+                <h2>SHIBANI FASHION</h2>
+                <p style="font-size:12px;color:#666;">Official Purchase Receipt</p>
+            </div>
+            ${document.getElementById("receiptModalBody").innerHTML}
+            </body></html>`);
+            printWindow.document.close();
+            printWindow.print();
         };
         
         const closeBtn = document.getElementById("closeReceiptBtn");
-        closeBtn.onclick = () => {
+        closeBtn.addEventListener("click", () => {
             modal.classList.add("hidden");
-        };
+        });
     } catch (err) {
         body.innerHTML = `<p class="text-center py-6 text-rose-500">Error rendering invoice.</p>`;
     }
@@ -2346,7 +2353,7 @@ async function initProfile() {
         document.getElementById("profileFullName").value = profile.full_name || "";
         document.getElementById("profilePhone").value = profile.saved_phone || "";
         
-        renderProfileAddresses(JSON.parse(profile.saved_address || "[]"));
+        renderProfileAddresses(safeParseJSON(profile.saved_address, []));
     } catch (err) {
         console.error("Profile load failure:", err);
     }
@@ -2375,7 +2382,7 @@ async function initProfile() {
     
     if (addressModal && addAddrBtn) {
         addAddrBtn.addEventListener("click", () => addressModal.classList.remove("hidden"));
-        closeAddrBtn.addEventListener("click", () => addressModal.classList.add("hidden"));
+        if (closeAddrBtn) closeAddrBtn.addEventListener("click", () => addressModal.classList.add("hidden"));
         
         const addressForm = document.getElementById("addressForm");
         addressForm.addEventListener("submit", handleAddAddressSubmit);
@@ -3093,7 +3100,7 @@ function drawSalesTrendLineChart(weeklySales) {
     ctx.beginPath();
     
     entries.forEach(([date, val], idx) => {
-        const x = padding + (chartWidth * idx) / (entries.length - 1);
+        const x = padding + (chartWidth * idx) / Math.max(entries.length - 1, 1);
         const y = padding + chartHeight - (chartHeight * (val - minVal)) / (maxVal - minVal);
         
         if (idx === 0) ctx.moveTo(x, y);
@@ -3109,7 +3116,7 @@ function drawSalesTrendLineChart(weeklySales) {
     
     // Plot Points
     entries.forEach(([date, val], idx) => {
-        const x = padding + (chartWidth * idx) / (entries.length - 1);
+        const x = padding + (chartWidth * idx) / Math.max(entries.length - 1, 1);
         const y = padding + chartHeight - (chartHeight * (val - minVal)) / (maxVal - minVal);
         
         ctx.fillStyle = "#ffffff";

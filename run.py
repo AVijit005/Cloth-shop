@@ -60,7 +60,14 @@ DB_NAME = os.getenv("MYSQL_DATABASE") or os.getenv("SHIBANI_DB_NAME", "shibani_s
 DB_HOST = os.getenv("MYSQL_HOST")
 DB_USER = os.getenv("MYSQL_USER") or os.getenv("SHIBANI_DB_USER", "root")
 DB_PASSWORD = os.getenv("MYSQL_PASSWORD") or os.getenv("SHIBANI_DB_PASSWORD", "")
-DB_PORT = int(os.getenv("MYSQL_PORT") or 3306)
+try:
+    DB_PORT = int(os.getenv("MYSQL_PORT") or 3306)
+except (ValueError, TypeError):
+    DB_PORT = 3306
+    logger.warning("Invalid MYSQL_PORT, defaulting to 3306")
+
+if not DB_HOST:
+    logger.warning("MYSQL_HOST is not set — will use in-memory store")
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY") or os.getenv("SHIBANI_SECRET_KEY", secrets.token_hex(32))
@@ -169,10 +176,6 @@ def ensure_csrf_token():
 @app.before_request
 def validate_csrf():
     if request.method in ["POST", "PUT", "DELETE"]:
-        # Bypass check for tests if correct bypass header is supplied
-        bypass_key = request.headers.get("X-Bypass-CSRF")
-        if bypass_key and bypass_key == app.secret_key:
-            return
         # Bypass for local testing environment if configured
         if os.getenv("FLASK_ENV") == "testing":
             return
@@ -465,6 +468,9 @@ memory_settings = {
     "delivery_fee_threshold": "999.0",
     "other_charges": "0.0"
 }
+
+_ADMIN_HASH = generate_password_hash("admin123")
+_CUSTOMER_HASH = generate_password_hash("customer123")
 
 memory_coupons = [
     {
@@ -902,7 +908,7 @@ def init_mysql():
                 ensure_column(cursor, "users", "username", "VARCHAR(80)")
                 ensure_column(cursor, "users", "role", "ENUM('admin', 'customer') NOT NULL DEFAULT 'customer'")
                 try:
-                    cursor.execute("UPDATE users SET username = user_id WHERE (username IS NULL OR username = '') AND user_id IS NOT NULL")
+                    cursor.execute("UPDATE users SET username = CONCAT('user_', id) WHERE (username IS NULL OR username = '')")
                 except Exception:
                     pass
                 try:
@@ -1166,8 +1172,10 @@ def parse_images(images_value, fallback_image=""):
             images = json.loads(images_value or "[]")
         except (TypeError, json.JSONDecodeError, ValueError):
             images = []
-    if fallback_image and fallback_image not in images:
-        images.insert(0, fallback_image)
+    if fallback_image:
+        fallback_image = fallback_image.strip()
+        if fallback_image and fallback_image not in images:
+            images.insert(0, fallback_image)
     return [image for image in images if image]
 
 
@@ -1191,7 +1199,7 @@ def html_login_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
         if "user" not in session:
-            return redirect(url_for("login_page"))
+            return redirect(url_for("login_page", next=request.path))
         return fn(*args, **kwargs)
     return wrapper
 
@@ -1349,10 +1357,7 @@ def status():
             "mysql_ready": db_ok,
             "database": DB_NAME,
             "mysql_error": mysql_error,
-            "demo_accounts": {
-                "admin": {"username": "admin", "password": "admin123"},
-                "customer": {"username": "customer", "password": "customer123"},
-            },
+
         }
     )
 
@@ -1399,14 +1404,14 @@ def login():
         # Secure fallback passwords using hash matching
         fallback_users = {
             "admin": {
-                "password_hash": generate_password_hash("admin123"),
+                "password_hash": _ADMIN_HASH,
                 "role": "admin",
                 "full_name": "Shibani Admin",
                 "id": 1,
                 "email_verified": 1
             },
             "customer": {
-                "password_hash": generate_password_hash("customer123"),
+                "password_hash": _CUSTOMER_HASH,
                 "role": "customer",
                 "full_name": "Shibani Customer",
                 "id": 2,
@@ -1618,7 +1623,7 @@ def forgot_password_api():
                         # For security, return success even if user not found to prevent username enumeration
                         return jsonify({"ok": True, "message": "If the account exists, a reset link has been sent."})
 
-                    recipient = user.get("email") or (user["username"] if "@" in user["username"] else "admin@shibanifashion.com")
+                    recipient = user.get("email") or "no-reply@shibanifashion.com"
                     
                     cursor.execute(
                         "UPDATE users SET reset_token = %s, reset_token_expires = %s WHERE id = %s",
@@ -1642,7 +1647,7 @@ def forgot_password_api():
             
         user["reset_token"] = token
         user["reset_token_expires"] = expires
-        recipient = user.get("email") or "customer@shibanifashion.com"
+        recipient = user.get("email") or "no-reply@shibanifashion.com"
         send_reset_password_email(user["full_name"], recipient, token)
         return jsonify({"ok": True, "message": "If the account exists, a reset link has been sent."})
 
@@ -1687,7 +1692,7 @@ def reset_password_api():
         user = next((u for u in memory_users.values() if u.get("reset_token") == token), None)
         if not user:
             return jsonify({"error": "Invalid or expired token"}), 400
-        if user.get("reset_token_expires") < now:
+        if user.get("reset_token_expires") is None or user.get("reset_token_expires") < now:
             return jsonify({"error": "Token has expired"}), 400
             
         user["password_hash"] = p_hash
@@ -1899,9 +1904,14 @@ def delete_product(product_id):
                 with connection.cursor() as cursor:
                     cursor.execute("DELETE FROM products WHERE id = %s", (product_id,))
                     connection.commit()
+                    if cursor.rowcount == 0:
+                        return jsonify({"error": "Product not found"}), 404
         except Exception as exc:
             return jsonify({"error": "Database error"}), 500
     else:
+        found = any(p["id"] == product_id for p in memory_products)
+        if not found:
+            return jsonify({"error": "Product not found"}), 404
         memory_products[:] = [product for product in memory_products if product["id"] != product_id]
     return jsonify({"ok": True})
 
@@ -2399,7 +2409,7 @@ def my_orders():
             
     # For transient fallback, match orders based on logged in user's username
     username = user["username"]
-    user_orders = [o for o in memory_orders if o.get("username") == username or o.get("customer_name") == user["full_name"]]
+    user_orders = [o for o in memory_orders if o.get("username") == username]
     return jsonify({"orders": user_orders})
 
 
@@ -2446,7 +2456,7 @@ def cancel_order(order_id):
                 break
         if not found_order:
             return jsonify({"error": "Order not found"}), 404
-        if str(found_order.get("user_id")) != str(user["id"]) and found_order.get("username") != user["username"]:
+        if str(found_order.get("user_id")) != str(user["id"]) or found_order.get("username") != user["username"]:
             return jsonify({"error": "Order not found"}), 404
         if found_order.get("status") != "New":
             return jsonify({"error": "Only orders with 'New' status can be cancelled"}), 400
@@ -2895,11 +2905,11 @@ def create_order():
     order_items = []
     for item in items:
         product_id = safe_int(item.get("product_id"))
-        quantity = max(safe_int(item.get("quantity"), 1), 1)
+        quantity = min(max(safe_int(item.get("quantity"), 1), 1), 999)
         size = (item.get("size") or "").strip() or "M"
         product = product_map.get(product_id)
         if not product:
-            continue
+            return jsonify({"error": f"Product ID {product_id} not found"}), 400
             
         p_stock = (product.get("stock") or "").strip().lower()
         if p_stock == "out of stock":
@@ -2976,7 +2986,7 @@ def create_order():
         disc_type = coupon_match.get("discount_type")
         disc_val = float(coupon_match.get("discount_value", 0.0))
         if disc_type == "percentage":
-            discount = subtotal * (disc_val / 100.0)
+            discount = subtotal * (min(disc_val, 100.0) / 100.0)
         elif disc_type == "fixed":
             discount = disc_val
 
@@ -2985,10 +2995,7 @@ def create_order():
     gst_rate = float(settings.get("gst_rate", 5.0)) / 100.0
     other_charges = float(settings.get("other_charges", 0.0))
 
-    delivery = 0 if (subtotal > delivery_threshold or coupon_code == "FREEDELIVERY") else delivery_standard
-    if not order_items:
-        delivery = 0
-        other_charges = 0
+    delivery = 0 if (subtotal >= delivery_threshold or coupon_code == "FREEDELIVERY") else delivery_standard
 
     # Loyalty points processing (purged)
     points_discount = 0.0
@@ -3191,7 +3198,7 @@ def list_products_for_order():
                     rows = [product_row_to_dict(row) for row in cursor.fetchall()]
             return rows
         except Exception:
-            return []
+            return memory_products
     return memory_products
 
 

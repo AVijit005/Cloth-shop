@@ -86,19 +86,20 @@
             </h1>
 
             <!-- Pricing -->
-            <div class="flex items-baseline gap-4">
-                <span class="text-3xl sm:text-4xl font-semibold text-[var(--neutral-900)]">
-                    Rs. {{ "{:,.0f}".format(product.price) }}
-                </span>
-                {% if product.old_price and product.old_price > product.price %}
-                <span class="text-lg text-[var(--neutral-400)] line-through">
-                    Rs. {{ "{:,.0f}".format(product.old_price) }}
-                </span>
-                <span class="badge-discount text-[11px]">
-                    Save {{ "{:.0f}%".format((1 - product.price/product.old_price)*100) }}
-                </span>
-                {% endif %}
-            </div>
+                 <div class="flex items-center gap-4">
+                     <span class="text-3xl sm:text-4xl font-semibold text-[var(--neutral-900)]">
+                         Rs. {{ "{:,.0f}".format(product.price) }}
+                     </span>
+                     {% if product.old_price and product.old_price > product.price %}
+                     <span class="text-lg text-[var(--neutral-400)] line-through">
+                         Rs. {{ "{:,.0f}".format(product.old_price) }}
+                     </span>
+                     <span class="badge-discount text-[11px]">
+                         Save {{ "{:.0f}%".format((1 - product.price/product.old_price)*100) }}
+                     </span>
+                     {% endif %}
+                 </div>
+
 
             <!-- Description -->
             <div class="border-t border-[var(--neutral-100)] pt-8">
@@ -199,7 +200,7 @@
                                 <span>Runs Large</span>
                             </div>
                             <div class="w-full bg-[var(--neutral-200)] h-1 relative">
-                                <div class="absolute bg-[var(--neutral-900)] w-3 h-3 -top-1 left-1/2 -translate-x-1/2 border-2 border-white"></div>
+                                <div class="absolute bg-[var(--neutral-900)] w-3 h-3 -top-1 left-1/2 -translate-x-1/2 border-2 border-[var(--color-white)]"></div>
                             </div>
                         </div>
                     </div>
@@ -295,76 +296,77 @@
 </div>
 
 <!-- Sticky Mobile Add to Cart (visible on mobile only) -->
-<div id="stickyMobileCart" class="fixed bottom-16 left-0 right-0 bg-white border-t border-[var(--neutral-100)] p-3 lg:hidden z-[var(--z-sticky)] shadow-2xl hidden">
-    <div class="flex items-center justify-between gap-3">
-        <div>
-            <span class="text-sm font-bold text-[var(--neutral-900)]">Rs. {{ "{:,.0f}".format(product.price) }}</span>
-            {% if product.old_price and product.old_price > product.price %}
-            <span class="text-xs text-[var(--neutral-400)] line-through ml-2">Rs. {{ "{:,.0f}".format(product.old_price) }}</span>
-            {% endif %}
-        </div>
-        <button type="button" id="stickyAddToCartBtn"
-                class="btn-primary flex-grow max-w-[200px] py-3 text-[10px] ripple">
-            <i class="fa-solid fa-bag-shopping"></i> Add to Bag
-        </button>
-    </div>
-</div>
+ <div id="stickyMobileCart" class="fixed bottom-16 left-0 right-0 bg-[var(--color-white)] border-t border-[var(--neutral-100)] p-3 lg:hidden z-[var(--z-sticky)] shadow-2xl hidden">
+     <div class="flex items-center justify-between gap-3">
+         <div>
+             <span class="text-sm font-bold text-[var(--neutral-900)]">Rs. {{ "{:,.0f}".format(product.price) }}</span>
+             {% if product.old_price and product.old_price > product.price %}
+             <span class="text-xs text-[var(--neutral-400)] line-through ml-2">Rs. {{ "{:,.0f}".format(product.old_price) }}</span>
+             {% endif %}
+         </div>
+         <button type="button" id="stickyAddToCartBtn"
+                 class="btn-primary flex-grow max-w-[200px] py-3 text-[10px] ripple">
+             <i class="fa-solid fa-bag-shopping"></i> Add to Bag
+         </button>
+     </div>
+ </div>
 
-<!-- Size Guide Modal -->
-<div id="sizeFinderModal" class="modal-overlay hidden">
-    <div class="modal-content max-w-lg">
-        <div class="p-6 sm:p-8">
-            <div class="flex items-center justify-between mb-6">
-                <div class="flex items-center gap-2 font-bold text-xs uppercase tracking-widest text-[var(--neutral-900)]">
-                    <i class="fa-solid fa-ruler-combined"></i>
-                    <span>Fit Finder</span>
-                </div>
-                <button id="closeFitFinderBtn" class="p-2 text-[var(--neutral-400)] hover:text-[var(--neutral-900)] transition rounded-full hover:bg-[var(--neutral-50)]">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
 
-            <div class="space-y-6">
-                <p class="text-xs text-[var(--neutral-500)] uppercase tracking-wider leading-relaxed font-light">
-                    Enter your height and weight for a personalized size recommendation.
-                </p>
-
-                <div class="space-y-2">
-                    <div class="flex justify-between text-xs font-bold uppercase tracking-wider text-[var(--neutral-700)]">
-                        <span>Height</span>
-                        <span id="sfHeightVal" class="text-[var(--neutral-900)]">170 cm</span>
+    <!-- Fit Finder Modal -->
+    <div id="sizeFinderModal" class="modal-overlay">
+        <div class="modal-content max-w-lg">
+            <div class="p-6 sm:p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-2 font-bold text-xs uppercase tracking-widest text-[var(--neutral-900)]">
+                        <i class="fa-solid fa-ruler-combined"></i>
+                        <span>Fit Finder</span>
                     </div>
-                    <input type="range" id="sfHeight" min="100" max="220" value="170" class="w-full" />
-                </div>
-
-                <div class="space-y-2">
-                    <div class="flex justify-between text-xs font-bold uppercase tracking-wider text-[var(--neutral-700)]">
-                        <span>Weight</span>
-                        <span id="sfWeightVal" class="text-[var(--neutral-900)]">65 kg</span>
-                    </div>
-                    <input type="range" id="sfWeight" min="30" max="150" value="65" class="w-full" />
-                </div>
-
-                <div class="space-y-2">
-                    <label for="sfFit" class="block text-xs font-bold uppercase tracking-widest text-[var(--neutral-700)]">Preferred Fit</label>
-                    <select id="sfFit" class="w-full bg-[var(--neutral-50)] border border-[var(--neutral-100)] px-3 py-2.5 text-xs tracking-wider uppercase focus:outline-none focus:border-[var(--neutral-900)]">
-                        <option value="regular">Regular Fit</option>
-                        <option value="slim">Slim Fit</option>
-                        <option value="loose">Loose Fit</option>
-                    </select>
-                </div>
-
-                <div class="bg-[var(--neutral-50)] p-6 border border-[var(--neutral-100)] flex items-center justify-between gap-4">
-                    <div>
-                        <span class="text-[9px] tracking-widest font-bold text-[var(--neutral-400)] uppercase block mb-0.5">Recommended</span>
-                        <strong class="text-2xl font-semibold text-[var(--neutral-900)]" id="sfResultSize">M</strong>
-                    </div>
-                    <button type="button" id="applyFitFinderSizeBtn" class="btn-primary">
-                        Apply Size
+                    <button id="closeFitFinderBtn" class="p-2 text-[var(--neutral-400)] hover:text-[var(--neutral-900)] transition rounded-full hover:bg-[var(--neutral-50)]">
+                        <i class="fa-solid fa-xmark"></i>
                     </button>
                 </div>
+                
+                <div class="space-y-6">
+                    <p class="text-xs text-[var(--neutral-500)] uppercase tracking-wider leading-relaxed font-light">
+                        Enter your height and weight for a personalized size recommendation.
+                    </p>
+                
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-xs font-bold uppercase tracking-wider text-[var(--neutral-700)]">
+                            <span>Height</span>
+                            <span id="sfHeightVal" class="text-[var(--neutral-900)]">170 cm</span>
+                        </div>
+                        <input type="range" id="sfHeight" min="100" max="220" value="170" class="w-full" />
+                    </div>
+                
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-xs font-bold uppercase tracking-wider text-[var(--neutral-700)]">
+                            <span>Weight</span>
+                            <span id="sfWeightVal" class="text-[var(--neutral-900)]">65 kg</span>
+                        </div>
+                        <input type="range" id="sfWeight" min="30" max="150" value="65" class="w-full" />
+                    </div>
+                
+                    <div class="space-y-2">
+                        <label for="sfFit" class="block text-xs font-bold uppercase tracking-widest text-[var(--neutral-700)]">Preferred Fit</label>
+                        <select id="sfFit" class="w-full bg-[var(--neutral-50)] border border-[var(--neutral-100)] px-3 py-2.5 text-xs tracking-wider uppercase focus:outline-none focus:border-[var(--neutral-900)]">
+                            <option value="regular">Regular Fit</option>
+                            <option value="slim">Slim Fit</option>
+                            <option value="loose">Loose Fit</option>
+                        </select>
+                    </div>
+                
+                    <div class="bg-[var(--neutral-50)] p-6 border border-[var(--neutral-100)] flex items-center justify-between gap-4">
+                        <div>
+                            <span class="text-[9px] tracking-widest font-bold text-[var(--neutral-400)] uppercase block mb-0.5">Recommended</span>
+                            <strong class="text-2xl font-semibold text-[var(--neutral-900)]" id="sfResultSize">M</strong>
+                        </div>
+                        <button type="button" id="applyFitFinderSizeBtn" class="btn-primary">
+                            Apply Size
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-</div>
 {% endblock %}

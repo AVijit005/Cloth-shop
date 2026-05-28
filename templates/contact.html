@@ -18,24 +18,24 @@
     
     <div class="grid grid-cols-1 md:grid-cols-2 gap-12 sm:gap-16 items-start">
         <!-- Contact form -->
-        <form class="space-y-4 bg-white border border-neutral-200 p-8" id="contactUsForm">
+        <form class="space-y-4 bg-[var(--color-white)] border border-neutral-200 p-8" id="contactUsForm">
             <h3 class="font-medium text-neutral-900 text-xs uppercase tracking-widest mb-4">Send Message</h3>
             <div>
-                <label class="block text-[10px] font-medium uppercase tracking-widest text-neutral-500 mb-1">Your Name</label>
-                <input type="text" required placeholder="e.g. John Doe" 
+                <label for="contactName" class="block text-[10px] font-medium uppercase tracking-widest text-neutral-500 mb-1">Your Name</label>
+                <input type="text" id="contactName" required placeholder="e.g. John Doe" 
                        class="w-full bg-neutral-50 border border-neutral-200 px-5 py-3 text-xs font-light tracking-wider placeholder-neutral-400 focus:outline-none focus:border-neutral-900 focus:ring-0" />
             </div>
             <div>
-                <label class="block text-[10px] font-medium uppercase tracking-widest text-neutral-500 mb-1">Email Address</label>
-                <input type="email" required placeholder="e.g. john@example.com" 
+                <label for="contactEmail" class="block text-[10px] font-medium uppercase tracking-widest text-neutral-500 mb-1">Email Address</label>
+                <input type="email" id="contactEmail" required placeholder="e.g. john@example.com" 
                        class="w-full bg-neutral-50 border border-neutral-200 px-5 py-3 text-xs font-light tracking-wider placeholder-neutral-400 focus:outline-none focus:border-neutral-900 focus:ring-0" />
             </div>
             <div>
-                <label class="block text-[10px] font-medium uppercase tracking-widest text-neutral-500 mb-1">Message</label>
-                <textarea rows="4" required placeholder="Detail your question here..." 
+                <label for="contactMessage" class="block text-[10px] font-medium uppercase tracking-widest text-neutral-500 mb-1">Message</label>
+                <textarea id="contactMessage" rows="4" required placeholder="Detail your question here..." 
                           class="w-full bg-neutral-50 border border-neutral-200 p-4 text-xs font-light tracking-wider placeholder-neutral-400 focus:outline-none focus:border-neutral-900 focus:ring-0"></textarea>
             </div>
-            <button type="submit" class="w-full py-3.5 bg-neutral-900 hover:bg-neutral-800 text-white font-light text-[10px] uppercase tracking-widest transition duration-300">
+            <button type="submit" class="w-full py-3.5 bg-neutral-900 hover:bg-neutral-800 text-[var(--color-white)] font-light text-[10px] uppercase tracking-widest transition duration-300">
                 Submit Message
             </button>
         </form>
