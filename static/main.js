@@ -25,18 +25,21 @@ function formatPrice(amount) {
     return "Rs. " + num.toLocaleString("en-IN");
 }
 
+function lsGet(key, fallback) {
+    try { const v = localStorage.getItem(key); return v !== null ? v : null; } catch { return null; }
+}
 const appState = {
     user: null,
     products: [],
-    cart: safeParseJSON(localStorage.getItem("shibani_cart"), []),
-    wishlist: safeParseJSON(localStorage.getItem("shibani_wishlist"), []),
+    cart: safeParseJSON(lsGet("shibani_cart"), []),
+    wishlist: safeParseJSON(lsGet("shibani_wishlist"), []),
     settings: {
         gst_rate: 5.0,
         delivery_fee_standard: 99.0,
         delivery_fee_threshold: 999.0,
         other_charges: 0.0
     },
-    compareList: safeParseJSON(localStorage.getItem("shibani_compare"), [])
+    compareList: safeParseJSON(lsGet("shibani_compare"), [])
 };
 
 // Global API Helper
