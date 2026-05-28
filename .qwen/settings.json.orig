@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Agent(general-purpose)"
-    ]
-  },
-  "$version": 4
-}

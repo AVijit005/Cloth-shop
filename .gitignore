@@ -7,4 +7,7 @@ uploads/*
 logs/*
 .pytest_cache/
 .kilo/
+.qwen/
+Cloth-shop/
+.secret_key
 
