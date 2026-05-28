@@ -261,6 +261,7 @@ function _initCartDrawer() {
     const open = async () => {
         if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
         backdrop?.classList.remove("hidden");
+        drawer.classList.remove("hidden");
         backdrop?.classList.add("open");
         panel.classList.remove("hidden");
         panel.classList.add("open");
