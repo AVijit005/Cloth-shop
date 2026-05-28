@@ -1261,6 +1261,8 @@ def ensure_column(cursor, table_name, column_name, definition):
         "LONGTEXT",
         "TINYINT(1) DEFAULT 0",
         "DATETIME DEFAULT NULL",
+        "VARCHAR(120) DEFAULT NULL",
+        "VARCHAR(100) DEFAULT NULL",
         "INT DEFAULT NULL",
         "INT DEFAULT 0",
         "ENUM('admin', 'customer') NOT NULL DEFAULT 'customer'",
