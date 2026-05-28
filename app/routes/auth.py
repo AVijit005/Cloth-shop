@@ -53,7 +53,7 @@ def _auth_rate_limit(max_requests=10, window_seconds=60):
 @_auth_rate_limit(max_requests=10, window_seconds=60)
 def login():
     data = json_payload()
-    username = (data.get("username") or "").strip()
+    username = (data.get("username") or "").strip().upper()
     password = data.get("password", "")
     remember = data.get("remember", False)
     ip = request.remote_addr

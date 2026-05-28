@@ -1572,7 +1572,7 @@ def health():
 @rate_limit(max_requests=10, window_seconds=60)
 def login():
     data = json_payload()
-    username = (data.get("username") or "").strip()
+    username = (data.get("username") or "").strip().upper()
     password = data.get("password", "")
     remember_raw = data.get("remember", False)
     remember = remember_raw is True or (isinstance(remember_raw, str) and remember_raw.lower() not in ("false", "0", ""))

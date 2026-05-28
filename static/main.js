@@ -3325,14 +3325,12 @@ function drawCategorySalesPieChart(categorySales) {
 async function initLogin() {
     const loginForm = document.getElementById("loginForm");
     const loginMessage = document.getElementById("loginMessage");
-    const quickAdmin = document.getElementById("quickLoginAdminBtn");
-    const quickCustomer = document.getElementById("quickLoginCustomerBtn");
 
     if (!loginForm) return;
 
     loginForm.addEventListener("submit", async (e) => {
         e.preventDefault();
-        const username = document.getElementById("usernameInput").value.trim();
+        const username = document.getElementById("usernameInput").value.trim().toUpperCase();
         const password = document.getElementById("passwordInput").value;
         const submitBtn = document.getElementById("loginSubmitBtn");
 
@@ -3374,26 +3372,7 @@ async function initLogin() {
             </span> Sign In`;
         }
     });
-
-    // Quick Demo Credentials Buttons
-    if (quickAdmin) {
-        quickAdmin.addEventListener("click", () => {
-            document.getElementById("usernameInput").value = "admin";
-            document.getElementById("passwordInput").value = "admin123";
-            loginForm.dispatchEvent(new Event("submit"));
-        });
-    }
-
-    if (quickCustomer) {
-        quickCustomer.addEventListener("click", () => {
-            document.getElementById("usernameInput").value = "customer";
-            document.getElementById("passwordInput").value = "customer123";
-            loginForm.dispatchEvent(new Event("submit"));
-        });
-    }
-}
-
-function initContact() {
+}function initContact() {
     const form = document.getElementById("contactUsForm");
     if (!form) return;
     form.addEventListener("submit", (e) => {

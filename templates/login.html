@@ -86,26 +86,11 @@
                 </p>
             </div>
 
-            {% if not IS_PROD %}
-            <div class="mt-10 border-t border-[var(--neutral-100)] pt-8">
-                <p class="text-[10px] text-[var(--neutral-400)] uppercase tracking-widest mb-4 text-center md:text-left">Quick Demo</p>
-                <div class="grid grid-cols-2 gap-4">
-                    <button id="quickLoginAdminBtn"
-                            class="border border-[var(--neutral-200)] bg-[var(--color-white)] hover:bg-[var(--neutral-50)] p-4 text-left transition hover:border-[var(--neutral-900)]">
-                        <p class="text-[10px] font-bold text-[var(--neutral-700)] uppercase tracking-wider">Admin</p>
-                        <p class="mt-1 text-[9px] tracking-wider text-[var(--neutral-400)]">admin / admin123</p>
-                    </button>
-                    <button id="quickLoginCustomerBtn"
-                            class="border border-[var(--neutral-200)] bg-[var(--color-white)] hover:bg-[var(--neutral-50)] p-4 text-left transition hover:border-[var(--neutral-900)]">
-                        <p class="text-[10px] font-bold text-[var(--neutral-700)] uppercase tracking-wider">Customer</p>
-                        <p class="mt-1 text-[9px] tracking-wider text-[var(--neutral-400)]">customer / customer123</p>
-                    </button>
-                </div>
-            </div>
-            {% endif %}
         </div>
     </div>
 </div>
 
 <script type="module" src="{{ url_for('static', filename='firebase-auth.js') }}"></script>
+{% endblock %}
+url_for('static', filename='firebase-auth.js') }}"></script>
 {% endblock %}
