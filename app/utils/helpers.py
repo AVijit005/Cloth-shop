@@ -82,10 +82,12 @@ def save_base64_image(base64_str, upload_folder):
             if len(data) > MAX_IMAGE_SIZE:
                 logger.warning("Rejected image upload exceeding %d bytes", MAX_IMAGE_SIZE)
                 return base64_str
-            if not any(data.startswith(sig) for sig in [b"\xff\xd8\xff", b"\x89PNG", b"GIF87a", b"GIF89a", b"RIFF"]):
-                if ext != "webp":
-                    logger.warning("Rejected upload: invalid image magic bytes")
-                    return base64_str
+            is_valid = any(data.startswith(sig) for sig in [b"\xff\xd8\xff", b"\x89PNG", b"GIF87a", b"GIF89a"])
+            if not is_valid:
+                is_valid = ext == "webp" and data.startswith(b"RIFF") and len(data) > 12 and data[8:12] == b"WEBP"
+            if not is_valid:
+                logger.warning("Rejected upload: invalid image magic bytes")
+                return base64_str
             filename = f"{secrets.token_hex(16)}.{ext}"
             filepath = os.path.join(upload_folder, filename)
             with open(filepath, "wb") as f:

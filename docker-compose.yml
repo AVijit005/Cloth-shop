@@ -27,7 +27,7 @@ services:
       MYSQL_USER: root
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-rootpassword}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-shibani_store}
-      SECRET_KEY: ${SECRET_KEY}
+      SECRET_KEY: ${SECRET_KEY:-please_change_in_production}
       FLASK_ENV: ${FLASK_ENV:-production}
     depends_on:
       db:

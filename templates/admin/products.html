@@ -57,6 +57,7 @@
         
         <!-- Form Body (Scrollable) -->
         <form id="productForm" class="flex-grow overflow-y-auto p-6 sm:p-8 space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ session.get('csrf_token', '') }}">
             <input id="editingProductId" type="hidden" />
             
             <!-- Photo Upload Area -->

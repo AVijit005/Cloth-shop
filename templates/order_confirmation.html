@@ -79,7 +79,7 @@
 <script>
 document.addEventListener("DOMContentLoaded", async () => {
     const urlParams = new URLSearchParams(window.location.search);
-    const orderId = parseInt(urlParams.get("order_id"));
+    const orderId = parseInt(urlParams.get("order_id"), 10);
     const invoice = document.getElementById("invoiceContainer");
     if (!orderId || isNaN(orderId)) {
         invoice.innerHTML = `<p class="text-center text-red-500 font-bold text-xs uppercase tracking-wider py-4">Invalid Order ID. Please check from your profile page.</p>`;

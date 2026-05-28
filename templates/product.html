@@ -35,7 +35,7 @@
                 {% endif %}
 
                 <!-- Discount badge -->
-                {% if product.old_price and product.old_price > product.price %}
+                {% if product.old_price and product.old_price > product.price and product.old_price != 0 %}
                 {% set save_pct = ((1 - product.price/product.old_price)*100)|int %}
                 <span class="badge-discount absolute top-4 right-4">{{ save_pct }}% OFF</span>
                 {% endif %}
@@ -209,6 +209,7 @@
                 <!-- Review Form -->
                 {% if session.get('user') %}
                 <form id="submitReviewForm" class="border border-[var(--neutral-100)] p-8 space-y-4">
+                    <input type="hidden" name="csrf_token" value="{{ session.get('csrf_token', '') }}">
                     <h4 class="font-bold text-xs tracking-widest uppercase text-[var(--neutral-900)]">Write a Review</h4>
                     <div>
                         <label class="block text-[9px] font-bold uppercase tracking-widest text-[var(--neutral-500)] mb-1.5">Rating</label>

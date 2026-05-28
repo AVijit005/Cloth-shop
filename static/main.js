@@ -21,7 +21,7 @@ function safeParseJSON(val, fallback) {
 
 function formatPrice(amount) {
     const num = typeof amount === "string" ? parseFloat(amount) : Number(amount);
-    if (isNaN(num)) return "Rs. 0";
+    if (Number.isNaN(num)) return "Rs. 0";
     return "Rs. " + num.toLocaleString("en-IN");
 }
 
@@ -43,10 +43,10 @@ const appState = {
 };
 
 // Global API Helper
+const _escapeDiv = document.createElement("div");
 function escapeHTML(str) {
-    const div = document.createElement("div");
-    div.textContent = str;
-    return div.innerHTML;
+    _escapeDiv.textContent = str;
+    return _escapeDiv.innerHTML;
 }
 
 // Focus trap helpers for modals/drawers
@@ -281,7 +281,7 @@ if (itemsEl) itemsEl.classList.remove("hidden");
     let html = "";
     let total = 0;
     items.forEach((item, idx) => {
-        const product = appState.products.find(p => p.id === item.product_id);
+        const product = appState.products.find(p => String(p.id) === String(item.product_id));
         if (!product) return;
         const price = Number(product.price) || 0;
         const qty = item.quantity != null ? item.quantity : 1;
@@ -887,7 +887,7 @@ function attachCardEvents(container) {
                 }
                 appState.compareList.push(pId);
             } else {
-                const idx = appState.compareList.indexOf(pId);
+                const idx = appState.compareList.findIndex(id => Number(id) === Number(pId));
                 if (idx > -1) appState.compareList.splice(idx, 1);
             }
             localStorage.setItem("shibani_compare", JSON.stringify(appState.compareList));
@@ -922,7 +922,7 @@ async function initShop() {
         }
     } catch (err) {
         console.error("Error loading shop catalog:", err);
-        container.innerHTML = `<p class="col-span-full text-center text-slate-400 font-semibold py-12">Failed to load catalog. Detail: ${err.message || err}</p>`;
+        container.innerHTML = `<p class="col-span-full text-center text-slate-400 font-semibold py-12">Failed to load catalog. Detail: ${escapeHTML(err.message || String(err))}</p>`;
     }
     
     // 3. Attach filter changes listeners
@@ -1156,7 +1156,7 @@ function updateCompareDrawer() {
             return `
             <div class="space-y-4 pl-6 relative">
                 <!-- Quick Remove -->
-                <button onclick="removeCompareItem(${p.id})" class="absolute top-0 right-0 p-1 text-slate-400 hover:text-rose-500 transition"><i class="fa-solid fa-circle-xmark"></i></button>
+                <button onclick="removeCompareItem(${Number(p.id)})" class="absolute top-0 right-0 p-1 text-slate-400 hover:text-rose-500 transition"><i class="fa-solid fa-circle-xmark"></i></button>
                 <div class="h-40 flex flex-col justify-end gap-2">
                     <img src="${escapeHTML(parsedImages[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=100')}" class="w-16 h-16 rounded-xl object-cover" />
                     <h4 class="font-bold text-slate-800 line-clamp-2 leading-tight">${escapeHTML(p.name)}</h4>
@@ -1173,7 +1173,7 @@ function updateCompareDrawer() {
 }
 
 function removeCompareItem(productId) {
-    const idx = appState.compareList.indexOf(productId);
+    const idx = appState.compareList.findIndex(id => Number(id) === Number(productId));
     if (idx > -1) {
         appState.compareList.splice(idx, 1);
         localStorage.setItem("shibani_compare", JSON.stringify(appState.compareList));
@@ -1490,7 +1490,8 @@ async function initProductDetail() {
     if (reviewForm) {
         reviewForm.addEventListener("submit", async (e) => {
             e.preventDefault();
-            const rating = Number(document.getElementById("reviewRatingSelect").value);
+            const ratingEl = document.getElementById("reviewRatingSelect");
+            const rating = Number(ratingEl ? ratingEl.value : 3);
             const sizing_fit = document.getElementById("reviewSizingSelect").value;
             const comment = document.getElementById("reviewCommentText").value.trim();
             
@@ -1663,7 +1664,7 @@ async function initCart() {
             
             // Sync settings variables
             const settingsData = await api("/api/settings");
-            appState.settings = settingsData;
+            Object.assign(appState.settings, settingsData);
         }
     } catch (err) {
         console.error("Config synchronization error:", err);
@@ -1760,11 +1761,10 @@ async function renderCart() {
     if (summaryPanel) summaryPanel.classList.remove("hidden");
     
     container.innerHTML = appState.cart.map((item, idx) => {
-        const product = appState.products.find(p => p.id === item.product_id);
-        if (!product) return '';
-        
-        const parsedImages = parseProductImages(product.image, product.images);
-        
+        const product = appState.products.find(p => String(p.id) === String(item.product_id));
+        if (!product) return;
+        const price = Number(product.price) || 0;
+        const qty = item.quantity != null ? item.quantity : 1;
         return `
         <div class="bg-white border border-slate-100 rounded-3xl p-4 sm:p-6 shadow-sm flex gap-4 sm:gap-6 items-center">
             <img src="${escapeHTML(parsedImages[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=100')}" class="w-20 h-20 rounded-2xl object-cover flex-shrink-0" />
@@ -2013,6 +2013,7 @@ async function applyCouponCode() {
 }
 
 let upiInterval = null;
+window.addEventListener("beforeunload", () => { if (upiInterval) { clearInterval(upiInterval); upiInterval = null; } });
 
 async function handleCheckoutSubmit(e) {
     e.preventDefault();
@@ -2861,7 +2862,7 @@ async function loadAdminOrders(statusFilter = "all", searchQuery = "") {
         }
         
         if (filtered.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-400">No matching checkouts found.</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-400">No matching orders found.</td></tr>`;
             return;
         }
         

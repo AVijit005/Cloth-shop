@@ -50,7 +50,8 @@ def send_email(subject, recipient, body_html, smtp_config=None):
                     else:
                         server = smtplib.SMTP(host, port_int, timeout=10)
                         server.starttls()
-                    server.login(user, pwd)
+                    if user and pwd:
+                        server.login(user, pwd)
                     server.sendmail(sender, [recipient], msg.as_string())
                 finally:
                     if server is not None:
@@ -58,7 +59,10 @@ def send_email(subject, recipient, body_html, smtp_config=None):
             except Exception as ex:
                 logger.error("SMTP email fail to %s: %s", recipient, ex)
 
-        threading.Thread(target=_send, daemon=True).start()
+        import atexit
+        thread = threading.Thread(target=_send, daemon=True)
+        thread.start()
+        atexit.register(thread.join, timeout=2)
 
 
 def send_verification_email(username, email, token, smtp_config=None, url_root=""):

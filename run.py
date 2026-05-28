@@ -444,7 +444,7 @@ MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB
 
 def save_base64_image(base64_str):
     if not base64_str or not isinstance(base64_str, str):
-        return base64_str
+        return ""
     if base64_str.startswith("data:image/"):
         try:
             header, encoded = base64_str.split(",", 1)
@@ -452,20 +452,20 @@ def save_base64_image(base64_str):
             ext = match.group(1).lower() if match else "png"
             if ext not in ALLOWED_IMAGE_TYPES:
                 logger.warning("Rejected image upload with type: %s", ext)
-                return base64_str
+                return ""
             if ext == "jpeg":
                 ext = "jpg"
             data = base64.b64decode(encoded)
             if len(data) > MAX_IMAGE_SIZE:
                 logger.warning("Rejected image upload exceeding %d bytes", MAX_IMAGE_SIZE)
-                return base64_str
+                return ""
             # Validate decoded data starts with a valid image magic bytes
             is_valid = any(data.startswith(sig) for sig in [b"\xff\xd8\xff", b"\x89PNG", b"GIF87a", b"GIF89a"])
             if not is_valid:
                 is_valid = ext == "webp" and data.startswith(b"RIFF") and data[8:12] == b"WEBP"
             if not is_valid:
                 logger.warning("Rejected upload: invalid image magic bytes")
-                return base64_str
+                return ""
             filename = f"{secrets.token_hex(16)}.{ext}"
             filepath = os.path.join(UPLOAD_FOLDER, filename)
             with open(filepath, "wb") as f:
@@ -494,11 +494,9 @@ memory_settings = {
     "other_charges": "0.0"
 }
 
-@cache
 def _admin_hash():
     return generate_password_hash("admin123")
 
-@cache
 def _customer_hash():
     return generate_password_hash("customer123")
 
@@ -1147,10 +1145,11 @@ def json_payload():
 def ensure_column(cursor, table_name, column_name, definition):
     if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', table_name) or not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', column_name):
         return
+    definition_safe = re.sub(r'[^a-zA-Z0-9_\s\(\)\,]', '', definition)
     cursor.execute("SHOW COLUMNS FROM `{}` LIKE %s".format(table_name), (column_name,))
     if cursor.fetchone():
         return
-    cursor.execute("ALTER TABLE `{}` ADD COLUMN `{}` {}".format(table_name, column_name, definition))
+    cursor.execute("ALTER TABLE `{}` ADD COLUMN `{}` {}".format(table_name, column_name, definition_safe))
 
 
 def require_login(fn):
@@ -1215,6 +1214,7 @@ def parse_images(images_value, fallback_image=""):
 
 def create_user_session(user, remember=False, username=None):
     """Create a Flask session for the given user dict. Mutates session in place."""
+    session.clear()
     session.permanent = bool(remember)
     session["user"] = {
         "id": user["id"],
@@ -1227,6 +1227,7 @@ def create_user_session(user, remember=False, username=None):
         session["saved_name"] = user["saved_name"]
         session["saved_phone"] = user.get("saved_phone") or ""
         session["saved_address"] = user.get("saved_address") or ""
+    session.modified = True
 
 
 def user_by_username(username):
@@ -1443,7 +1444,8 @@ def login():
     data = json_payload()
     username = (data.get("username") or "").strip()
     password = data.get("password", "")
-    remember = data.get("remember", False)
+    remember_raw = data.get("remember", False)
+    remember = remember_raw is True or (isinstance(remember_raw, str) and remember_raw.lower() not in ("false", "0", ""))
     ip = request.remote_addr
 
     # 1. Brute-force throttling check
@@ -3104,7 +3106,8 @@ def create_order():
     if total < 0:
         total = 0.0
 
-    save_profile = data.get("save_profile")
+    save_profile_raw = data.get("save_profile")
+    save_profile = save_profile_raw is True or (isinstance(save_profile_raw, str) and save_profile_raw.lower() not in ("false", "0", ""))
 
     if check_db_health():
         try:
@@ -3154,10 +3157,12 @@ def create_order():
                     
                     connection.commit()
         except ValueError as verr:
-            connection.rollback()
+            try: connection.rollback()
+            except Exception: pass
             return jsonify({"error": str(verr)}), 400
         except Exception:
-            connection.rollback()
+            try: connection.rollback()
+            except Exception: pass
             return jsonify({"error": "Database error"}), 500
     else:
         if save_profile:
