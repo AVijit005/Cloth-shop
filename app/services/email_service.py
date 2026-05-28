@@ -1,12 +1,30 @@
 import logging
 import smtplib
 import os
+import re
 import threading
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from html import escape
 
 logger = logging.getLogger(__name__)
+
+# Thread-safe list of active SMTP threads for cleanup
+_smtp_threads = []
+_smtp_threads_lock = threading.Lock()
+
+
+def _sanitize_email_header(value):
+    """Strip control characters from email header values to prevent header injection."""
+    if value is None:
+        return ""
+    return re.sub(r"[\x00-\x1f\x7f]", "", str(value))
+
+
+def _cleanup_smtp_threads():
+    """Remove finished thread references to prevent memory leak."""
+    with _smtp_threads_lock:
+        _smtp_threads[:] = [t for t in _smtp_threads if t.is_alive()]
 
 
 def send_email(subject, recipient, body_html, smtp_config=None):
@@ -31,16 +49,27 @@ def send_email(subject, recipient, body_html, smtp_config=None):
         pwd = smtp_config.get("password")
         sender = smtp_config.get("sender", "noreply@shibanifashion.com")
 
+        missing = []
         if not port:
-            logger.warning("SMTP_PORT not configured, skipping email send")
-            return
+            missing.append("SMTP_PORT")
+        if not user:
+            missing.append("SMTP_USER")
+        if not pwd:
+            missing.append("SMTP_PASSWORD")
+        if missing:
+            msg = f"SMTP configured but missing: {', '.join(missing)}"
+            logger.error(msg)
+            raise ValueError(msg)
 
         def _send():
             try:
+                safe_subject = _sanitize_email_header(subject)
+                safe_sender = _sanitize_email_header(sender)
+                safe_recipient = _sanitize_email_header(recipient)
                 msg = MIMEMultipart("alternative")
-                msg["Subject"] = subject
-                msg["From"] = sender
-                msg["To"] = recipient
+                msg["Subject"] = safe_subject
+                msg["From"] = safe_sender
+                msg["To"] = safe_recipient
                 msg.attach(MIMEText(body_html, "html"))
                 port_int = int(port)
                 server = None
@@ -59,10 +88,8 @@ def send_email(subject, recipient, body_html, smtp_config=None):
             except Exception as ex:
                 logger.error("SMTP email fail to %s: %s", recipient, ex)
 
-        import atexit
-        thread = threading.Thread(target=_send, daemon=True)
-        thread.start()
-        atexit.register(thread.join, timeout=2)
+        _smtp_threads.append(threading.Thread(target=_send, daemon=True))
+        _smtp_threads[-1].start()
 
 
 def send_verification_email(username, email, token, smtp_config=None, url_root=""):

@@ -33,11 +33,11 @@
                 </p>
             </div>
 
-            <form id="loginForm" method="POST" class="space-y-5">
+            <form id="loginForm" method="POST" class="space-y-5" onsubmit="return false;">
                 <input type="hidden" name="csrf_token" value="{{ session.get('csrf_token', '') }}">
                 <div>
                     <label for="usernameInput" class="block mb-2 text-[10px] font-bold tracking-[0.2em] text-[var(--neutral-500)] uppercase">Username</label>
-                    <input id="usernameInput" type="text" autocomplete="username" required placeholder="Enter username"
+                    <input id="usernameInput" type="text" name="username" autocomplete="username" required placeholder="Enter username"
                            class="w-full border border-[var(--neutral-200)] bg-[var(--color-white)] px-4 py-3 text-xs tracking-wider uppercase focus:outline-none focus:border-[var(--neutral-900)] transition-all duration-300" />
                 </div>
 
@@ -48,7 +48,7 @@
                             Forgot?
                         </a>
                     </div>
-                    <input id="passwordInput" type="password" autocomplete="current-password" required placeholder="Enter password"
+                    <input id="passwordInput" type="password" name="password" autocomplete="current-password" required placeholder="Enter password"
                            class="w-full border border-[var(--neutral-200)] bg-[var(--color-white)] px-4 py-3 text-xs tracking-wider uppercase focus:outline-none focus:border-[var(--neutral-900)] transition-all duration-300" />
                 </div>
 

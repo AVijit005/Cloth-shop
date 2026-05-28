@@ -10,6 +10,7 @@ from flask import Blueprint, jsonify, request, session
 from werkzeug.security import check_password_hash, generate_password_hash
 import secrets
 import re
+import threading
 
 from app import user_by_username, create_user
 from app.config import SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_SENDER, LOGS_FOLDER
@@ -22,8 +23,34 @@ from app.services.email_service import send_verification_email
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api")
 
+# Simple rate limiter for auth blueprint (independent of run.py's rate limiter)
+import time
+_auth_rate_limit_store = {}
+_auth_rate_lock = threading.Lock()
+
+def _auth_rate_limit(max_requests=10, window_seconds=60):
+    """Lightweight rate-limit decorator for auth blueprint routes."""
+    def decorator(fn):
+        from functools import wraps
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            from flask import request, jsonify
+            ip = request.remote_addr or "unknown"
+            now = time.time()
+            with _auth_rate_lock:
+                window = _auth_rate_limit_store.setdefault(ip, [])
+                cutoff = now - window_seconds
+                _auth_rate_limit_store[ip] = [t for t in window if t > cutoff]
+                if len(_auth_rate_limit_store[ip]) >= max_requests:
+                    return jsonify({"error": f"Too many requests. Try again in {window_seconds} seconds."}), 429
+                _auth_rate_limit_store[ip].append(now)
+            return fn(*args, **kwargs)
+        return wrapper
+    return decorator
+
 
 @auth_bp.route("/login", methods=["POST"])
+@_auth_rate_limit(max_requests=10, window_seconds=60)
 def login():
     data = json_payload()
     username = (data.get("username") or "").strip()

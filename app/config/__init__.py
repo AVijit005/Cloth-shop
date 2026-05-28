@@ -13,14 +13,14 @@ try:
     DB_PORT = int(_raw_port) if _raw_port else 3306
 except (ValueError, TypeError):
     DB_PORT = 3306
-_secret_key_env = os.getenv("SECRET_KEY") or os.getenv("SHIBANI_SECRET_KEY")
-if _secret_key_env:
-    SECRET_KEY = _secret_key_env
+_key_file = os.path.join(os.path.dirname(__file__), "..", "..", ".secret_key")
+if os.path.exists(_key_file):
+    with open(_key_file, "r") as f:
+        SECRET_KEY = f.read().strip()
 else:
-    _key_file = os.path.join(os.path.dirname(__file__), "..", "..", ".secret_key")
-    if os.path.exists(_key_file):
-        with open(_key_file, "r") as f:
-            SECRET_KEY = f.read().strip()
+    _secret_key_env = os.getenv("SECRET_KEY") or os.getenv("SHIBANI_SECRET_KEY")
+    if _secret_key_env:
+        SECRET_KEY = _secret_key_env
     else:
         SECRET_KEY = secrets.token_hex(32)
         with open(_key_file, "w") as f:
@@ -39,5 +39,11 @@ SMTP_USER = os.getenv("SMTP_USER")
 SMTP_PASS = os.getenv("SMTP_PASS")
 SMTP_SENDER = os.getenv("SMTP_SENDER", "noreply@shibanifashion.com")
 
-UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "uploads")
-LOGS_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "logs")
+# __file__ is app/config/__init__.py
+# Go up two levels (config/ -> app/ -> project root) to match run.py's BASE_DIR
+_config_dir = os.path.dirname(os.path.abspath(__file__))
+_project_root = os.path.dirname(os.path.dirname(_config_dir))
+UPLOAD_FOLDER = os.path.join(_project_root, "uploads")
+LOGS_FOLDER = os.path.join(_project_root, "logs")
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(LOGS_FOLDER, exist_ok=True)

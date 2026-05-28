@@ -58,17 +58,24 @@ def track_failed_login(username, ip):
     now = datetime.now()
     with login_attempts_lock:
         if username:
-            att = login_attempts.get(f"u:{username}", {"count": 0, "lockout_until": None})
+            att = login_attempts.get(f"u:{username}", {"count": 0, "lockout_until": None, "last_attempt": now})
             att["count"] += 1
+            att["last_attempt"] = now
             if att["count"] >= 5:
                 att["lockout_until"] = now + timedelta(minutes=5)
             login_attempts[f"u:{username}"] = att
         if ip:
-            att = login_attempts.get(f"ip:{ip}", {"count": 0, "lockout_until": None})
+            att = login_attempts.get(f"ip:{ip}", {"count": 0, "lockout_until": None, "last_attempt": now})
             att["count"] += 1
+            att["last_attempt"] = now
             if att["count"] >= 10:
                 att["lockout_until"] = now + timedelta(minutes=10)
             login_attempts[f"ip:{ip}"] = att
+        if len(login_attempts) > 10000:
+            cutoff = now - timedelta(hours=24)
+            for key in list(login_attempts.keys()):
+                if login_attempts[key].get("last_attempt", now) < cutoff:
+                    del login_attempts[key]
 
 
 def clear_failed_logins(username, ip):
@@ -104,18 +111,21 @@ def validate_password_strength(password):
 def create_user_session(user, remember=False, username=None):
     """Create a Flask session for the given user dict."""
     session.clear()
+    session["csrf_token"] = secrets.token_hex(32)  # Regenerate CSRF token after session clear
     session.permanent = bool(remember)
     session["user"] = {
         "id": user["id"],
         "username": username or user.get("username"),
         "role": user["role"],
         "full_name": user["full_name"],
+        "email": user.get("email", ""),
         "email_verified": int(user.get("email_verified", 0))
     }
     if user.get("saved_name") is not None:
         session["saved_name"] = user["saved_name"]
         session["saved_phone"] = user.get("saved_phone") or ""
         session["saved_address"] = user.get("saved_address") or ""
+    session.modified = True
 
 
 def require_login(fn):

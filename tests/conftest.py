@@ -68,6 +68,10 @@ def reset_global_state():
     and repopulate from the canonical starter data.
     """
     app_module.memory_products.clear()
+    # Reset the rate limiter store to prevent test interdependency
+    app_module._rate_limit_store.clear()
+    # Reset login attempts to prevent lockout bleed between tests
+    app_module.login_attempts.clear()
     app_module.init_memory_store()  # repopulate from starter_products
     app_module.memory_orders.clear()
     app_module.memory_users.clear()

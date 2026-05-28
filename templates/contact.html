@@ -18,22 +18,22 @@
     
     <div class="grid grid-cols-1 md:grid-cols-2 gap-12 sm:gap-16 items-start">
         <!-- Contact form -->
-        <form method="POST" class="space-y-4 bg-[var(--color-white)] border border-neutral-200 p-8" id="contactUsForm">
+        <form method="POST" class="space-y-4 bg-[var(--color-white)] border border-neutral-200 p-8" id="contactUsForm" onsubmit="return false;">
             <input type="hidden" name="csrf_token" value="{{ session.get('csrf_token', '') }}">
             <h3 class="font-medium text-neutral-900 text-xs uppercase tracking-widest mb-4">Send Message</h3>
             <div>
                 <label for="contactName" class="block text-[10px] font-medium uppercase tracking-widest text-neutral-500 mb-1">Your Name</label>
-                <input type="text" id="contactName" required placeholder="e.g. John Doe" 
+                <input type="text" id="contactName" name="name" required placeholder="e.g. John Doe" 
                        class="w-full bg-neutral-50 border border-neutral-200 px-5 py-3 text-xs font-light tracking-wider placeholder-neutral-400 focus:outline-none focus:border-neutral-900 focus:ring-0" />
             </div>
             <div>
                 <label for="contactEmail" class="block text-[10px] font-medium uppercase tracking-widest text-neutral-500 mb-1">Email Address</label>
-                <input type="email" id="contactEmail" required placeholder="e.g. john@example.com" 
+                <input type="email" id="contactEmail" name="email" required placeholder="e.g. john@example.com" 
                        class="w-full bg-neutral-50 border border-neutral-200 px-5 py-3 text-xs font-light tracking-wider placeholder-neutral-400 focus:outline-none focus:border-neutral-900 focus:ring-0" />
             </div>
             <div>
                 <label for="contactMessage" class="block text-[10px] font-medium uppercase tracking-widest text-neutral-500 mb-1">Message</label>
-                <textarea id="contactMessage" rows="4" required placeholder="Detail your question here..." 
+                <textarea id="contactMessage" name="message" rows="4" required placeholder="Detail your question here..." 
                           class="w-full bg-neutral-50 border border-neutral-200 p-4 text-xs font-light tracking-wider placeholder-neutral-400 focus:outline-none focus:border-neutral-900 focus:ring-0"></textarea>
             </div>
             <button type="submit" class="w-full py-3.5 bg-neutral-900 hover:bg-neutral-800 text-[var(--color-white)] font-light text-[10px] uppercase tracking-widest transition duration-300">

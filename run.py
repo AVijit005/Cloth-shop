@@ -11,6 +11,7 @@ from datetime import datetime, UTC, timedelta
 from functools import wraps
 from html import escape
 import threading
+from urllib import parse
 
 import mysql.connector
 from mysql.connector.pooling import MySQLConnectionPool
@@ -150,7 +151,7 @@ def add_security_and_caching_headers(response):
     # Security headers
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
-    response.headers["X-XSS-Protection"] = "0"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     if IS_PROD:
@@ -193,6 +194,9 @@ def ensure_csrf_token():
 @app.before_request
 def validate_csrf():
     if request.method in ["POST", "PUT", "PATCH", "DELETE"]:
+        # Skip CSRF for logout endpoint so stale tokens don't lock users out
+        if request.path == "/api/logout":
+            return
         csrf_token = request.headers.get("X-CSRF-Token") or ""
         session_csrf = session.get("csrf_token") or ""
         
@@ -202,16 +206,20 @@ def validate_csrf():
 # Quest/gamification handler (placeholder for future feature)
 def update_quest_progress(user_id, quest_type):
     if quest_type == "write_review":
-        try:
-            if check_db_health():
-                with db_connection() as connection:
-                    with connection.cursor() as cursor:
-                        cursor.execute("SELECT 1 FROM users WHERE id = %s", (user_id,))
-                        row = cursor.fetchone()
-                        if row:
-                            pass
-        except Exception:
-            logger.debug("update_quest_progress skipped")
+        if check_db_health():
+            connection = None
+            try:
+                connection = db_connection()
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT 1 FROM users WHERE id = %s", (user_id,))
+            except Exception:
+                logger.debug("update_quest_progress skipped")
+            finally:
+                if connection is not None:
+                    try:
+                        connection.close()
+                    except Exception:
+                        pass
 
 # Password Strength Rules
 def validate_password_strength(password):
@@ -244,6 +252,15 @@ memory_settings_lock = threading.Lock()
 # Simple in-memory rate limiter (per-IP, sliding window)
 _rate_limit_store = {}
 _rate_limit_lock = threading.Lock()
+_rate_limit_cleanup_counter = 0
+
+def _rate_limit_cleanup():
+    now = time.time()
+    with _rate_limit_lock:
+        cutoff = now - 3600
+        stale_ips = [ip for ip, times in list(_rate_limit_store.items()) if not times or times[-1] < cutoff]
+        for ip in stale_ips:
+            del _rate_limit_store[ip]
 
 def rate_limit(max_requests=5, window_seconds=60):
     def decorator(fn):
@@ -258,6 +275,15 @@ def rate_limit(max_requests=5, window_seconds=60):
                 if len(_rate_limit_store[ip]) >= max_requests:
                     return jsonify({"error": f"Too many requests. Try again in {window_seconds} seconds."}), 429
                 _rate_limit_store[ip].append(now)
+            global _rate_limit_cleanup_counter
+            _rate_limit_cleanup_counter += 1
+            if _rate_limit_cleanup_counter % 100 == 0:
+                _rate_limit_cleanup()
+            # Periodically clean stale entries (every 100 operations) and
+            # safe-guard against counter overflow in long-running processes.
+            if _rate_limit_cleanup_counter > 10_000_000:
+                _rate_limit_cleanup()
+                _rate_limit_cleanup_counter = 0
             return fn(*args, **kwargs)
         return wrapper
     return decorator
@@ -281,17 +307,24 @@ def track_failed_login(username, ip):
     now = datetime.now()
     with login_attempts_lock:
         if username:
-            att = login_attempts.get(f"u:{username}", {"count": 0, "lockout_until": None})
+            att = login_attempts.get(f"u:{username}", {"count": 0, "lockout_until": None, "last_attempt": now})
             att["count"] += 1
+            att["last_attempt"] = now
             if att["count"] >= 5:
                 att["lockout_until"] = now + timedelta(minutes=5)
             login_attempts[f"u:{username}"] = att
         if ip:
-            att = login_attempts.get(f"ip:{ip}", {"count": 0, "lockout_until": None})
+            att = login_attempts.get(f"ip:{ip}", {"count": 0, "lockout_until": None, "last_attempt": now})
             att["count"] += 1
+            att["last_attempt"] = now
             if att["count"] >= 10:
                 att["lockout_until"] = now + timedelta(minutes=10)
             login_attempts[f"ip:{ip}"] = att
+        if len(login_attempts) > 10000:
+            cutoff = now - timedelta(hours=24)
+            for key in list(login_attempts.keys()):
+                if login_attempts[key].get("last_attempt", now) < cutoff:
+                    del login_attempts[key]
 
 def clear_failed_logins(username, ip):
     with login_attempts_lock:
@@ -307,6 +340,14 @@ def _sanitize_email_header(value):
     return re.sub(r"[\x00-\x1f\x7f]", "", str(value))
 
 # Async Transactional Mail System (Dev logging + SMTP Support)
+_smtp_threads = []
+_smtp_threads_lock = threading.Lock()
+
+def _cleanup_smtp_threads():
+    """Remove finished thread references to prevent memory leak."""
+    with _smtp_threads_lock:
+        _smtp_threads[:] = [t for t in _smtp_threads if t.is_alive()]
+
 def send_email(subject, recipient, body_html):
     smtp_host = os.getenv("SMTP_HOST")
     smtp_port = os.getenv("SMTP_PORT")
@@ -358,10 +399,23 @@ def send_email(subject, recipient, body_html):
             except Exception as ex:
                 logger.error("SMTP email fail to %s: %s", safe_recipient, ex)
                 
-        import atexit
         thread = threading.Thread(target=_send, daemon=True)
         thread.start()
-        atexit.register(thread.join, timeout=2)
+        with _smtp_threads_lock:
+            _smtp_threads.append(thread)
+        # Clean up finished threads periodically (keep list bounded)
+        _cleanup_smtp_threads()
+
+
+import atexit
+def _join_smtp_threads():
+    with _smtp_threads_lock:
+        threads = list(_smtp_threads)
+        _smtp_threads.clear()
+    for t in threads:
+        t.join(timeout=2)
+atexit.register(_join_smtp_threads)
+
 
 def send_verification_email(username, email, token, url_root=None):
     url = f"{(url_root or request.url_root).rstrip('/')}/verify-email?token={token}"
@@ -412,6 +466,9 @@ def send_order_confirmation_email(user, customer_name, order_id, order_items, to
         mu = memory_users.get(user["username"])
         if mu:
             user_email = mu.get("email")
+    # Fall back to session-stored email if memory lookup fails
+    if not user_email:
+        user_email = user.get("email") or session.get("user", {}).get("email")
     if not user_email:
         logger.warning("Cannot send order confirmation: no email found for user %s", user.get("username"))
         return
@@ -489,6 +546,9 @@ def save_base64_image(base64_str):
                 return ""
             if ext == "jpeg":
                 ext = "jpg"
+            if len(encoded) > MAX_IMAGE_SIZE * 2:
+                logger.warning("Rejected image upload: base64 payload too large")
+                return ""
             data = base64.b64decode(encoded)
             if len(data) > MAX_IMAGE_SIZE:
                 logger.warning("Rejected image upload exceeding %d bytes", MAX_IMAGE_SIZE)
@@ -906,7 +966,7 @@ def server_connection(database=None):
         "password": DB_PASSWORD,
         "port": DB_PORT,
         "autocommit": False,
-        "connection_timeout": 2,
+        "connect_timeout": 2,
     }
     if database:
         config["database"] = database
@@ -923,6 +983,7 @@ def db_connection():
 
 
 last_db_check_time = 0
+_db_health_lock = threading.Lock()
 
 
 def check_db_health():
@@ -930,11 +991,14 @@ def check_db_health():
     if mysql_ready:
         return True
     
-    current_time = time.time()
-    # Retry database connection only if 15 seconds have passed since last failure
-    if current_time - last_db_check_time > 15:
-        last_db_check_time = current_time
-        init_mysql()
+    with _db_health_lock:
+        if mysql_ready:
+            return True
+        current_time = time.time()
+        # Retry database connection only if 15 seconds have passed since last failure
+        if current_time - last_db_check_time > 15:
+            last_db_check_time = current_time
+            init_mysql()
     return mysql_ready
 
 
@@ -1118,6 +1182,7 @@ def init_mysql():
                 ensure_column(cursor, "users", "email", "VARCHAR(120) DEFAULT NULL")
                 ensure_column(cursor, "users", "email_verified", "TINYINT(1) DEFAULT 0")
                 ensure_column(cursor, "users", "verification_token", "VARCHAR(100) DEFAULT NULL")
+                ensure_column(cursor, "users", "verification_token_expires", "DATETIME DEFAULT NULL")
                 ensure_column(cursor, "users", "reset_token", "VARCHAR(100) DEFAULT NULL")
                 ensure_column(cursor, "users", "reset_token_expires", "DATETIME DEFAULT NULL")
                 try:
@@ -1129,6 +1194,7 @@ def init_mysql():
                 ensure_column(cursor, "coupons", "expires_at", "DATETIME DEFAULT NULL")
                 ensure_column(cursor, "coupons", "usage_limit", "INT DEFAULT NULL")
                 ensure_column(cursor, "coupons", "usage_count", "INT DEFAULT 0")
+                ensure_column(cursor, "coupons", "free_delivery", "TINYINT(1) DEFAULT 0")
 
                 seed_user(cursor, "admin", _ADMIN_PASSWORD, "admin", "Shibani Admin")
                 seed_user(cursor, "customer", _CUSTOMER_PASSWORD, "customer", "Shibani Customer")
@@ -1170,7 +1236,7 @@ def seed_user(cursor, username, password, role, full_name):
     if cursor.fetchone():
         return
     cursor.execute(
-        "INSERT INTO users (username, password_hash, role, full_name) VALUES (%s, %s, %s, %s)",
+        "INSERT INTO users (username, password_hash, role, full_name, email_verified) VALUES (%s, %s, %s, %s, 1)",
         (username, generate_password_hash(password), role, full_name),
     )
 
@@ -1183,11 +1249,30 @@ def json_payload():
 def ensure_column(cursor, table_name, column_name, definition):
     if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', table_name) or not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', column_name):
         return
-    definition_safe = re.sub(r'[^a-zA-Z0-9_\s\(\)\,]', '', definition)
+    # Only allow known column definitions that match common SQL column types
+    allowed_definitions = {
+        "VARCHAR(80)",
+        "VARCHAR(120)",
+        "VARCHAR(100)",
+        "VARCHAR(40)",
+        "VARCHAR(50)",
+        "VARCHAR(160)",
+        "TEXT",
+        "LONGTEXT",
+        "TINYINT(1) DEFAULT 0",
+        "DATETIME DEFAULT NULL",
+        "INT DEFAULT NULL",
+        "INT DEFAULT 0",
+        "ENUM('admin', 'customer') NOT NULL DEFAULT 'customer'",
+    }
+    normalized_def = definition.strip().rstrip(";").strip()
+    if normalized_def not in allowed_definitions:
+        logger.warning("Rejected column definition: %s", definition)
+        return
     cursor.execute("SHOW COLUMNS FROM `{}` LIKE %s".format(table_name), (column_name,))
     if cursor.fetchone():
         return
-    cursor.execute("ALTER TABLE `{}` ADD COLUMN `{}` {}".format(table_name, column_name, definition_safe))
+    cursor.execute("ALTER TABLE `{}` ADD COLUMN `{}` {}".format(table_name, column_name, normalized_def))
 
 
 def require_login(fn):
@@ -1253,12 +1338,14 @@ def parse_images(images_value, fallback_image=""):
 def create_user_session(user, remember=False, username=None):
     """Create a Flask session for the given user dict. Mutates session in place."""
     session.clear()
+    session["csrf_token"] = secrets.token_hex(32)  # Regenerate CSRF token after session clear
     session.permanent = bool(remember)
     session["user"] = {
         "id": user["id"],
         "username": username or user.get("username"),
         "role": user["role"],
         "full_name": user["full_name"],
+        "email": user.get("email", ""),
         "email_verified": int(user.get("email_verified") or 0)
     }
     if user.get("saved_name") is not None:
@@ -1348,6 +1435,10 @@ def product_page(product_id):
     
     if not product:
         return jsonify({"error": "Product not found"}), 404
+    
+    # Convert DB row (with Decimal types) to plain Python dict for template rendering
+    if check_db_health() and hasattr(product, "items"):
+        product = product_row_to_dict(product)
         
     images_list = parse_images(product.get("images"), product.get("image") or "")
     product["images_list"] = images_list
@@ -1478,6 +1569,7 @@ def health():
 
 
 @app.post("/api/login")
+@rate_limit(max_requests=10, window_seconds=60)
 def login():
     data = json_payload()
     username = (data.get("username") or "").strip()
@@ -1507,7 +1599,7 @@ def login():
 
             create_user_session(user, remember)
 
-            return jsonify({"user": session["user"]})
+            return jsonify({"user": session["user"], "csrf_token": session.get("csrf_token", "")})
         except Exception as exc:
             return jsonify({"error": "Database error"}), 500
     else:
@@ -1541,7 +1633,7 @@ def login():
         session["saved_phone"] = user.get("saved_phone") or ""
         session["saved_address"] = user.get("saved_address") or ""
 
-        return jsonify({"user": session["user"]})
+        return jsonify({"user": session["user"], "csrf_token": session.get("csrf_token", "")})
 
 
 @app.post("/api/login/google")
@@ -1556,7 +1648,7 @@ def google_login():
         return jsonify({"error": "Google sign-in is not configured on this server"}), 503
 
     try:
-        decoded_token = firebase_auth.verify_id_token(id_token)
+        decoded_token = firebase_auth.verify_id_token(id_token, check_revoked=True)
         email = decoded_token.get("email", "")
         name = decoded_token.get("name", email.split("@")[0] if email else "Google User")
 
@@ -1592,6 +1684,14 @@ def google_login():
                             "full_name": name,
                             "email_verified": 1
                         }
+                    else:
+                        # Existing user logging in via Google — mark email as verified
+                        user["email_verified"] = 1
+                        cursor.execute(
+                            "UPDATE users SET email_verified = 1 WHERE id = %s",
+                            (user["id"],)
+                        )
+                        connection.commit()
         else:
             with memory_users_lock:
                 existing = next((u for u in memory_users.values() if u.get("email") == email), None)
@@ -1624,7 +1724,7 @@ def google_login():
 
         create_user_session(user, remember=False)
 
-        return jsonify({"user": session["user"]})
+        return jsonify({"user": session["user"], "csrf_token": session.get("csrf_token", "")})
 
     except Exception as exc:
         return jsonify({"error": "Google authentication failed"}), 401
@@ -1642,6 +1742,11 @@ def register():
     if not username or not password or not full_name or not email:
         return jsonify({"error": "All fields are required"}), 400
 
+    if len(username) > 80:
+        return jsonify({"error": "Username too long (max 80 characters)"}), 400
+    if len(full_name) > 120:
+        return jsonify({"error": "Full name too long (max 120 characters)"}), 400
+
     # 1. Email format check
     if not re.match(r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$", email):
         return jsonify({"error": "Please enter a valid email address"}), 400
@@ -1652,6 +1757,7 @@ def register():
         return jsonify({"error": strength_err}), 400
 
     verification_token = secrets.token_urlsafe(32)
+    verification_expires = datetime.now(UTC).replace(tzinfo=None) + timedelta(hours=24)
 
     if check_db_health():
         try:
@@ -1670,10 +1776,10 @@ def register():
                     p_hash = generate_password_hash(password)
                     cursor.execute(
                         """
-                        INSERT INTO users (username, password_hash, role, full_name, email, email_verified, verification_token)
-                        VALUES (%s, %s, 'customer', %s, %s, 0, %s)
+                        INSERT INTO users (username, password_hash, role, full_name, email, email_verified, verification_token, verification_token_expires)
+                        VALUES (%s, %s, 'customer', %s, %s, 0, %s, %s)
                         """,
-                        (username, p_hash, full_name, email, verification_token)
+                        (username, p_hash, full_name, email, verification_token, verification_expires)
                     )
                     connection.commit()
                     user_id = cursor.lastrowid
@@ -1683,7 +1789,7 @@ def register():
 
             new_user = {"id": user_id, "username": username, "role": "customer", "full_name": full_name, "email_verified": 0}
             create_user_session(new_user)
-            return jsonify({"user": session["user"]})
+            return jsonify({"user": session["user"], "csrf_token": session.get("csrf_token", "")})
         except Exception as exc:
             return jsonify({"error": "Database error"}), 500
     else:
@@ -1706,14 +1812,15 @@ def register():
             "full_name": full_name,
             "email": email,
             "email_verified": 0,
-            "verification_token": verification_token
+            "verification_token": verification_token,
+            "verification_token_expires": verification_expires
         }
         
         send_verification_email(full_name, email, verification_token)
 
         new_user = {"id": user_id, "username": username, "role": "customer", "full_name": full_name, "email_verified": 0}
         create_user_session(new_user)
-        return jsonify({"user": session["user"]})
+        return jsonify({"user": session["user"], "csrf_token": session.get("csrf_token", "")})
 
 
 @app.post("/api/logout")
@@ -1731,7 +1838,7 @@ def forgot_password_api():
         return jsonify({"error": "Username or email is required"}), 400
 
     token = secrets.token_urlsafe(32)
-    expires = datetime.now() + timedelta(hours=1)
+    expires = datetime.now(UTC).replace(tzinfo=None) + timedelta(hours=1)
 
     if check_db_health():
         try:
@@ -1788,7 +1895,7 @@ def reset_password_api():
         return jsonify({"error": strength_err}), 400
 
     p_hash = generate_password_hash(password)
-    now = datetime.now()
+    now = datetime.now(UTC).replace(tzinfo=None)
 
     if check_db_health():
         try:
@@ -1800,13 +1907,16 @@ def reset_password_api():
                         return jsonify({"error": "Invalid or expired token"}), 400
                     
                     if user["reset_token_expires"] < now:
-                        return jsonify({"error": "Token has expired"}), 400
+                        return jsonify({"error": "Invalid or expired token"}), 400
                         
+                    # Invalidate existing sessions for this user after password change
                     cursor.execute(
                         "UPDATE users SET password_hash = %s, reset_token = NULL, reset_token_expires = NULL WHERE id = %s",
                         (p_hash, user["id"])
                     )
                     connection.commit()
+            # Clear the current session to force re-login
+            session.clear()
             return jsonify({"ok": True, "message": "Password has been reset successfully."})
         except Exception as exc:
             return jsonify({"error": "Database error"}), 500
@@ -1815,7 +1925,7 @@ def reset_password_api():
         if not user:
             return jsonify({"error": "Invalid or expired token"}), 400
         if user.get("reset_token_expires") is None or user.get("reset_token_expires") < now:
-            return jsonify({"error": "Token has expired"}), 400
+            return jsonify({"error": "Invalid or expired token"}), 400
             
         user["password_hash"] = p_hash
         user["reset_token"] = None
@@ -1833,13 +1943,15 @@ def verify_email():
         try:
             with db_connection() as connection:
                 with connection.cursor(dictionary=True) as cursor:
-                    cursor.execute("SELECT id FROM users WHERE verification_token = %s", (token,))
+                    cursor.execute("SELECT id, verification_token_expires FROM users WHERE verification_token = %s", (token,))
                     user = cursor.fetchone()
                     if not user:
                         return render_template("verify_email.html", success=False, error="Invalid or expired verification token.")
+                    if user.get("verification_token_expires") and user["verification_token_expires"] < datetime.now(UTC).replace(tzinfo=None):
+                        return render_template("verify_email.html", success=False, error="Invalid or expired verification token.")
                     
                     cursor.execute(
-                        "UPDATE users SET email_verified = 1, verification_token = NULL WHERE id = %s",
+                        "UPDATE users SET email_verified = 1, verification_token = NULL, verification_token_expires = NULL WHERE id = %s",
                         (user["id"],)
                     )
                     connection.commit()
@@ -1855,10 +1967,14 @@ def verify_email():
         username = next((k for k, u in memory_users.items() if u.get("verification_token") == token), None)
         if not username:
             return render_template("verify_email.html", success=False, error="Invalid or expired verification token.")
-            
+
         user = memory_users[username]
+        expires = user.get("verification_token_expires")
+        if expires and expires < datetime.now(UTC).replace(tzinfo=None):
+            return render_template("verify_email.html", success=False, error="Invalid or expired verification token.")
         user["email_verified"] = 1
         user["verification_token"] = None
+        user["verification_token_expires"] = None
         
         if "user" in session and session["user"]["username"] == username:
             session["user"]["email_verified"] = 1
@@ -1879,7 +1995,7 @@ def reset_password_page():
 
 
 
-@app.get("/api/me")
+@app.post("/api/me")
 def me():
     return jsonify({"user": session.get("user")})
 
@@ -1887,6 +2003,7 @@ def me():
 @app.get("/api/products")
 def products():
     page = request.args.get("page", 1, type=int)
+    page = max(1, page)
     per_page = request.args.get("per_page", 50, type=int)
     per_page = min(max(per_page, 1), 200)  # clamp 1-200
     offset = (page - 1) * per_page
@@ -2050,7 +2167,7 @@ def qr_proxy():
     if not data or len(data) > 500:
         return jsonify({"error": "Invalid QR data"}), 400
     try:
-        qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=160x160&data={urllib.parse.quote(data)}"
+        qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=160x160&data={parse.quote(data)}"
         req = urllib.request.Request(qr_url, headers={"User-Agent": "ShibaniFashion/1.0"})
         with urllib.request.urlopen(req, timeout=10) as resp:
             return resp.read(), 200, {"Content-Type": "image/png", "Cache-Control": "no-cache"}
@@ -2421,7 +2538,7 @@ def admin_get_customers():
             with db_connection() as connection:
                 with connection.cursor(dictionary=True) as cursor:
                     cursor.execute("""
-                        SELECT id, username, full_name, saved_name, saved_phone, saved_address 
+                        SELECT id, username, full_name, email, saved_name, saved_phone, saved_address 
                         FROM users 
                         WHERE role = 'customer'
                         ORDER BY id DESC
@@ -2592,7 +2709,7 @@ def cancel_order(order_id):
                     cursor.execute("SELECT * FROM order_items WHERE order_id = %s", (order_id,))
                     items = cursor.fetchall()
                     for item in items:
-                        cursor.execute("SELECT stock FROM products WHERE id = %s", (item["product_id"],))
+                        cursor.execute("SELECT stock FROM products WHERE id = %s FOR UPDATE", (item["product_id"],))
                         p_row = cursor.fetchone()
                         if p_row:
                             current_stock = p_row["stock"]
@@ -2645,7 +2762,10 @@ def increment_stock_string(current_stock):
     norm = current_stock.strip().lower()
     if norm == "out of stock":
         return "Limited stock"
-    return "In stock"
+    if norm == "limited stock":
+        return "In stock"
+    # For any other value (e.g., numeric stock), return as-is (unchanged)
+    return current_stock
 
 
 def update_user_address_book(current_saved_address, new_address, new_name, new_phone):
@@ -3061,7 +3181,8 @@ def create_order():
     if len(address) > 500:
         return jsonify({"error": "Address is too long (max 500 characters)"}), 400
 
-    product_map = {product["id"]: product for product in list_products_for_order()}
+    needed_ids = list({safe_int(item.get("product_id")) for item in items if safe_int(item.get("product_id"))})
+    product_map = {product["id"]: product for product in list_products_for_order(needed_ids)}
     total = 0
     order_items = []
     for item in items:
@@ -3342,6 +3463,8 @@ def normalize_product(data):
     rating = max(1.0, min(5.0, safe_float(data.get("rating"), 4.5)))
 
     name = (data.get("name") or "").strip()[:160]
+    if not name:
+        raise ValueError("Product name is required and cannot be empty")
     size = (data.get("size") or "").strip()[:50]
     color = (data.get("color") or "").strip()[:50]
     badge = (data.get("badge") or "").strip()[:100]
@@ -3363,12 +3486,16 @@ def normalize_product(data):
     }
 
 
-def list_products_for_order():
+def list_products_for_order(product_ids=None):
     if check_db_health():
         try:
             with db_connection() as connection:
                 with connection.cursor(dictionary=True) as cursor:
-                    cursor.execute("SELECT * FROM products")
+                    if product_ids:
+                        placeholders = ",".join("%s" for _ in product_ids)
+                        cursor.execute(f"SELECT * FROM products WHERE id IN ({placeholders})", product_ids)
+                    else:
+                        cursor.execute("SELECT * FROM products")
                     rows = [product_row_to_dict(row) for row in cursor.fetchall()]
             return rows
         except Exception:

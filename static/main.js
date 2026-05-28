@@ -49,6 +49,11 @@ function escapeHTML(str) {
     return _escapeDiv.innerHTML;
 }
 
+function cssEscape(str) {
+    if (typeof str !== 'string') str = String(str);
+    return str.replace(/[!"#$%&'()*+,.\/:;<=>?@[\]^`{|}~]/g, '\\$&');
+}
+
 // Focus trap helpers for modals/drawers
 let activeFocusTrap = null;
 function trapFocus(container) {
@@ -87,7 +92,7 @@ function removeToast(el) {
 function showToast(message, type = "success") {
     const container = document.getElementById("toastContainer");
     if (!container) return;
-    
+
     for (const t of activeToasts) {
         if (t.textContent.trim() === message) {
             removeToast(t); break;
@@ -95,7 +100,7 @@ function showToast(message, type = "success") {
     }
     const el = document.createElement("div");
     el.className = `toast toast-${type} pointer-events-auto flex items-start gap-3 px-5 py-4 shadow-xl border transition-all duration-300 toast-enter`;
-    
+
     if (document.documentElement.getAttribute("data-theme") === "dark") {
         el.classList.add("bg-neutral-800", "border-neutral-700", "text-neutral-100");
     } else {
@@ -126,8 +131,8 @@ async function api(path, options = {}) {
     const method = (options.method || "GET").toUpperCase();
     const { headers: optHeaders, ...safeOptions } = options;
     const headers = { "Content-Type": "application/json", ...(optHeaders || {}) };
-    
-    if (["POST", "PUT", "DELETE"].includes(method)) {
+
+    if (["POST", "PUT", "DELETE", "PATCH"].includes(method)) {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         if (csrfToken) {
             headers["X-CSRF-Token"] = csrfToken;
@@ -135,20 +140,33 @@ async function api(path, options = {}) {
     }
 
     const response = await fetch(path, {
+        method: method,
         headers: headers,
         credentials: "same-origin",
         ...safeOptions
     });
     if (!response.ok) {
-        let errorText = "Request failed";
-        try { const errBody = await response.json(); errorText = errBody.error || errorText; } catch (_) {}
+        let errorText = `Request failed (${response.status})`;
+        try {
+            const errBody = await response.json();
+            errorText = errBody.error || errBody.message || errorText;
+        } catch (_) {
+            try {
+                const errText = await response.text();
+                if (errText && errText.length < 500) {
+                    errorText = errText || errorText;
+                }
+            } catch (_2) { /* body could not be read */ }
+        }
+        console.error(`API ${method} ${path} failed: ${errorText}`);
         throw new Error(errorText);
     }
     const text = await response.text();
     try {
         return text ? JSON.parse(text) : null;
-    } catch {
-        return null;
+    } catch (parseErr) {
+        console.error(`API ${method} ${path}: failed to parse JSON response`, parseErr);
+        return text || null;
     }
 }
 
@@ -157,26 +175,43 @@ function _logoutHandler() {
         appState.cart = [];
         localStorage.setItem("shibani_cart", "[]");
         window.location.href = "/";
-    }).catch(() => window.location.href = "/");
+    }).catch((err) => {
+        showToast(err.message || "Logout failed.", "error");
+    });
 }
 
 function _initUserDropdown() {
     const trigger = document.getElementById("userDropdownTrigger");
     const menu = document.getElementById("userDropdownMenu");
     if (!trigger || !menu) return;
+
+    function _closeUserDropdown() {
+        menu.classList.remove("open");
+        trigger.setAttribute("aria-expanded", "false");
+        const chevron = trigger.querySelector(".fa-chevron-down");
+        if (chevron) chevron.style.transform = "rotate(0deg)";
+        document.removeEventListener("keydown", _closeUserDropdown._escapeHandler);
+    }
+
+    _closeUserDropdown._escapeHandler = (e) => {
+        if (e.key === "Escape" && menu.classList.contains("open")) _closeUserDropdown();
+    };
+
     trigger.addEventListener("click", (e) => {
         e.stopPropagation();
         menu.classList.toggle("open");
         trigger.setAttribute("aria-expanded", menu.classList.contains("open"));
         const chevron = trigger.querySelector(".fa-chevron-down");
         if (chevron) chevron.style.transform = menu.classList.contains("open") ? "rotate(180deg)" : "rotate(0deg)";
+        if (menu.classList.contains("open")) {
+            document.addEventListener("keydown", _closeUserDropdown._escapeHandler);
+        } else {
+            document.removeEventListener("keydown", _closeUserDropdown._escapeHandler);
+        }
     });
     document.addEventListener("click", (e) => {
         if (!menu.contains(e.target) && !trigger.contains(e.target)) {
-            menu.classList.remove("open");
-            trigger.setAttribute("aria-expanded", "false");
-            const chevron = trigger.querySelector(".fa-chevron-down");
-            if (chevron) chevron.style.transform = "rotate(0deg)";
+            _closeUserDropdown();
         }
     });
 }
@@ -241,6 +276,7 @@ function _initCartDrawer() {
         panel.classList.remove("open");
         document.body.style.overflow = "";
         closeTimer = setTimeout(() => { drawer.classList.add("hidden"); }, 400);
+        document.removeEventListener("keydown", drawer._cartEscapeHandler);
     };
 
     window.openCartDrawer = open;
@@ -250,13 +286,29 @@ function _initCartDrawer() {
     if (backdrop) backdrop.addEventListener("click", close);
     if (shopBtn) shopBtn?.addEventListener("click", () => { close(); window.location.href = "/shop"; });
 
-    document.addEventListener("keydown", (e) => {
+    drawer._cartEscapeHandler = (e) => {
         if (e.key === "Escape" && !drawer.classList.contains("hidden")) close();
-    });
+    };
+    document.addEventListener("keydown", drawer._cartEscapeHandler);
 }
 
 async function _renderCartDrawer() {
-    await ensureProductsLoaded();
+    const loaded = await ensureProductsLoaded();
+    if (!loaded && appState.products.length === 0) {
+        // Products couldn't load — show empty state gracefully
+        const itemsEl = document.getElementById("cartDrawerItems");
+        const emptyEl = document.getElementById("cartDrawerEmpty");
+        const footerEl = document.getElementById("cartDrawerFooter");
+        const countEl = document.getElementById("cartDrawerCount");
+        const subtotalEl = document.getElementById("cartDrawerSubtotal");
+        if (itemsEl) itemsEl.innerHTML = "";
+        if (emptyEl) emptyEl.classList.remove("hidden");
+        if (footerEl) footerEl.classList.add("hidden");
+        if (countEl) countEl.textContent = "0";
+        if (subtotalEl) subtotalEl.textContent = "Rs. 0";
+        _updateShippingProgress(0);
+        return;
+    }
     const items = appState.cart;
     const itemsEl = document.getElementById("cartDrawerItems");
     const emptyEl = document.getElementById("cartDrawerEmpty");
@@ -265,24 +317,26 @@ async function _renderCartDrawer() {
     const subtotalEl = document.getElementById("cartDrawerSubtotal");
 
     if (!items || items.length === 0) {
-    if (itemsEl) itemsEl.innerHTML = "";
-    if (emptyEl) emptyEl.classList.remove("hidden");
-    if (footerEl) footerEl.classList.add("hidden");
-    if (countEl) countEl.textContent = "0";
-    if (subtotalEl) subtotalEl.textContent = "Rs. 0";
-    _updateShippingProgress(0);
-    return;
-}
+        if (itemsEl) itemsEl.innerHTML = "";
+        if (emptyEl) emptyEl.classList.remove("hidden");
+        if (footerEl) footerEl.classList.add("hidden");
+        if (countEl) countEl.textContent = "0";
+        if (subtotalEl) subtotalEl.textContent = "Rs. 0";
+        _updateShippingProgress(0);
+        return;
+    }
 
-if (emptyEl) emptyEl.classList.add("hidden");
-if (footerEl) footerEl.classList.remove("hidden");
-if (itemsEl) itemsEl.classList.remove("hidden");
+    if (emptyEl) emptyEl.classList.add("hidden");
+    if (footerEl) footerEl.classList.remove("hidden");
+    if (itemsEl) itemsEl.classList.remove("hidden");
 
     let html = "";
     let total = 0;
+    let foundCount = 0;
     items.forEach((item, idx) => {
         const product = appState.products.find(p => String(p.id) === String(item.product_id));
         if (!product) return;
+        foundCount++;
         const price = Number(product.price) || 0;
         const qty = item.quantity != null ? item.quantity : 1;
         const lineTotal = price * qty;
@@ -355,7 +409,7 @@ function _updateShippingProgress(total) {
         if (textEl) textEl.textContent = "You've unlocked free shipping!";
     } else {
         progressEl.style.width = Math.min((total / threshold) * 100, 99) + "%";
-        if (remainingEl) remainingEl.textContent = (threshold - total).toLocaleString("en-IN");
+        if (remainingEl) remainingEl.textContent = Math.max(0, threshold - total).toLocaleString("en-IN");
     }
 }
 
@@ -383,14 +437,14 @@ function _initMobileNav() {
 function _setTheme(theme) {
     document.documentElement.setAttribute("data-theme", theme);
     document.body.setAttribute("data-theme", theme);
-    try { localStorage.setItem("shibani-theme", theme); } catch (_) {}
+    try { localStorage.setItem("shibani-theme", theme); } catch (_) { }
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.content = theme === "dark" ? "#0a0a0a" : "#ffffff";
 }
 
 function _applyTheme() {
     let theme = "light";
-    try { theme = localStorage.getItem("shibani-theme") || "light"; } catch (_) {}
+    try { theme = localStorage.getItem("shibani-theme") || "light"; } catch (_) { }
     _setTheme(theme);
     const icon = document.getElementById("themeIcon");
     if (icon) icon.className = theme === "dark" ? "fa-regular fa-sun text-base" : "fa-regular fa-moon text-base";
@@ -477,9 +531,9 @@ async function initGlobal() {
                     appState.wishlist = wishData.wishlist.map(p => p.id);
                     localStorage.setItem("shibani_wishlist", JSON.stringify(appState.wishlist));
                 }
-            } catch (_) {}
+            } catch (_) { }
         }
-    } catch (_) {}
+    } catch (_) { }
 }
 
 // --- SEARCH SUGGESTIONS ---
@@ -489,16 +543,16 @@ function initSearchSuggestions() {
     const desktopDrop = document.getElementById("searchSuggestions");
     const mobileDrop = document.getElementById("mobileSearchSuggestions");
     if (!input && !mobileInput) return;
-    
+
     let debounceTimer;
     const handler = (value) => {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
             const dropdown = input === document.activeElement ? desktopDrop : mobileDrop;
-            renderSuggestions(value, dropdown || desktopDrop);
+            if (dropdown) renderSuggestions(value, dropdown);
         }, 250);
     };
-    
+
     if (input && desktopDrop) {
         input.addEventListener("input", () => handler(input.value));
         input.addEventListener("keydown", (e) => handleSearchKeydown(e, desktopDrop, input));
@@ -521,7 +575,7 @@ function renderSuggestions(query, dropdown) {
         (p.name || "").toLowerCase().includes(q) ||
         (p.category || "").toLowerCase().includes(q)
     ).slice(0, 8);
-    
+
     if (matches.length === 0) {
         dropdown.innerHTML = `<div class="px-4 py-3 text-xs text-neutral-400 uppercase tracking-wider">No results found</div>`;
     } else {
@@ -582,7 +636,7 @@ function initImageZoom() {
     const lens = document.getElementById("imageZoomLens");
     if (!container || !img || !lens) return;
     const lensSize = 120;
-    
+
     container.addEventListener("mouseenter", () => {
         if (window.innerWidth < 768) return;
         lens.classList.remove("hidden");
@@ -591,7 +645,7 @@ function initImageZoom() {
         const bgH = img.naturalHeight * 2;
         lens.style.backgroundSize = `${bgW}px ${bgH}px`;
     });
-    
+
     container.addEventListener("mousemove", (e) => {
         if (window.innerWidth < 768) return;
         const rect = container.getBoundingClientRect();
@@ -607,7 +661,7 @@ function initImageZoom() {
         const posY = (y / 100) * bgH;
         lens.style.backgroundPosition = `-${posX - lensSize / 2}px -${posY - lensSize / 2}px`;
     });
-    
+
     container.addEventListener("mouseleave", () => {
         lens.classList.add("hidden");
     });
@@ -620,46 +674,46 @@ function loadRecommendations(currentProductId) {
     const grid = document.getElementById("recommendationsGrid");
     const heading = document.getElementById("recommendationsHeading");
     if (!section || !grid) return;
-    
+
     const recentIds = safeParseJSON(localStorage.getItem("shibani_recent_viewed"), []);
     const products = appState.products || [];
-    
+
     // Gather categories from recently viewed items (excluding current product)
     const recentCategories = new Set();
     recentIds.filter(id => id !== currentProductId).forEach(id => {
         const p = products.find(pr => pr.id === id);
         if (p && p.category) recentCategories.add(p.category);
     });
-    
+
     // Also add the current product's category
     const currentProduct = products.find(p => p.id === currentProductId);
     if (currentProduct && currentProduct.category) {
         recentCategories.add(currentProduct.category);
     }
-    
+
     if (recentCategories.size === 0) { section.classList.add("hidden"); return; }
-    
+
     // Find products in those categories, excluding already viewed and current
     const excludeIds = new Set(recentIds);
     excludeIds.add(currentProductId);
-    
+
     let recs = products.filter(p =>
         recentCategories.has(p.category) && !excludeIds.has(p.id)
     );
-    
+
     // Sort by rating for quality
     recs.sort((a, b) => b.rating - a.rating);
     recs = recs.slice(0, 6);
-    
+
     if (recs.length === 0) { section.classList.add("hidden"); return; }
-    
+
     const catArr = Array.from(recentCategories);
     if (heading) {
         heading.textContent = catArr.length === 1
             ? `More from ${catArr[0].charAt(0).toUpperCase() + catArr[0].slice(1)} Collection`
             : "Recommended For You";
     }
-    
+
     section.classList.remove("hidden");
     grid.innerHTML = recs.map(p => renderProductCard(p)).join("");
     attachCardEvents(grid);
@@ -695,7 +749,7 @@ function toggleWishlistItem(productId) {
     }
     localStorage.setItem("shibani_wishlist", JSON.stringify(appState.wishlist));
     updateBadges();
-    
+
     // Sync with database if logged in
     if (appState.user) {
         api("/api/wishlist", {
@@ -703,13 +757,13 @@ function toggleWishlistItem(productId) {
             body: JSON.stringify({ product_id: Number(productId) })
         }).catch(err => console.warn("Failed to sync wishlist toggle with database:", err));
     }
-    
+
     // Update active state in document if present
-    document.querySelectorAll(`[data-wishlist-id="${productId}"]`).forEach(btn => {
+    document.querySelectorAll(`[data-wishlist-id="${cssEscape(productId)}"]`).forEach(btn => {
         btn.classList.toggle("text-rose-500");
         btn.classList.toggle("text-slate-400");
     });
-    
+
     // Auto-update UI if on the My Wishlist page
     if (window.location.pathname === "/wishlist") {
         initWishlist();
@@ -733,17 +787,17 @@ function addToCart(productId, quantity = 1, size = "M", color = "Default") {
 async function initHome() {
     const container = document.getElementById("featuredProductsGrid");
     if (!container) return;
-    
+
     try {
         const data = await api("/api/products");
         if (data && data.products) {
             appState.products = data.products;
-            
+
             // Render top 4 rated products
             const topProducts = [...data.products]
                 .sort((a, b) => b.rating - a.rating)
                 .slice(0, 4);
-                
+
             container.innerHTML = topProducts.map(p => renderProductCard(p)).join("");
             attachCardEvents(container);
         }
@@ -757,10 +811,10 @@ function renderProductCard(product) {
     const parsedImages = parseProductImages(product.image, product.images);
     const mainImg = parsedImages[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400';
     const secondaryImg = parsedImages[1] || null;
-    
+
     const sizes = (product.size || "").split(",").map(s => s.trim()).filter(Boolean);
     const firstSize = sizes[0] || "M";
-    
+
     return `
     <div class="bg-white border border-neutral-100 flex flex-col justify-between group h-full relative" data-product-card-id="${product.id}">
         <!-- Wishlist toggle -->
@@ -832,7 +886,7 @@ function parseProductImages(fallbackImg, imagesJson) {
     } else {
         try {
             list = JSON.parse(imagesJson || "[]");
-        } catch (e) {}
+        } catch (e) { }
     }
     if (fallbackImg && Array.isArray(list) && !list.includes(fallbackImg)) {
         list.unshift(fallbackImg);
@@ -864,19 +918,19 @@ function attachCardEvents(container) {
             toggleWishlistItem(btn.dataset.wishlistId);
         });
     });
-    
+
     // 2. Add to Cart buttons
     container.querySelectorAll(".add-to-cart-quick-btn").forEach(btn => {
         btn.addEventListener("click", () => {
             addToCart(btn.dataset.quickCartId, 1, btn.dataset.size, btn.dataset.color);
         });
     });
-    
+
     // 3. Compare checkbox trigger
     container.querySelectorAll(".compare-checkbox-quick").forEach(cb => {
         // Init checked state from comparison list
         cb.checked = (appState.compareList || []).includes(Number(cb.dataset.compareId));
-        
+
         cb.addEventListener("change", () => {
             const pId = Number(cb.dataset.compareId);
             if (cb.checked) {
@@ -901,17 +955,17 @@ function attachCardEvents(container) {
 async function initShop() {
     const container = document.getElementById("shopProductsGrid");
     if (!container) return;
-    
+
     // 1. Parse search query from URL
     const urlParams = new URLSearchParams(window.location.search);
     const searchVal = urlParams.get("q") || "";
     const categoryVal = urlParams.get("category") || "";
-    
+
     // Set checkbox checked based on URL
     if (categoryVal) {
         document.querySelectorAll(`input[name="categoryFilter"][value="${CSS.escape(categoryVal)}"]`).forEach(cb => cb.checked = true);
     }
-    
+
     // 2. Fetch products
     try {
         const data = await api("/api/products");
@@ -924,12 +978,12 @@ async function initShop() {
         console.error("Error loading shop catalog:", err);
         container.innerHTML = `<p class="col-span-full text-center text-slate-400 font-semibold py-12">Failed to load catalog. Detail: ${escapeHTML(err.message || String(err))}</p>`;
     }
-    
+
     // 3. Attach filter changes listeners
     document.querySelectorAll('input[name="categoryFilter"]').forEach(cb => {
         cb.addEventListener("change", () => filterAndRenderShop(""));
     });
-    
+
     const priceSlider = document.getElementById("priceRangeFilter");
     const priceValLabel = document.getElementById("priceRangeValue");
     if (priceSlider && priceValLabel) {
@@ -938,7 +992,7 @@ async function initShop() {
             filterAndRenderShop("");
         });
     }
-    
+
     document.querySelectorAll(".size-filter-btn").forEach(btn => {
         btn.addEventListener("click", () => {
             btn.classList.toggle("bg-neutral-900");
@@ -947,7 +1001,7 @@ async function initShop() {
             filterAndRenderShop("");
         });
     });
-    
+
     // Color filter toggles
     document.querySelectorAll(".color-filter-btn").forEach(btn => {
         btn.addEventListener("click", () => {
@@ -957,7 +1011,7 @@ async function initShop() {
             filterAndRenderShop("");
         });
     });
-    
+
     // Rating filter toggles (single select)
     document.querySelectorAll(".rating-filter-btn").forEach(btn => {
         btn.addEventListener("click", () => {
@@ -973,16 +1027,16 @@ async function initShop() {
             filterAndRenderShop("");
         });
     });
-    
+
     // Stock toggle
     const stockToggle = document.getElementById("inStockOnlyFilter");
     if (stockToggle) stockToggle.addEventListener("change", () => filterAndRenderShop(""));
-    
+
     const sortSelect = document.getElementById("shopSortSelect");
     if (sortSelect) {
         sortSelect.addEventListener("change", () => filterAndRenderShop(""));
     }
-    
+
     const clearBtn = document.getElementById("clearFiltersBtn");
     if (clearBtn) {
         clearBtn.addEventListener("click", () => {
@@ -1008,7 +1062,7 @@ async function initShop() {
             filterAndRenderShop("");
         });
     }
-    
+
     // Initial comparison drawer update
     updateCompareDrawer();
 }
@@ -1018,7 +1072,7 @@ function filterAndRenderShop(searchQuery = "") {
     const emptyState = document.getElementById("shopEmptyProducts");
     const countLabel = document.getElementById("shopProductCount");
     if (!container) return;
-    
+
     // 1. Gather filter states
     const selectedCategories = Array.from(document.querySelectorAll('input[name="categoryFilter"]:checked')).map(cb => cb.value);
     const maxPrice = Number(document.getElementById("priceRangeFilter")?.value || 15000);
@@ -1027,24 +1081,24 @@ function filterAndRenderShop(searchQuery = "") {
     const selectedColors = Array.from(document.querySelectorAll(".color-filter-btn.bg-neutral-900")).map(btn => btn.dataset.color);
     const minRating = Number(document.querySelector(".rating-filter-btn.bg-neutral-900")?.dataset.rating || 0);
     const inStockOnly = document.getElementById("inStockOnlyFilter")?.checked || false;
-    
+
     // 2. Filter products list
     let filtered = [...appState.products];
-    
+
     // Filter by search query
     if (searchQuery) {
         const q = searchQuery.toLowerCase();
         filtered = filtered.filter(p => (p.name || "").toLowerCase().includes(q) || (p.description || "").toLowerCase().includes(q));
     }
-    
+
     // Filter by category
     if (selectedCategories.length > 0) {
         filtered = filtered.filter(p => selectedCategories.includes(p.category));
     }
-    
+
     // Filter by max price
     filtered = filtered.filter(p => p.price <= maxPrice);
-    
+
     // Filter by size
     if (selectedSizes.length > 0) {
         filtered = filtered.filter(p => {
@@ -1052,7 +1106,7 @@ function filterAndRenderShop(searchQuery = "") {
             return selectedSizes.some(sz => sizesList.includes(sz));
         });
     }
-    
+
     // Filter by color
     if (selectedColors.length > 0) {
         filtered = filtered.filter(p => {
@@ -1060,17 +1114,17 @@ function filterAndRenderShop(searchQuery = "") {
             return selectedColors.some(c => pColors.some(pc => pc === c.toLowerCase()));
         });
     }
-    
+
     // Filter by min rating
     if (minRating > 0) {
         filtered = filtered.filter(p => Number(p.rating) >= minRating);
     }
-    
+
     // Filter by stock availability
     if (inStockOnly) {
         filtered = filtered.filter(p => (p.stock || "").toLowerCase() !== "out of stock");
     }
-    
+
     // 3. Sort list
     if (sortMode === "price-asc") {
         filtered.sort((a, b) => a.price - b.price);
@@ -1081,10 +1135,10 @@ function filterAndRenderShop(searchQuery = "") {
     } else if (sortMode === "name-asc") {
         filtered.sort((a, b) => a.name.localeCompare(b.name));
     }
-    
+
     // 4. Render results
     countLabel.textContent = filtered.length;
-    
+
     if (filtered.length === 0) {
         container.innerHTML = "";
         emptyState.classList.remove("hidden");
@@ -1103,30 +1157,30 @@ function updateCompareDrawer() {
     const countLabel = document.getElementById("compareCountLabel");
     const body = document.getElementById("compareDrawerBody");
     const wishlistCompareBtn = document.getElementById("compareWishlistBtn");
-    
+
     if (!drawer || !body) return;
-    
+
     const count = appState.compareList.length;
     if (countLabel) countLabel.textContent = `${count}/3`;
-    
+
     if (wishlistCompareBtn) {
         wishlistCompareBtn.textContent = `Compare Selected (${count}/3)`;
         wishlistCompareBtn.disabled = count < 2;
     }
-    
+
     if (count === 0) {
         drawer.classList.add("translate-y-full", "opacity-0");
         _compareTimer = setTimeout(() => { drawer.classList.add("hidden"); drawer.classList.remove("opacity-0"); }, 300);
         return;
     }
-    
+
     if (_compareTimer) { clearTimeout(_compareTimer); _compareTimer = null; }
     drawer.classList.remove("hidden");
     setTimeout(() => drawer.classList.remove("translate-y-full"), 10);
-    
+
     // Get full product objects to compare
     const productsToCompare = appState.compareList.map(id => appState.products.find(p => p.id === id)).filter(Boolean);
-    
+
     if (productsToCompare.length < 2) {
         body.innerHTML = `
         <div class="text-center py-8 text-slate-400 font-semibold">
@@ -1135,7 +1189,7 @@ function updateCompareDrawer() {
         </div>`;
         return;
     }
-    
+
     // Draw spec table columns
     body.innerHTML = `
     <div class="grid grid-cols-${productsToCompare.length + 1} gap-6 text-sm font-semibold divide-x divide-slate-100 text-slate-600">
@@ -1152,8 +1206,8 @@ function updateCompareDrawer() {
         
         <!-- Products columns -->
         ${productsToCompare.map(p => {
-            const parsedImages = parseProductImages(p.image, p.images);
-            return `
+        const parsedImages = parseProductImages(p.image, p.images);
+        return `
             <div class="space-y-4 pl-6 relative">
                 <!-- Quick Remove -->
                 <button onclick="removeCompareItem(${Number(p.id)})" class="absolute top-0 right-0 p-1 text-slate-400 hover:text-rose-500 transition"><i class="fa-solid fa-circle-xmark"></i></button>
@@ -1168,7 +1222,7 @@ function updateCompareDrawer() {
                 <div class="py-2 border-b border-slate-50 truncate">${escapeHTML(p.size)}</div>
                 <div class="py-2 font-bold ${p.stock === 'In stock' ? 'text-emerald-500' : 'text-amber-500'}">${escapeHTML(p.stock)}</div>
             </div>`;
-        }).join("")}
+    }).join("")}
     </div>`;
 }
 
@@ -1178,9 +1232,9 @@ function removeCompareItem(productId) {
         appState.compareList.splice(idx, 1);
         localStorage.setItem("shibani_compare", JSON.stringify(appState.compareList));
         updateCompareDrawer();
-        
+
         // Uncheck matching checkboxes on screen
-        document.querySelectorAll(`.compare-checkbox-quick[data-compare-id="${productId}"]`).forEach(cb => cb.checked = false);
+        document.querySelectorAll(`.compare-checkbox-quick[data-compare-id="${cssEscape(productId)}"]`).forEach(cb => cb.checked = false);
     }
 }
 
@@ -1194,16 +1248,16 @@ function openQuickView(productId) {
     if (!modal) return;
     const product = appState.products.find(p => p.id === productId);
     if (!product) return;
-    
+
     const parsedImages = parseProductImages(product.image, product.images);
-    
+
     // Set images
     const mainImg = document.getElementById("qvMainImage");
     if (mainImg) {
         mainImg.src = parsedImages[0] || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600';
         mainImg.alt = product.name || '';
     }
-    
+
     // Badge
     const badge = document.getElementById("qvBadge");
     if (badge) {
@@ -1214,7 +1268,7 @@ function openQuickView(productId) {
             badge.classList.add("hidden");
         }
     }
-    
+
     // Thumbnails
     const thumbContainer = document.getElementById("qvThumbnails");
     if (thumbContainer) {
@@ -1236,19 +1290,19 @@ function openQuickView(productId) {
             thumbContainer.innerHTML = "";
         }
     }
-    
+
     // Category
     const cat = document.getElementById("qvCategory");
     if (cat) cat.textContent = `COLLECTION / ${product.category || ''}`;
-    
+
     // Name
     const name = document.getElementById("qvName");
     if (name) name.textContent = product.name || '';
-    
+
     // Price
     const price = document.getElementById("qvPrice");
     if (price) price.textContent = formatPrice(product.price);
-    
+
     // Old price / save badge
     const oldPrice = document.getElementById("qvOldPrice");
     const saveBadge = document.getElementById("qvSaveBadge");
@@ -1264,29 +1318,27 @@ function openQuickView(productId) {
             saveBadge.classList.add("hidden");
         }
     }
-    
+
     // Description
     const desc = document.getElementById("qvDescription");
     if (desc) desc.textContent = product.description || 'Premium quality apparel. Carefully chosen fabric tailored with style and care.';
-    
+
     // Stock
     const stock = document.getElementById("qvStock");
     if (stock) {
         const isOut = (product.stock || '').toLowerCase() === 'out of stock';
         const isLimited = (product.stock || '').toLowerCase() === 'limited stock';
         stock.textContent = product.stock || 'In stock';
-        stock.className = `inline-block px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${
-            isOut ? 'bg-rose-50 text-rose-600' : isLimited ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'
-        }`;
+        stock.className = `inline-block px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${isOut ? 'bg-rose-50 text-rose-600' : isLimited ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'
+            }`;
     }
-    
+
     // Sizes
     const sizesContainer = document.getElementById("qvSizes");
     if (sizesContainer) {
         const sizes = (product.size || "").split(",").map(s => s.trim()).filter(Boolean);
         sizesContainer.innerHTML = sizes.map((sz, i) => `
-            <button type="button" class="qv-size-btn px-4 py-2 border text-[10px] tracking-widest uppercase transition duration-200 ${
-                i === 0 ? 'border-neutral-900 bg-neutral-900 text-white font-bold' : 'border-neutral-200 text-neutral-800 hover:border-neutral-900'
+            <button type="button" class="qv-size-btn px-4 py-2 border text-[10px] tracking-widest uppercase transition duration-200 ${i === 0 ? 'border-neutral-900 bg-neutral-900 text-white font-bold' : 'border-neutral-200 text-neutral-800 hover:border-neutral-900'
             }" data-size="${sz}">${sz}</button>
         `).join("");
         sizesContainer.querySelectorAll(".qv-size-btn").forEach(btn => {
@@ -1300,14 +1352,14 @@ function openQuickView(productId) {
             });
         });
     }
-    
+
     // Store product data on modal for add to cart/wishlist
     modal.dataset.productId = productId;
-    
+
     // Set full details link
     const fullLink = document.getElementById("qvFullDetails");
     if (fullLink) fullLink.href = `/product/${productId}`;
-    
+
     // Show modal
     modal.classList.remove("hidden");
     modal.classList.add("open");
@@ -1320,27 +1372,29 @@ function closeQuickView() {
         setTimeout(() => { modal.classList.add("hidden"); }, 300);
         releaseFocus(modal);
     }
+    document.removeEventListener("keydown", closeQuickView._escapeHandler);
 }
 
 // Wire quick view modal events (called once on DOM ready)
 function initQuickViewModal() {
     const modal = document.getElementById("quickViewModal");
     if (!modal) return;
-    
+
     // Close button
     const closeBtn = document.getElementById("closeQuickViewBtn");
     if (closeBtn) closeBtn.addEventListener("click", closeQuickView);
-    
+
     // Backdrop click
     modal.addEventListener("click", (e) => {
         if (e.target === modal) closeQuickView();
     });
-    
+
     // Escape key
-    document.addEventListener("keydown", (e) => {
+    closeQuickView._escapeHandler = (e) => {
         if (e.key === "Escape" && modal.classList.contains("open")) closeQuickView();
-    });
-    
+    };
+    document.addEventListener("keydown", closeQuickView._escapeHandler);
+
     // Add to Cart
     const addBtn = document.getElementById("qvAddToCartBtn");
     if (addBtn) {
@@ -1352,7 +1406,7 @@ function initQuickViewModal() {
             showToast("Added to shopping bag!", "success");
         });
     }
-    
+
     // Wishlist
     const wishBtn = document.getElementById("qvWishlistBtn");
     if (wishBtn) {
@@ -1361,7 +1415,7 @@ function initQuickViewModal() {
             toggleWishlistItem(pid);
         });
     }
-    
+
     // Close quick view on full details link
     const fullLink = document.getElementById("qvFullDetails");
     if (fullLink) {
@@ -1376,15 +1430,15 @@ function initQuickViewModal() {
 async function initProductDetail() {
     const pIdEl = document.getElementById("currentProductId");
     if (!pIdEl) return;
-    
+
     const productId = Number(pIdEl.dataset.id) || 0;
-    
+
     // Track recently viewed
     trackRecentlyViewed(productId);
-    
+
     // Image zoom
     initImageZoom();
-    
+
     // 1. Thumbnail click logic
     document.querySelectorAll(".gallery-thumb").forEach(btn => {
         btn.addEventListener("click", () => {
@@ -1394,7 +1448,7 @@ async function initProductDetail() {
             if (mainImg) mainImg.src = btn.dataset.imgSrc;
         });
     });
-    
+
     // 2. Size detail pill select
     document.querySelectorAll(".size-pill").forEach(btn => {
         btn.addEventListener("click", () => {
@@ -1402,7 +1456,7 @@ async function initProductDetail() {
             btn.classList.add("active");
         });
     });
-    
+
     // 3. Add to Cart submit
     const addToCartBtn = document.getElementById("detailAddToCartBtn");
     if (addToCartBtn) {
@@ -1412,7 +1466,7 @@ async function initProductDetail() {
             addToCart(productId, 1, selectedSize, "Default");
         });
     }
-    
+
     // 4. Add to Wishlist submit
     const addToWishlistBtn = document.getElementById("detailAddToWishlistBtn");
     if (addToWishlistBtn) {
@@ -1420,19 +1474,19 @@ async function initProductDetail() {
             toggleWishlistItem(productId);
         });
     }
-    
+
     // 5. Fit Finder Modal controls
     const fitFinderModal = document.getElementById("sizeFinderModal");
     const triggerFitBtn = document.getElementById("triggerFitFinderBtn");
     const closeFitBtn = document.getElementById("closeFitFinderBtn");
-    
+
     if (fitFinderModal && triggerFitBtn) {
         triggerFitBtn.addEventListener("click", () => {
             fitFinderModal.classList.remove("hidden");
             fitFinderModal.classList.add("open");
             calculateFitRecommendation();
         });
-        
+
         const closeFitFinder = () => {
             fitFinderModal.classList.remove("open");
             fitFinderModal.classList.add("hidden");
@@ -1459,16 +1513,16 @@ async function initProductDetail() {
             }
         };
         document.addEventListener("keydown", fitFinderModal._escapeHandler);
-        
+
         // Modal range sliders events
         const heightSlider = document.getElementById("sfHeight");
         const weightSlider = document.getElementById("sfWeight");
         const fitSelect = document.getElementById("sfFit");
-        
+
         if (heightSlider) heightSlider.addEventListener("input", calculateFitRecommendation);
         if (weightSlider) weightSlider.addEventListener("input", calculateFitRecommendation);
         if (fitSelect) fitSelect.addEventListener("change", calculateFitRecommendation);
-        
+
         const applyFitBtn = document.getElementById("applyFitFinderSizeBtn");
         if (applyFitBtn) {
             applyFitBtn.addEventListener("click", () => {
@@ -1484,7 +1538,7 @@ async function initProductDetail() {
             });
         }
     }
-    
+
     // 6. Submit Review Form
     const reviewForm = document.getElementById("submitReviewForm");
     if (reviewForm) {
@@ -1492,9 +1546,11 @@ async function initProductDetail() {
             e.preventDefault();
             const ratingEl = document.getElementById("reviewRatingSelect");
             const rating = Number(ratingEl ? ratingEl.value : 3);
-            const sizing_fit = document.getElementById("reviewSizingSelect").value;
-            const comment = document.getElementById("reviewCommentText").value.trim();
-            
+            const sizingEl = document.getElementById("reviewSizingSelect");
+            const sizing_fit = sizingEl ? sizingEl.value : "true_to_size";
+            const commentEl = document.getElementById("reviewCommentText");
+            const comment = commentEl ? commentEl.value.trim() : "";
+
             try {
                 await api("/api/reviews", {
                     method: "POST",
@@ -1507,12 +1563,12 @@ async function initProductDetail() {
             }
         });
     }
-    
+
     // 7. Load approved reviews list
     loadProductReviews(productId);
-    
+
     // 8. Track recently viewed products
-    
+
     // 9. Load related and recently viewed grids
     loadRelatedAndRecentlyViewed(productId);
     loadRecommendations(productId);
@@ -1522,10 +1578,10 @@ function calculateFitRecommendation() {
     const height = Number(document.getElementById("sfHeight")?.value || 170);
     const weight = Number(document.getElementById("sfWeight")?.value || 65);
     const fit = document.getElementById("sfFit")?.value || "regular";
-    
+
     document.getElementById("sfHeightVal").textContent = `${height} cm`;
     document.getElementById("sfWeightVal").textContent = `${weight} kg`;
-    
+
     // BMI formula Sizing mapping
     const bmi = weight / ((height / 100) ** 2);
     let baseIdx = 2; // Default M
@@ -1535,14 +1591,14 @@ function calculateFitRecommendation() {
     else if (bmi < 28.0) baseIdx = 3; // L
     else if (bmi < 32.0) baseIdx = 4; // XL
     else baseIdx = 5; // XXL
-    
+
     let recommendedIdx = baseIdx;
     if (fit === "slim") recommendedIdx = Math.max(0, baseIdx - 1);
     else if (fit === "loose") recommendedIdx = Math.min(5, baseIdx + 1);
-    
+
     const sizeNames = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
     const resultSize = sizeNames[recommendedIdx];
-    
+
     const resultLabel = document.getElementById("sfResultSize");
     if (resultLabel) resultLabel.textContent = resultSize;
 }
@@ -1551,17 +1607,17 @@ async function loadProductReviews(productId) {
     const list = document.getElementById("productReviewsList");
     const countLabel = document.getElementById("reviewsCountLabel");
     if (!list) return;
-    
+
     try {
         const data = await api(`/api/reviews?product_id=${productId}`);
         const reviews = data.reviews || [];
         if (countLabel) countLabel.textContent = reviews.length;
-        
+
         if (reviews.length === 0) {
             list.innerHTML = `<p class="text-slate-400 font-semibold py-8 text-center text-sm">No reviews yet. Be the first to review this cloth!</p>`;
             return;
         }
-        
+
         list.innerHTML = reviews.map(r => `
         <div class="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm space-y-3">
             <div class="flex items-center justify-between text-xs font-semibold">
@@ -1590,7 +1646,7 @@ async function loadProductReviews(productId) {
 
 function trackRecentlyViewed(productId) {
     let recent = safeParseJSON(localStorage.getItem("shibani_recent_viewed"), []);
-    recent = recent.filter(id => id !== productId && typeof id === "number" && !isNaN(id));
+    recent = recent.filter(id => String(id) !== String(productId) && !isNaN(Number(id)));
     recent.unshift(productId);
     if (recent.length > 6) {
         recent = recent.slice(0, 6);
@@ -1655,31 +1711,33 @@ async function loadRelatedAndRecentlyViewed(currentProductId) {
 async function initCart() {
     const container = document.getElementById("cartItemsList");
     if (!container) return;
-    
+
     // Fetch products database for naming and details matching
+    // Only fetch if not already loaded (prevents double fetch)
     try {
-        const data = await api("/api/products");
-        if (data && data.products) {
-            appState.products = data.products;
-            
-            // Sync settings variables
-            const settingsData = await api("/api/settings");
-            Object.assign(appState.settings, settingsData);
+        if (appState.products.length === 0) {
+            const data = await api("/api/products");
+            if (data && data.products) {
+                appState.products = data.products;
+            }
         }
+        // Sync settings variables
+        const settingsData = await api("/api/settings");
+        Object.assign(appState.settings, settingsData);
     } catch (err) {
         console.error("Config synchronization error:", err);
     }
-    
+
     // Sync address details if logged in
     if (appState.user) {
         try {
             const profileData = await api("/api/profile");
-            
+
             // Populate address selector book dropdown
             const addrSelect = document.getElementById("checkoutAddressSelector");
             let savedAddrList = [];
-            try { savedAddrList = JSON.parse(profileData.profile.saved_address || "[]"); } catch (e) {} 
-            
+            try { savedAddrList = JSON.parse(profileData.profile.saved_address || "[]"); } catch (e) { }
+
             if (savedAddrList.length > 0 && addrSelect) {
                 savedAddrList.forEach((addr, idx) => {
                     const opt = document.createElement("option");
@@ -1687,7 +1745,7 @@ async function initCart() {
                     opt.textContent = `${addr.label}: ${addr.name} (${addr.phone})`;
                     addrSelect.appendChild(opt);
                 });
-                
+
                 // Add event trigger to autofill details on select
                 addrSelect.addEventListener("change", () => {
                     const fields = document.getElementById("checkoutAddressFieldsContainer");
@@ -1705,19 +1763,19 @@ async function initCart() {
                     }
                 });
             }
-        } catch (e) {}
+        } catch (e) { }
     }
-    
+
     // Render shopping bag
     renderCart();
     renderSaveForLater();
-    
+
     // Progress bar interactive updates
     const nameInput = document.getElementById("checkoutName");
     const phoneInput = document.getElementById("checkoutPhone");
     const addrInput = document.getElementById("checkoutAddress");
     const progressTrack = document.getElementById("checkoutProgressTrack");
-    
+
     function updateProgress() {
         if (!progressTrack) return;
         if ((nameInput && nameInput.value.trim()) || (phoneInput && phoneInput.value.trim()) || (addrInput && addrInput.value.trim())) {
@@ -1729,13 +1787,13 @@ async function initCart() {
     if (nameInput) nameInput.addEventListener("input", updateProgress);
     if (phoneInput) phoneInput.addEventListener("input", updateProgress);
     if (addrInput) addrInput.addEventListener("input", updateProgress);
-    
+
     // Coupon form validation
     const applyCouponBtn = document.getElementById("applyPromoBtn");
     if (applyCouponBtn) {
         applyCouponBtn.addEventListener("click", applyCouponCode);
     }
-    
+
     // Submit order event
     const checkoutForm = document.getElementById("checkoutForm");
     if (checkoutForm) {
@@ -1748,19 +1806,19 @@ async function renderCart() {
     const container = document.getElementById("cartItemsList");
     const summaryPanel = document.getElementById("checkoutSummaryPanel");
     const emptyState = document.getElementById("cartEmptyState");
-    
+
     if (!container) return;
-    
+
     if (appState.cart.length === 0) {
         container.innerHTML = "";
         if (summaryPanel) summaryPanel.classList.add("hidden");
         if (emptyState) emptyState.classList.remove("hidden");
         return;
     }
-    
+
     if (emptyState) emptyState.classList.add("hidden");
     if (summaryPanel) summaryPanel.classList.remove("hidden");
-    
+
     container.innerHTML = appState.cart.map((item, idx) => {
         const product = appState.products.find(p => String(p.id) === String(item.product_id));
         if (!product) return null;
@@ -1775,7 +1833,7 @@ async function renderCart() {
                     <span>Size: <strong class="text-indigo-600">${escapeHTML(item.size)}</strong></span>
                     <span>Color: <strong class="text-indigo-600">${escapeHTML(item.color)}</strong></span>
                 </div>
-                <strong class="text-indigo-600 font-extrabold text-sm block">${formatPrice(product.price * item.quantity)}</strong>
+                <strong class="text-indigo-600 font-extrabold text-sm block">${formatPrice(price * item.quantity)}</strong>
             </div>
             
             <!-- Quantity adjust actions -->
@@ -1792,13 +1850,13 @@ async function renderCart() {
             </div>
         </div>`;
     }).filter(Boolean).join("");
-    
+
     // Render Saved for Later
     renderSaveForLater();
-    
+
     // Calculate final bill
     calculateBillingTotals();
-    
+
     // Sync mini cart
     renderMiniCart();
 }
@@ -1810,7 +1868,7 @@ function renderMiniCart() {
 async function adjustCartQty(index, amount) {
     const item = appState.cart[index];
     if (!item) return;
-    
+
     item.quantity += amount;
     if (item.quantity <= 0) {
         appState.cart.splice(index, 1);
@@ -1818,7 +1876,7 @@ async function adjustCartQty(index, amount) {
     } else {
         showToast("Quantity updated.");
     }
-    
+
     localStorage.setItem("shibani_cart", JSON.stringify(appState.cart));
     await renderCart();
     updateBadges();
@@ -1831,14 +1889,16 @@ async function saveForLater(index) {
 
     let saved = safeParseJSON(localStorage.getItem("shibani_saved_later"), []);
     const existing = saved.find(s => s.product_id === item.product_id && s.size === item.size && s.color === item.color);
-    if (!existing) {
+    if (existing) {
+        existing.quantity += item.quantity;
+    } else {
         saved.push(item);
     }
     localStorage.setItem("shibani_saved_later", JSON.stringify(saved));
-    
+
     appState.cart.splice(index, 1);
     localStorage.setItem("shibani_cart", JSON.stringify(appState.cart));
-    
+
     showToast("Outfit moved to Save for Later.");
     await renderCart();
     updateBadges();
@@ -1856,10 +1916,10 @@ async function moveToCart(index) {
         appState.cart.push(item);
     }
     localStorage.setItem("shibani_cart", JSON.stringify(appState.cart));
-    
+
     saved.splice(index, 1);
     localStorage.setItem("shibani_saved_later", JSON.stringify(saved));
-    
+
     showToast("Outfit moved to shopping bag.");
     await renderCart();
     updateBadges();
@@ -1869,7 +1929,7 @@ function removeSavedLater(index) {
     let saved = safeParseJSON(localStorage.getItem("shibani_saved_later"), []);
     saved.splice(index, 1);
     localStorage.setItem("shibani_saved_later", JSON.stringify(saved));
-    
+
     showToast("Saved outfit removed.");
     renderSaveForLater();
 }
@@ -1927,15 +1987,15 @@ function calculateBillingTotals() {
     const deliveryLabel = document.getElementById("billDelivery");
     const totalLabel = document.getElementById("billTotal");
     if (!subtotalLabel || !gstLabel || !deliveryLabel || !totalLabel) return;
-    
+
     // 1. Compute subtotal
     const subtotal = appState.cart.reduce((sum, item) => {
         const p = appState.products.find(prod => String(prod.id) === String(item.product_id));
         return sum + (p ? (Number(p.price) || 0) * item.quantity : 0);
     }, 0);
-    
+
     subtotalLabel.textContent = formatPrice(subtotal);
-    
+
     // 2. Compute Promo Code Coupon Discount
     let promoDiscount = 0;
     if (appState.appliedPromo) {
@@ -1957,22 +2017,23 @@ function calculateBillingTotals() {
     } else {
         discountRow.classList.add("hidden");
     }
-    
+
     // 3. Compute Loyalty Coins discount (purged)
     let pointsDiscount = 0;
-    
+
     // 4. Compute GST Tax (5% standard)
-    const taxableSubtotal = subtotal - promoDiscount - pointsDiscount;
+    const taxableSubtotal = Math.max(0, subtotal - promoDiscount - pointsDiscount);
     const gstRate = Number(appState.settings.gst_rate || 5);
     const gst = Math.max(0, taxableSubtotal * (gstRate / 100));
     gstLabel.textContent = formatPrice(gst);
-    
+
     // 5. Compute Delivery Fee (free above threshold)
     const threshold = Number(appState.settings.delivery_fee_threshold || 999);
     const deliveryFeeStandard = Number(appState.settings.delivery_fee_standard || 99);
-    const delivery = (taxableSubtotal >= threshold || taxableSubtotal <= 0) ? 0 : deliveryFeeStandard;
+    // Use original subtotal (not taxableSubtotal minus coupon) for free-shipping threshold
+    const delivery = (subtotal >= threshold || subtotal <= 0) ? 0 : deliveryFeeStandard;
     deliveryLabel.textContent = delivery === 0 ? "FREE" : formatPrice(delivery);
-    
+
     // 6. Total Billing sum
     const otherCharges = Number(appState.settings.other_charges || 0);
     const total = Math.max(0, taxableSubtotal + gst + delivery + otherCharges);
@@ -1984,28 +2045,28 @@ async function applyCouponCode() {
     const codeInput = document.getElementById("promoCodeInput");
     const msg = document.getElementById("promoMessage");
     if (!codeInput || !msg) return;
-    
+
     const code = codeInput.value.trim().toUpperCase();
     if (!code) return;
-    
+
     try {
         const couponsData = await api("/api/coupons");
         const list = couponsData.coupons || [];
-        const match = list.find(c => c.code.toUpperCase() === code && c.active);
-        
+        const match = list.find(c => (c.code || "").toUpperCase() === code && c.active);
+
         if (!match) {
             msg.textContent = "Invalid or expired coupon code.";
             msg.className = "text-xs font-bold text-rose-500";
             msg.classList.remove("hidden");
             return;
         }
-        
+
         // Match found
         appState.appliedPromo = match;
         msg.textContent = `Coupon applied! Saved ${match.discount_value}${match.discount_type === 'percentage' ? '%' : ' Rs.'}`;
         msg.className = "text-xs font-bold text-emerald-600";
         msg.classList.remove("hidden");
-        
+
         calculateBillingTotals();
         showToast("Discount coupon applied!");
     } catch (err) {
@@ -2023,13 +2084,13 @@ async function handleCheckoutSubmit(e) {
         setTimeout(() => window.location.href = "/login", 1000);
         return;
     }
-    
+
     const name = document.getElementById("checkoutName").value.trim();
     const phone = document.getElementById("checkoutPhone").value.trim();
     const address = document.getElementById("checkoutAddress").value.trim();
     const paymentModeEl = document.querySelector('input[name="paymentMode"]:checked'); const paymentMode = paymentModeEl ? paymentModeEl.value : "COD";
     const couponCode = appState.appliedPromo ? appState.appliedPromo.code : "";
-    
+
     const orderData = {
         customer_name: name,
         phone,
@@ -2038,7 +2099,7 @@ async function handleCheckoutSubmit(e) {
         coupon_code: couponCode,
         items: appState.cart
     };
-    
+
     if (paymentMode === "COD") {
         // Place COD order directly
         try {
@@ -2060,28 +2121,28 @@ async function handleCheckoutSubmit(e) {
         const upiModal = document.getElementById("upiPaymentModal");
         const upiAmount = document.getElementById("upiAmountLabel");
         const upiQr = document.getElementById("upiQrCode");
-        
+
         if (upiModal && upiAmount && upiQr) {
             upiAmount.textContent = formatPrice(appState.checkoutTotal);
-            
+
             // Build dynamic UPI URI link and render QR Code image
             const upiUri = `upi://pay?pa=shibani@upi&pn=ShibaniFashion&am=${appState.checkoutTotal}&cu=INR`;
             upiQr.src = `/api/qr?data=${encodeURIComponent(upiUri)}`;
-            
+
             upiModal.classList.remove("hidden");
             upiModal.classList.add("open");
-            
+
             // Timer countdown (5 minutes limit)
             let seconds = 300;
             const timerLabel = document.getElementById("upiTimer");
-            
+
             clearInterval(upiInterval);
             upiInterval = setInterval(() => {
                 seconds--;
                 const min = String(Math.floor(seconds / 60)).padStart(2, "0");
                 const sec = String(seconds % 60).padStart(2, "0");
                 timerLabel.textContent = `${min}:${sec}`;
-                
+
                 if (seconds <= 0) {
                     clearInterval(upiInterval);
                     showToast("UPI payment session expired.", "error");
@@ -2089,13 +2150,13 @@ async function handleCheckoutSubmit(e) {
                     upiModal.classList.add("hidden");
                 }
             }, 1000);
-            
+
             // Bind handlers for modal actions
             const confirmBtn = document.getElementById("upiConfirmBtn");
             const cancelBtn = document.getElementById("upiCancelBtn");
-            
+
             if (!confirmBtn || !cancelBtn) return;
-            
+
             // Remove old listeners to prevent accumulation
             if (confirmBtn._upiHandler) {
                 confirmBtn.removeEventListener("click", confirmBtn._upiHandler);
@@ -2103,17 +2164,26 @@ async function handleCheckoutSubmit(e) {
             if (cancelBtn._upiHandler) {
                 cancelBtn.removeEventListener("click", cancelBtn._upiHandler);
             }
-            
+
             confirmBtn._upiHandler = async () => {
                 clearInterval(upiInterval);
                 upiModal.classList.remove("open");
                 upiModal.classList.add("hidden");
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = "Processing...";
                 showLoading("Processing your payment...");
-
+                const currentOrderData = {
+                    customer_name: (document.getElementById("checkoutName") || {}).value || "",
+                    phone: (document.getElementById("checkoutPhone") || {}).value || "",
+                    address: (document.getElementById("checkoutAddress") || {}).value || "",
+                    payment_mode: "UPI",
+                    coupon_code: appState.appliedPromo ? appState.appliedPromo.code : "",
+                    items: appState.cart
+                };
                 try {
                     const data = await api("/api/orders", {
                         method: "POST",
-                        body: JSON.stringify(orderData)
+                        body: JSON.stringify(currentOrderData)
                     });
                     hideLoading();
                     showToast(`🎉 Order #${data.order_id} placed successfully!`);
@@ -2121,16 +2191,18 @@ async function handleCheckoutSubmit(e) {
                     setTimeout(() => window.location.href = "/order-confirmation?order_id=" + data.order_id, 1500);
                 } catch (err) {
                     hideLoading();
+                    confirmBtn.disabled = false;
+                    confirmBtn.textContent = "Confirm Payment";
                     showToast(err.message || "Failed to place order.", "error");
                 }
             };
-            
+
             cancelBtn._upiHandler = () => {
                 clearInterval(upiInterval);
                 upiModal.classList.remove("open");
                 upiModal.classList.add("hidden");
             };
-            
+
             confirmBtn.addEventListener("click", confirmBtn._upiHandler);
             cancelBtn.addEventListener("click", cancelBtn._upiHandler);
         }
@@ -2147,41 +2219,41 @@ async function initWishlist() {
     const emptyState = document.getElementById("wishlistEmptyState");
     const compareBtn = document.getElementById("compareWishlistBtn");
     if (!grid) return;
-    
+
     if (appState.wishlist.length === 0) {
         grid.innerHTML = "";
         emptyState.classList.remove("hidden");
         if (compareBtn) compareBtn.classList.add("hidden");
         return;
     }
-    
+
     emptyState.classList.add("hidden");
     if (compareBtn) compareBtn.classList.remove("hidden");
-    
+
     // Fetch product objects
     try {
         const data = await api("/api/products");
         if (data && data.products) {
             appState.products = data.products;
-            
+
             const wishlistedProducts = appState.wishlist
                 .map(id => data.products.find(p => p.id === id))
                 .filter(Boolean);
-                
+
             if (wishlistedProducts.length === 0) {
                 grid.innerHTML = "";
                 emptyState.classList.remove("hidden");
                 if (compareBtn) compareBtn.classList.add("hidden");
                 return;
             }
-            
+
             grid.innerHTML = wishlistedProducts.map(p => renderProductCard(p)).join("");
             attachCardEvents(grid);
         }
     } catch (err) {
         grid.innerHTML = `<p class="col-span-full text-center text-slate-400 font-semibold py-8">Failed to load wishlist.</p>`;
     }
-    
+
     // Compare trigger binding (one-time setup via flag)
     if (compareBtn && !compareBtn._listenerAttached) {
         compareBtn.addEventListener("click", () => {
@@ -2201,28 +2273,28 @@ async function initOrders() {
     const container = document.getElementById("ordersPageContainer");
     const emptyState = document.getElementById("ordersEmptyState");
     if (!container) return;
-    
+
     try {
         const data = await api("/api/orders/my");
         const list = data.orders || [];
-        
+
         if (list.length === 0) {
             container.innerHTML = "";
             emptyState.classList.remove("hidden");
             return;
         }
-        
+
         emptyState.classList.add("hidden");
         container.innerHTML = list.map(order => {
             const dateStr = order.created_at.split("T")[0];
             const isCancellable = order.status === "New";
-            
+
             const itemsHTML = (order.items || []).map(item => `
             <div class="flex justify-between items-center text-xs font-semibold py-1.5 border-b border-slate-50 last:border-none text-slate-500">
                 <span class="text-slate-700">${escapeHTML(item.product_name)} <small class="text-slate-400">(${escapeHTML(item.size || 'M')})</small> x${item.quantity}</span>
                 <span class="text-slate-800">${formatPrice(item.price * item.quantity)}</span>
             </div>`).join("");
-            
+
             return `
             <div class="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm space-y-4">
                 <!-- Header -->
@@ -2233,11 +2305,10 @@ async function initOrders() {
                     </div>
                     <div class="flex items-center gap-3">
                         <span class="text-xs font-bold text-slate-400 uppercase">${dateStr}</span>
-                        <span class="px-3 py-1 rounded-full text-xs font-bold uppercase ${
-                            order.status === 'Cancelled' ? 'bg-rose-50 text-rose-500 border border-rose-100' :
-                            order.status === 'Delivered' ? 'bg-emerald-50 text-emerald-500 border border-emerald-100' :
-                            'bg-amber-50 text-amber-500 border border-amber-100'
-                        }">${order.status}</span>
+                        <span class="px-3 py-1 rounded-full text-xs font-bold uppercase ${order.status === 'Cancelled' ? 'bg-rose-50 text-rose-500 border border-rose-100' :
+                    order.status === 'Delivered' ? 'bg-emerald-50 text-emerald-500 border border-emerald-100' :
+                        'bg-amber-50 text-amber-500 border border-amber-100'
+                }">${order.status}</span>
                     </div>
                 </div>
                 
@@ -2285,10 +2356,10 @@ async function triggerReceiptView(orderId) {
     const modal = document.getElementById("receiptModal");
     const body = document.getElementById("receiptModalBody");
     if (!modal || !body) return;
-    
+
     body.innerHTML = `<p class="text-center py-6 text-slate-400">Loading invoice details...</p>`;
     modal.classList.remove("hidden");
-    
+
     try {
         const data = await api("/api/orders/my");
         const list = data.orders || [];
@@ -2297,18 +2368,18 @@ async function triggerReceiptView(orderId) {
             body.innerHTML = `<p class="text-center py-6 text-rose-500">Invoice not found.</p>`;
             return;
         }
-        
+
         const gstRate = 5;
         const total = Number(order.total) || 0;
         const subtotal = total / (1 + (gstRate / 100));
         const gst = total - subtotal;
-        
+
         const itemsListHTML = (order.items || []).map(item => `
         <div class="flex justify-between py-1 border-b border-slate-50 last:border-none">
             <span>${escapeHTML(item.product_name)} <small>(${escapeHTML(item.size || 'M')})</small> x${item.quantity}</span>
             <span class="text-slate-800">${formatPrice(item.price * item.quantity)}</span>
         </div>`).join("");
-        
+
         body.innerHTML = `
         <div class="space-y-4">
             <div class="grid grid-cols-2 gap-2 pb-3 border-b border-slate-100">
@@ -2349,13 +2420,15 @@ async function triggerReceiptView(orderId) {
                 </div>
             </div>
         </div>`;
-        
+
         // Print action binding
         const printBtn = document.getElementById("printReceiptBtn");
         if (!printBtn) return;
         printBtn.onclick = () => {
             const printWindow = window.open('', '_blank');
             if (!printWindow) { showToast("Please allow pop-ups to print.", "error"); return; }
+            printWindow.document.open();
+            printWindow.document.write('<!DOCTYPE html>');
             printWindow.document.write(`
             <html><head><title>Invoice #SHB-${order.id}</title>
             <style>body{font-family:sans-serif;padding:40px;max-width:500px;margin:0 auto;line-height:1.6;}
@@ -2365,12 +2438,13 @@ async function triggerReceiptView(orderId) {
                 <h2>SHIBANI FASHION</h2>
                 <p style="font-size:12px;color:#666;">Official Purchase Receipt</p>
             </div>
-            ${document.getElementById("receiptModalBody").innerHTML}
+            <div id="receiptContent"></div>
             </body></html>`);
             printWindow.document.close();
+            printWindow.document.getElementById("receiptContent").innerHTML = document.getElementById("receiptModalBody").innerHTML;
             printWindow.print();
         };
-        
+
         const closeBtn = document.getElementById("closeReceiptBtn");
         if (closeBtn && !closeBtn._receiptHandler) {
             closeBtn._receiptHandler = () => {
@@ -2392,20 +2466,20 @@ window.triggerReceiptView = triggerReceiptView;
 async function initProfile() {
     const profileForm = document.getElementById("profileForm");
     if (!profileForm) return;
-    
+
     // 1. Fetch profile details
     try {
         const data = await api("/api/profile");
         const profile = data.profile || {};
-        
+
         document.getElementById("profileFullName").value = profile.full_name || "";
         document.getElementById("profilePhone").value = profile.saved_phone || "";
-        
+
         renderProfileAddresses(safeParseJSON(profile.saved_address, []));
     } catch (err) {
         console.error("Profile load failure:", err);
     }
-    
+
     // 2. Submit Profile info form (only once)
     if (!profileForm._initSubmit) {
         profileForm._initSubmit = true;
@@ -2413,7 +2487,7 @@ async function initProfile() {
             e.preventDefault();
             const fullName = document.getElementById("profileFullName").value.trim();
             const phone = document.getElementById("profilePhone").value.trim();
-            
+
             try {
                 await api("/api/profile", {
                     method: "PUT",
@@ -2425,18 +2499,18 @@ async function initProfile() {
             }
         });
     }
-    
+
     // 3. Address Modal overlays
     const addressModal = document.getElementById("addressModal");
     const addAddrBtn = document.getElementById("addNewAddressBtn");
     const closeAddrBtn = document.getElementById("closeAddressModalBtn");
-    
+
     if (addressModal && addAddrBtn) {
         if (!addressModal._initAddr) {
             addressModal._initAddr = true;
             addAddrBtn.addEventListener("click", () => addressModal.classList.remove("hidden"));
             if (closeAddrBtn) closeAddrBtn.addEventListener("click", () => addressModal.classList.add("hidden"));
-            
+
             const addressForm = document.getElementById("addressForm");
             addressForm.addEventListener("submit", handleAddAddressSubmit);
         }
@@ -2446,12 +2520,12 @@ async function initProfile() {
 function renderProfileAddresses(addressList) {
     const container = document.getElementById("profileAddressesList");
     if (!container) return;
-    
+
     if (addressList.length === 0) {
         container.innerHTML = `<p class="text-slate-400 font-semibold italic text-xs py-4 text-center">No shipping addresses saved yet.</p>`;
         return;
     }
-    
+
     container.innerHTML = addressList.map((addr, idx) => `
     <div class="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex justify-between items-start gap-4 shadow-sm hover:shadow-md transition">
         <div class="space-y-1 text-xs">
@@ -2473,20 +2547,20 @@ async function handleAddAddressSubmit(e) {
     const name = document.getElementById("addressNameInput").value.trim();
     const phone = document.getElementById("addressPhoneInput").value.trim();
     const address = document.getElementById("addressDetailsInput").value.trim();
-    
+
     // Fetch current address list, push new item
     try {
         const data = await api("/api/profile");
         let list = [];
-        try { list = JSON.parse(data.profile.saved_address || "[]"); } catch (e) {}
+        try { list = JSON.parse(data.profile.saved_address || "[]"); } catch (e) { }
         list.push({ label, name, phone, address });
-        
+
         // Update profile
         await api("/api/profile", {
             method: "PUT",
             body: JSON.stringify({ saved_address: JSON.stringify(list) })
         });
-        
+
         showToast("New address added successfully!");
         document.getElementById("addressForm").reset();
         document.getElementById("addressModal").classList.add("hidden");
@@ -2501,14 +2575,14 @@ async function deleteProfileAddress(index) {
     try {
         const data = await api("/api/profile");
         let list = [];
-        try { list = JSON.parse(data.profile.saved_address || "[]"); } catch (e) {}
+        try { list = JSON.parse(data.profile.saved_address || "[]"); } catch (e) { }
         list.splice(index, 1);
-        
+
         await api("/api/profile", {
             method: "PUT",
             body: JSON.stringify({ saved_address: JSON.stringify(list) })
         });
-        
+
         showToast("Address deleted successfully!");
         initProfile();
     } catch (err) {
@@ -2527,7 +2601,7 @@ window.deleteProfileAddress = deleteProfileAddress;
 async function initAdminOverview() {
     const form = document.getElementById("settingsForm");
     if (!form) return;
-    
+
     // 1. Fetch global settings variables
     try {
         const settings = await api("/api/settings");
@@ -2538,31 +2612,31 @@ async function initAdminOverview() {
     } catch (err) {
         console.error("Failed to load settings:", err);
     }
-    
+
     // 2. Fetch admin overview analytics
     try {
         const stats = await api("/api/admin/analytics");
         document.getElementById("adminStatRevenue").textContent = formatPrice(stats.total_revenue || 0);
         document.getElementById("adminStatOrders").textContent = stats.total_orders || 0;
-        
+
         // Count customers and pending reviews
         const customersData = await api("/api/admin/customers");
         document.getElementById("adminStatCustomers").textContent = (customersData.customers || []).length;
-        
+
         const reviewsData = await api("/api/admin/reviews");
         const pendingReviews = (reviewsData.reviews || []).filter(r => r.status === "pending").length;
         document.getElementById("adminStatReviews").textContent = pendingReviews;
     } catch (err) {
         console.error("Overview stats error:", err);
     }
-    
+
     // 3. Compile inventory stock warnings
     try {
         const data = await api("/api/products");
         const warningsList = document.getElementById("lowStockList");
         if (data && data.products && warningsList) {
-            const warningProducts = data.products.filter(p => p.stock === "Out of stock" || p.stock === "Limited stock");
-            
+            const warningProducts = data.products.filter(p => (p.stock || "").toLowerCase() === "out of stock" || (p.stock || "").toLowerCase() === "limited stock");
+
             if (warningProducts.length === 0) {
                 warningsList.innerHTML = `
                 <div class="p-4 bg-emerald-50 text-emerald-600 text-xs font-bold rounded-2xl flex items-center justify-center gap-2 border border-emerald-100">
@@ -2575,14 +2649,13 @@ async function initAdminOverview() {
                         <span class="text-slate-800 font-bold block line-clamp-1">${escapeHTML(p.name)}</span>
                         <span class="text-[10px] text-slate-400 block">${p.category}</span>
                     </div>
-                    <span class="px-2 py-0.5 rounded font-bold uppercase ${
-                        p.stock === 'Out of stock' ? 'bg-rose-50 text-rose-500 border border-rose-100' : 'bg-amber-50 text-amber-500 border border-amber-100'
+                    <span class="px-2 py-0.5 rounded font-bold uppercase ${p.stock === 'Out of stock' ? 'bg-rose-50 text-rose-500 border border-rose-100' : 'bg-amber-50 text-amber-500 border border-amber-100'
                     }">${p.stock}</span>
                 </div>`).join("");
             }
         }
-    } catch (e) {}
-    
+    } catch (e) { }
+
     // 4. Save settings submission
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -2590,7 +2663,7 @@ async function initAdminOverview() {
         const delivery_fee_standard = Number(document.getElementById("settingsDelivery").value);
         const delivery_fee_threshold = Number(document.getElementById("settingsThreshold").value);
         const other_charges = Number(document.getElementById("settingsOtherCharges").value);
-        
+
         try {
             await api("/api/settings", {
                 method: "PUT",
@@ -2608,16 +2681,16 @@ async function initAdminOverview() {
 async function initAdminProducts() {
     const tableBody = document.getElementById("adminProductsTableBody");
     if (!tableBody) return;
-    
+
     // 1. Load catalog list
     loadAdminCatalog();
-    
+
     // 2. Add product modal controllers
     const modal = document.getElementById("productModal");
     const openBtn = document.getElementById("adminAddNewProductBtn");
     const closeBtn = document.getElementById("closeProductModalBtn");
     const cancelBtn = document.getElementById("cancelEditButton");
-    
+
     if (modal && openBtn) {
         openBtn.addEventListener("click", () => {
             document.getElementById("productForm").reset();
@@ -2627,18 +2700,18 @@ async function initAdminProducts() {
             document.getElementById("photoPreview").innerHTML = "No image";
             modal.classList.remove("hidden");
         });
-        
+
         const closeModal = () => modal.classList.add("hidden");
         closeBtn.addEventListener("click", closeModal);
         if (cancelBtn) cancelBtn.addEventListener("click", closeModal);
     }
-    
+
     // 3. Submit Product creation form
     const form = document.getElementById("productForm");
     if (form) {
         form.addEventListener("submit", handleProductFormSubmit);
     }
-    
+
     // 4. Input search filter
     const searchInput = document.getElementById("adminProductSearch");
     if (searchInput) {
@@ -2649,22 +2722,22 @@ async function initAdminProducts() {
 async function loadAdminCatalog(filterQuery = "") {
     const tableBody = document.getElementById("adminProductsTableBody");
     if (!tableBody) return;
-    
+
     try {
         const data = await api("/api/products");
         const list = data.products || [];
-        
+
         let filtered = [...list];
         if (filterQuery) {
             const q = filterQuery.toLowerCase();
             filtered = filtered.filter(p => (p.name || "").toLowerCase().includes(q) || String(p.id).includes(q));
         }
-        
+
         if (filtered.length === 0) {
             tableBody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-400">No matching clothes in catalog.</td></tr>`;
             return;
         }
-        
+
         tableBody.innerHTML = filtered.map(p => {
             const parsedImages = parseProductImages(p.image, p.images);
             return `
@@ -2677,11 +2750,10 @@ async function loadAdminCatalog(filterQuery = "") {
                 <td class="py-4 px-6 uppercase text-xs whitespace-nowrap">${p.category}</td>
                 <td class="py-4 px-6 text-indigo-600 font-extrabold whitespace-nowrap">${formatPrice(p.price)}</td>
                 <td class="py-4 px-6 whitespace-nowrap">
-                    <span class="px-2 py-0.5 rounded text-xs font-bold uppercase ${
-                        p.stock === 'Out of stock' ? 'bg-rose-50 text-rose-500 border border-rose-100' :
-                        p.stock === 'Limited stock' ? 'bg-amber-50 text-amber-500 border border-amber-100' :
+                    <span class="px-2 py-0.5 rounded text-xs font-bold uppercase ${p.stock === 'Out of stock' ? 'bg-rose-50 text-rose-500 border border-rose-100' :
+                    p.stock === 'Limited stock' ? 'bg-amber-50 text-amber-500 border border-amber-100' :
                         'bg-emerald-50 text-emerald-500 border border-emerald-100'
-                    }">${p.stock}</span>
+                }">${p.stock}</span>
                 </td>
                 <td class="py-4 px-6 text-right space-x-2">
                     <button type="button" onclick="editAdminProduct(${p.id})" class="text-indigo-600 hover:text-indigo-800"><i class="fa-solid fa-pen-to-square"></i></button>
@@ -2697,14 +2769,14 @@ async function loadAdminCatalog(filterQuery = "") {
 async function editAdminProduct(productId) {
     const modal = document.getElementById("productModal");
     if (!modal) return;
-    
+
     try {
         const data = await api("/api/products");
         const list = data.products || [];
         const p = list.find(prod => prod.id === productId);
-        
+
         if (!p) return;
-        
+
         document.getElementById("editingProductId").value = p.id;
         document.getElementById("nameInput").value = p.name;
         document.getElementById("categoryInput").value = p.category;
@@ -2716,13 +2788,13 @@ async function editAdminProduct(productId) {
         document.getElementById("ratingInput").value = p.rating;
         document.getElementById("badgeInput").value = p.badge || "";
         document.getElementById("descriptionInput").value = p.description || "";
-        
+
         const parsedImages = parseProductImages(p.image, p.images);
         const preview = document.getElementById("photoPreview");
         if (preview && parsedImages.length > 0) {
             preview.innerHTML = `<img src="${escapeHTML(parsedImages[0])}" class="w-full h-full object-cover" />`;
         }
-        
+
         document.getElementById("productFormTitle").textContent = "Edit Cloth Details";
         document.getElementById("saveProductButton").textContent = "Save Changes";
         modal.classList.remove("hidden");
@@ -2755,23 +2827,23 @@ async function handleProductFormSubmit(e) {
     const rating = Number(document.getElementById("ratingInput").value);
     const badge = document.getElementById("badgeInput").value.trim();
     const description = document.getElementById("descriptionInput").value.trim();
-    
+
     // File upload support (handles base64 conversion for simplicity)
     const fileInput = document.getElementById("photoInput");
     let base64Image = "";
-    
+
     if (fileInput && fileInput.files.length > 0) {
         const file = fileInput.files[0];
         base64Image = await convertFileToBase64(file);
     }
-    
+
     const productPayload = {
         name, category, price, old_price: oldPrice, color, size, stock, rating, badge, description
     };
     if (base64Image) {
         productPayload.image = base64Image;
     }
-    
+
     try {
         if (editId) {
             // Edit existing
@@ -2797,6 +2869,10 @@ async function handleProductFormSubmit(e) {
 }
 
 function convertFileToBase64(file) {
+    const MAX_FILE_SIZE = 2 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+        return Promise.reject(new Error("File size exceeds 2MB limit."));
+    }
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
@@ -2814,10 +2890,10 @@ window.deleteAdminProduct = deleteAdminProduct;
 async function initAdminOrders() {
     const tableBody = document.getElementById("adminOrdersTableBody");
     if (!tableBody) return;
-    
+
     // 1. Load orders
     loadAdminOrders();
-    
+
     // 2. Attach Filter tabs events
     document.querySelectorAll(".order-tab").forEach(tab => {
         tab.addEventListener("click", () => {
@@ -2827,11 +2903,11 @@ async function initAdminOrders() {
             });
             tab.classList.add("bg-neutral-900", "text-white", "border-neutral-900");
             tab.classList.remove("bg-transparent", "text-neutral-500", "border-neutral-200");
-            
+
             loadAdminOrders(tab.dataset.status);
         });
     });
-    
+
     // 3. Search filter
     const searchInput = document.getElementById("adminOrderSearchInput");
     if (searchInput) {
@@ -2846,36 +2922,36 @@ async function initAdminOrders() {
 async function loadAdminOrders(statusFilter = "all", searchQuery = "") {
     const tableBody = document.getElementById("adminOrdersTableBody");
     if (!tableBody) return;
-    
+
     try {
         const data = await api("/api/orders");
         const list = data.orders || [];
-        
+
         let filtered = [...list];
-        
+
         // Status filter
         if (statusFilter !== "all") {
             filtered = filtered.filter(o => o.status === statusFilter);
         }
-        
+
         // Search filter
         if (searchQuery) {
             const q = searchQuery.toLowerCase();
             filtered = filtered.filter(o => (o.customer_name || "").toLowerCase().includes(q) || String(o.id).includes(q));
         }
-        
+
         if (filtered.length === 0) {
             tableBody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-400">No matching orders found.</td></tr>`;
             return;
         }
-        
+
         tableBody.innerHTML = filtered.map(o => {
             const dateStr = o.created_at.split("T")[0];
             const itemsHTML = (o.items || []).map(item => `
             <div class="py-0.5 border-b border-slate-50 last:border-none">
                 ${escapeHTML(item.product_name)} <small>(${escapeHTML(item.size || 'M')})</small> x${item.quantity}
             </div>`).join("");
-            
+
             return `
             <tr class="hover:bg-slate-50 border-b border-slate-100 transition align-top">
                 <td class="py-4 px-6 text-xs text-slate-400 whitespace-nowrap">#${o.id}</td>
@@ -2910,7 +2986,7 @@ async function updateAdminOrderStatus(orderId, newStatus) {
             body: JSON.stringify({ status: newStatus })
         });
         showToast(`Order status updated to ${newStatus}!`);
-        
+
         const activeTab = document.querySelector(".order-tab.bg-neutral-900");
         const status = activeTab ? activeTab.dataset.status : "all";
         loadAdminOrders(status);
@@ -2927,10 +3003,10 @@ window.updateAdminOrderStatus = updateAdminOrderStatus;
 async function initAdminCustomers() {
     const tableBody = document.getElementById("adminCustomersTableBody");
     if (!tableBody) return;
-    
+
     // 1. Load customers
     loadAdminCustomers();
-    
+
     // 2. Search filter
     const searchInput = document.getElementById("adminCustomerSearch");
     if (searchInput) {
@@ -2941,22 +3017,22 @@ async function initAdminCustomers() {
 async function loadAdminCustomers(filterQuery = "") {
     const tableBody = document.getElementById("adminCustomersTableBody");
     if (!tableBody) return;
-    
+
     try {
         const data = await api("/api/admin/customers");
         const list = data.customers || [];
-        
+
         let filtered = [...list];
         if (filterQuery) {
             const q = filterQuery.toLowerCase();
             filtered = filtered.filter(c => (c.full_name || "").toLowerCase().includes(q) || (c.username || "").toLowerCase().includes(q) || String(c.id).includes(q));
         }
-        
+
         if (filtered.length === 0) {
             tableBody.innerHTML = `<tr><td colspan="2" class="py-8 text-center text-slate-400">No matching customers.</td></tr>`;
             return;
         }
-        
+
         tableBody.innerHTML = filtered.map(c => `
         <tr class="hover:bg-slate-50 border-b border-slate-100 transition align-middle">
             <td class="py-4 px-6 text-xs text-slate-400 whitespace-nowrap">#${c.id}</td>
@@ -2975,7 +3051,7 @@ async function loadAdminCustomers(filterQuery = "") {
 async function initAdminReviews() {
     const list = document.getElementById("adminReviewsList");
     if (!list) return;
-    
+
     // 1. Load reviews
     loadAdminReviews();
 }
@@ -2983,25 +3059,24 @@ async function initAdminReviews() {
 async function loadAdminReviews() {
     const list = document.getElementById("adminReviewsList");
     if (!list) return;
-    
+
     try {
         const data = await api("/api/admin/reviews");
         const reviews = data.reviews || [];
-        
+
         if (reviews.length === 0) {
             list.innerHTML = `<p class="text-center text-neutral-400 font-light py-12 bg-white border border-neutral-200 uppercase tracking-widest text-[10px]">All customer reviews are moderated!</p>`;
             return;
         }
-        
+
         list.innerHTML = reviews.map(r => `
         <div class="bg-white border border-neutral-200 p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
             <div class="space-y-2 flex-grow">
                 <div class="flex items-center gap-3">
                     <span class="w-8 h-8 bg-neutral-900 text-white font-light flex items-center justify-center text-[10px] uppercase">${(r.username || '').slice(0, 2)}</span>
                     <strong class="text-neutral-900 font-medium text-xs uppercase tracking-wider">${escapeHTML(r.username)}</strong>
-                    <span class="px-2 py-0.5 text-[9px] font-medium uppercase tracking-wider ${
-                        r.status === 'approved' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'
-                    }">${r.status}</span>
+                    <span class="px-2 py-0.5 text-[9px] font-medium uppercase tracking-wider ${r.status === 'approved' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'
+            }">${r.status}</span>
                 </div>
                 <p class="text-neutral-500 text-xs font-light tracking-wide leading-relaxed">${escapeHTML(r.comment)}</p>
                 <div class="flex gap-4 text-[9px] font-light text-neutral-400 uppercase tracking-widest">
@@ -3060,10 +3135,10 @@ async function initAdminAnalytics() {
     const trendCanvas = document.getElementById("salesTrendCanvas");
     const categoryCanvas = document.getElementById("categorySalesCanvas");
     if (!trendCanvas || !categoryCanvas) return;
-    
+
     try {
         const stats = await api("/api/admin/analytics");
-        
+
         // Render detailed analytics table breakdown
         const tableContainer = document.getElementById("analyticsDetailsSection");
         if (tableContainer && stats.category_sales && stats.weekly_sales) {
@@ -3072,13 +3147,13 @@ async function initAdminAnalytics() {
                 <span class="uppercase">${cat}</span>
                 <span class="text-slate-800 font-bold">${formatPrice(val)}</span>
             </div>`).join("");
-            
+
             const weeklyHTML = Object.entries(stats.weekly_sales).map(([wk, val]) => `
             <div class="flex justify-between py-2 border-b border-slate-100 last:border-none">
                 <span>Week of ${wk}</span>
                 <span class="text-slate-800 font-bold">${formatPrice(val)}</span>
             </div>`).join("");
-            
+
             tableContainer.innerHTML = `
             <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div class="space-y-2">
@@ -3091,13 +3166,13 @@ async function initAdminAnalytics() {
                 </div>
             </div>`;
         }
-        
+
         // 1. Draw Sales Trend Line Chart on Canvas
         drawSalesTrendLineChart(stats.weekly_sales || {});
-        
+
         // 2. Draw Category Sales Pie Chart on Canvas
         drawCategorySalesPieChart(stats.category_sales || {});
-        
+
     } catch (err) {
         console.error("Analytics rendering error:", err);
     }
@@ -3106,32 +3181,32 @@ async function initAdminAnalytics() {
 function drawSalesTrendLineChart(weeklySales) {
     const canvas = document.getElementById("salesTrendCanvas");
     if (!canvas) return;
-    
+
     const ctx = canvas.getContext("2d");
     const rect = canvas.getBoundingClientRect();
-    
+
     // Scale for device pixel ratio support
     const dpr = window.devicePixelRatio || 1;
     canvas.width = rect.width * dpr;
     canvas.height = 300 * dpr;
     ctx.scale(dpr, dpr);
-    
+
     const width = rect.width;
     const height = 300;
-    
+
     ctx.clearRect(0, 0, width, height);
-    
+
     const entries = Object.entries(weeklySales);
     if (entries.length === 0) return;
-    
+
     // Calculate chart sizing bounds
     const padding = 50;
     const chartWidth = width - padding * 2;
     const chartHeight = height - padding * 2;
-    
+
     const maxVal = Math.max(...entries.map(([, val]) => val), 1000);
     const minVal = 0;
-    
+
     // Draw grid lines
     ctx.strokeStyle = "#f1f5f9";
     ctx.lineWidth = 1;
@@ -3141,7 +3216,7 @@ function drawSalesTrendLineChart(weeklySales) {
         ctx.moveTo(padding, y);
         ctx.lineTo(width - padding, y);
         ctx.stroke();
-        
+
         // Label values
         ctx.fillStyle = "#94a3b8";
         ctx.font = "10px sans-serif";
@@ -3149,19 +3224,19 @@ function drawSalesTrendLineChart(weeklySales) {
         const val = maxVal - (maxVal * i) / 4;
         ctx.fillText(Math.floor(val).toLocaleString("en-IN"), padding - 10, y + 4);
     }
-    
+
     // Plot Line
     ctx.strokeStyle = "#171717";
     ctx.lineWidth = 2.5;
     ctx.beginPath();
-    
+
     entries.forEach(([date, val], idx) => {
         const x = padding + (chartWidth * idx) / Math.max(entries.length - 1, 1);
         const y = padding + chartHeight - (chartHeight * (val - minVal)) / (maxVal - minVal);
-        
+
         if (idx === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
-        
+
         // Draw date labels
         ctx.fillStyle = "#94a3b8";
         ctx.font = "10px sans-serif";
@@ -3169,12 +3244,12 @@ function drawSalesTrendLineChart(weeklySales) {
         ctx.fillText(date, x, height - padding + 20);
     });
     ctx.stroke();
-    
+
     // Plot Points
     entries.forEach(([date, val], idx) => {
         const x = padding + (chartWidth * idx) / Math.max(entries.length - 1, 1);
         const y = padding + chartHeight - (chartHeight * (val - minVal)) / (maxVal - minVal);
-        
+
         ctx.fillStyle = "#ffffff";
         ctx.strokeStyle = "#171717";
         ctx.lineWidth = 2;
@@ -3189,18 +3264,18 @@ function drawCategorySalesPieChart(categorySales) {
     const canvas = document.getElementById("categorySalesCanvas");
     const legend = document.getElementById("categorySalesLegend");
     if (!canvas || !legend) return;
-    
+
     const ctx = canvas.getContext("2d");
     const width = canvas.width;
     const height = canvas.height;
     const center = width / 2;
     const radius = center - 10;
-    
+
     ctx.clearRect(0, 0, width, height);
-    
+
     const entries = Object.entries(categorySales);
     const total = entries.reduce((sum, [, val]) => sum + val, 0);
-    
+
     if (total === 0) {
         ctx.fillStyle = "#94a3b8";
         ctx.textAlign = "center";
@@ -3208,16 +3283,16 @@ function drawCategorySalesPieChart(categorySales) {
         ctx.fillText("No sales registered.", center, center);
         return;
     }
-    
+
     const colors = ["#171717", "#404040", "#737373", "#a3a3a3"];
     let currentAngle = 0;
-    
+
     legend.innerHTML = "";
-    
+
     entries.forEach(([category, val], idx) => {
         const sliceAngle = (val / total) * 2 * Math.PI;
         const color = colors[idx % colors.length];
-        
+
         // Draw Pie sector slice
         ctx.beginPath();
         ctx.moveTo(center, center);
@@ -3227,9 +3302,9 @@ function drawCategorySalesPieChart(categorySales) {
         ctx.strokeStyle = "#ffffff";
         ctx.lineWidth = 1.5;
         ctx.stroke();
-        
+
         currentAngle += sliceAngle;
-        
+
         // Populate Legend
         const percentage = Math.round((val / total) * 100);
         legend.innerHTML += `
@@ -3246,35 +3321,35 @@ async function initLogin() {
     const loginMessage = document.getElementById("loginMessage");
     const quickAdmin = document.getElementById("quickLoginAdminBtn");
     const quickCustomer = document.getElementById("quickLoginCustomerBtn");
-    
+
     if (!loginForm) return;
-    
+
     loginForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         const username = document.getElementById("usernameInput").value.trim();
         const password = document.getElementById("passwordInput").value;
         const submitBtn = document.getElementById("loginSubmitBtn");
-        
+
         if (!username || !password) {
             loginMessage.textContent = "Please fill in all fields.";
             loginMessage.classList.remove("hidden");
             return;
         }
-        
+
         try {
             showLoading("Signing in...");
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Signing In...';
             loginMessage.classList.add("hidden");
-            
+
             const res = await api("/api/login", {
                 method: "POST",
                 body: JSON.stringify({ username, password })
             });
-            
+
             hideLoading();
             showToast("Successfully signed in!");
-            
+
             // Redirect based on role
             setTimeout(() => {
                 if (res.user && res.user.role === "admin") {
@@ -3293,7 +3368,7 @@ async function initLogin() {
             </span> Sign In`;
         }
     });
-    
+
     // Quick Demo Credentials Buttons
     if (quickAdmin) {
         quickAdmin.addEventListener("click", () => {
@@ -3302,7 +3377,7 @@ async function initLogin() {
             loginForm.dispatchEvent(new Event("submit"));
         });
     }
-    
+
     if (quickCustomer) {
         quickCustomer.addEventListener("click", () => {
             document.getElementById("usernameInput").value = "customer";
@@ -3325,9 +3400,9 @@ function initContact() {
 async function initSignup() {
     const signupForm = document.getElementById("signupForm");
     const signupMessage = document.getElementById("signupMessage");
-    
+
     if (!signupForm) return;
-    
+
     signupForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         const full_name = document.getElementById("signupFullNameInput").value.trim();
@@ -3335,30 +3410,30 @@ async function initSignup() {
         const username = document.getElementById("signupUsernameInput").value.trim();
         const password = document.getElementById("signupPasswordInput").value;
         const submitBtn = document.getElementById("signupSubmitBtn");
-        
+
         if (!full_name || !email || !username || !password) {
             signupMessage.textContent = "Please fill in all fields.";
             signupMessage.classList.remove("hidden");
             return;
         }
-        
+
         if (password.length < 6) {
             signupMessage.textContent = "Password must be at least 6 characters.";
             signupMessage.classList.remove("hidden");
             return;
         }
-        
+
         try {
             showLoading("Creating your account...");
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> CREATING ACCOUNT...';
             signupMessage.classList.add("hidden");
-            
+
             const res = await api("/api/register", {
                 method: "POST",
                 body: JSON.stringify({ full_name, email, username, password })
             });
-            
+
             hideLoading();
             showToast("Welcome to Shibani! Your account has been created.");
             setTimeout(() => {
@@ -3380,10 +3455,10 @@ document.addEventListener("DOMContentLoaded", () => {
     // Initialize global headers, buttons, logout handlers
     initGlobal();
     initQuickViewModal();
-    
+
     // Page router matching
     const path = window.location.pathname;
-    
+
     if (path === "/" || path === "/index.html") {
         initHome();
     } else if (path === "/shop") {

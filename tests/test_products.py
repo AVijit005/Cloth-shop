@@ -148,9 +148,9 @@ class TestAdminProductCRUD:
         assert resp.status_code == 200
 
     def test_delete_nonexistent_product(self, admin_session):
-        """App returns 200 even when deleting non-existent ID."""
+        """App now correctly returns 404 when deleting non-existent ID."""
         resp = admin_session.delete("/api/products/99999")
-        assert resp.status_code == 200
+        assert resp.status_code == 404
 
     def test_delete_product_as_customer_fails(self, customer_session):
         resp = customer_session.delete("/api/products/1")
