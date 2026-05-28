@@ -1,0 +1,3 @@
+[33m2ca7ad9[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Update: config, middleware, auth routes, email service, run.py, static/main.js, templates, and tests
+[33m1ccc539[m fix: resolve 80+ bugs across 19 files — comprehensive bugfix sweep
+[33m8ba122b[m chore: add .qwen, Cloth-shop, .secret_key to .gitignore

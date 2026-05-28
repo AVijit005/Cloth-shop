@@ -29,6 +29,7 @@ document
         body: JSON.stringify({ id_token: idToken }),
         credentials: "same-origin"
       });
+      
 
       const data = await response.json();
 

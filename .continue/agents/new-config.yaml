@@ -1,0 +1,79 @@
+name: OpenCode Go Full Config
+version: 1.0.0
+schema: v1
+
+models:
+
+-  name: MiMo V2.5
+  provider: openai
+  model: MiMo-V2.5
+  apiBase: https://api.opencode.ai/v1
+  apiKey: user_5ssuZ7G9PxRK5mwB3M2T4Km2L2gtteSv6zgfnDhWp118CkzDmjkyF6QJVm1hLrAigTh3L4MqFp53cTyqRyP5s2eP
+
+-  name: MiMo V2.5 Pro
+  provider: openai
+  model: MiMo-V2.5-Pro
+  apiBase: https://api.opencode.ai/v1
+  apiKey: user_5ssuZ7G9PxRK5mwB3M2T4Km2L2gtteSv6zgfnDhWp118CkzDmjkyF6QJVm1hLrAigTh3L4MqFp53cTyqRyP5s2eP
+
+-  name: DeepSeek V4 Flash
+  provider: openai
+  model: DeepSeek V4 Flash
+  apiBase: https://api.opencode.ai/v1
+  apiKey: user_5ssuZ7G9PxRK5mwB3M2T4Km2L2gtteSv6zgfnDhWp118CkzDmjkyF6QJVm1hLrAigTh3L4MqFp53cTyqRyP5s2eP
+
+-  name: DeepSeek V4 Pro
+  provider: openai
+  model: DeepSeek V4 Pro
+  apiBase: https://api.opencode.ai/v1
+  apiKey: user_5ssuZ7G9PxRK5mwB3M2T4Km2L2gtteSv6zgfnDhWp118CkzDmjkyF6QJVm1hLrAigTh3L4MqFp53cTyqRyP5s2eP
+
+-  name: Kimi K2.5
+  provider: openai
+  model: Kimi K2.5
+  apiBase: https://api.opencode.ai/v1
+  apiKey: user_5ssuZ7G9PxRK5mwB3M2T4Km2L2gtteSv6zgfnDhWp118CkzDmjkyF6QJVm1hLrAigTh3L4MqFp53cTyqRyP5s2eP
+
+-  name: Kimi K2.6
+  provider: openai
+  model: Kimi K2.6
+  apiBase: https://api.opencode.ai/v1
+  apiKey: user_5ssuZ7G9PxRK5mwB3M2T4Km2L2gtteSv6zgfnDhWp118CkzDmjkyF6QJVm1hLrAigTh3L4MqFp53cTyqRyP5s2eP
+
+-  name: MiniMax M2.5
+  provider: openai
+  model: MiniMax M2.5
+  apiBase: https://api.opencode.ai/v1
+  apiKey: user_5ssuZ7G9PxRK5mwB3M2T4Km2L2gtteSv6zgfnDhWp118CkzDmjkyF6QJVm1hLrAigTh3L4MqFp53cTyqRyP5s2eP
+
+-  name: MiniMax M2.7
+  provider: openai
+  model: MiniMax M2.7
+  apiBase: https://api.opencode.ai/v1
+  apiKey: user_5ssuZ7G9PxRK5mwB3M2T4Km2L2gtteSv6zgfnDhWp118CkzDmjkyF6QJVm1hLrAigTh3L4MqFp53cTyqRyP5s2eP
+
+-  name: Qwen 3.6 Plus
+  provider: openai
+  model: Qwen 3.6 Plus
+  apiBase: https://api.opencode.ai/v1
+  apiKey: user_5ssuZ7G9PxRK5mwB3M2T4Km2L2gtteSv6zgfnDhWp118CkzDmjkyF6QJVm1hLrAigTh3L4MqFp53cTyqRyP5s2eP
+
+-  name: Qwen 3.6 Max Preview
+  provider: openai
+  model: Qwen 3.6 Max Preview
+  apiBase: https://api.opencode.ai/v1
+  apiKey: user_5ssuZ7G9PxRK5mwB3M2T4Km2L2gtteSv6zgfnDhWp118CkzDmjkyF6QJVm1hLrAigTh3L4MqFp53cTyqRyP5s2eP
+
+-  name: Qwen 3.7 Max
+  provider: openai
+  model: Qwen 3.7 Max
+  apiBase: https://api.opencode.ai/v1
+  apiKey: user_5ssuZ7G9PxRK5mwB3M2T4Km2L2gtteSv6zgfnDhWp118CkzDmjkyF6QJVm1hLrAigTh3L4MqFp53cTyqRyP5s2eP
+
+-  name: Step 3.5 Flash
+  provider: openai
+  model: Step 3.5 Flash
+  apiBase: https://api.opencode.ai/v1
+  apiKey: user_5ssuZ7G9PxRK5mwB3M2T4Km2L2gtteSv6zgfnDhWp118CkzDmjkyF6QJVm1hLrAigTh3L4MqFp53cTyqRyP5s2eP
+
+defaultModel: MiMo V2.5
