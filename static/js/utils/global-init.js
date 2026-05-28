@@ -246,18 +246,12 @@ function _updateShippingProgress(total) {
 
 /* ---- Cart Icon Trigger ---- */
 function _initCartIconTrigger() {
-  const cartBtn = document.getElementById("cartIconBtn");
-  if (cartBtn) {
-    cartBtn.addEventListener("click", () => {
-      if (window.openCartDrawer) window.openCartDrawer();
-    });
-  }
-  const mobileCartBtn = document.getElementById("mobileCartBtn");
-  if (mobileCartBtn) {
-    mobileCartBtn.addEventListener("click", () => {
-      if (window.openCartDrawer) window.openCartDrawer();
-    });
-  }
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest("#cartIconBtn, #mobileCartBtn");
+    if (!btn) return;
+    e.preventDefault();
+    if (window.openCartDrawer) window.openCartDrawer();
+  });
 }
 
 /* ---- Mobile Bottom Nav ---- */
