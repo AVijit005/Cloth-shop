@@ -249,16 +249,19 @@ function _initSearchSubmit() {
 }
 
 function _initCartDrawer() {
+    console.log("[DEBUG] _initCartDrawer called");
     const drawer = document.getElementById("cartDrawer");
     const panel = document.getElementById("cartDrawerPanel");
     const backdrop = document.getElementById("cartDrawerBackdrop");
     const closeBtn = document.getElementById("cartDrawerCloseBtn");
     const shopBtn = document.getElementById("cartDrawerShopBtn");
-    if (!drawer || !panel) return;
+    console.log("[DEBUG] drawer:", !!drawer, "panel:", !!panel);
+    if (!drawer || !panel) { console.log("[DEBUG] EARLY RETURN - drawer or panel missing"); return; }
 
     let closeTimer = null;
 
     const open = async () => {
+        console.log("[DEBUG] open() called");
         if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
         backdrop?.classList.remove("hidden");
         drawer.classList.remove("hidden");
@@ -415,8 +418,10 @@ function _updateShippingProgress(total) {
 }
 
 function _initCartIconTrigger() {
+    console.log("[DEBUG] _initCartIconTrigger called");
     const cartBtn = document.getElementById("cartIconBtn");
-    if (cartBtn) cartBtn.addEventListener("click", () => { if (window.openCartDrawer) window.openCartDrawer(); });
+    console.log("[DEBUG] cartIconBtn found:", !!cartBtn);
+    if (cartBtn) cartBtn.addEventListener("click", () => { console.log("[DEBUG] cartIconBtn CLICKED"); if (window.openCartDrawer) { console.log("[DEBUG] calling openCartDrawer"); window.openCartDrawer(); } else { console.log("[DEBUG] openCartDrawer NOT DEFINED"); } });
     const mobileCartBtn = document.getElementById("mobileCartBtn");
     if (mobileCartBtn) mobileCartBtn.addEventListener("click", () => { if (window.openCartDrawer) window.openCartDrawer(); });
 }
